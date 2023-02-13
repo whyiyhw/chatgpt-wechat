@@ -14,18 +14,16 @@ exports.initializer = (context, callback) => {
 };
 */
 
-// 企业 corp_id
-const corp_id = process.env.corp_id;
 // 服务器验证 aeskey
 const aes_key = process.env.aes_key;
 const aes_token = process.env.aes_token;
 const req_host = process.env.req_host;
 
 // 获取的 回复消息
-async function replyMsgToUser(userID, text) {
+async function replyMsgToUser(userID, text, channel = "qywechat") {
 
     var data = JSON.stringify({
-        "channel": "qywechat",
+        "channel": channel,
         "userID": userID,
         "msg": text,
     });
@@ -106,17 +104,37 @@ exports.handler = async (req, resp, context) => {
             var userSendContent = "";
             var userID = "";
             var agentID = "";
+            var error = false;
             readXml.read(message, (errors, xmlResponse) => {
                 if (null !== errors) {
                     console.log(errors)
                     return;
                 }
                 console.log(xmlResponse);
-                userSendContent = xmlResponse.xml.Content.text();
+
+                msgType = xmlResponse.xml.MsgType.text();
                 userID = xmlResponse.xml.FromUserName.text();
+
+                if (msgType === "event" && xmlResponse.xml.Event.text() === "click") {
+                    userSendContent = "#清除记忆"
+                    return;
+                }
+
+                if (msgType !== "text") {
+                    error = true;
+                    return;
+                }
+
+                userSendContent = xmlResponse.xml.Content.text();
                 agentID = xmlResponse.xml.AgentID.text();
             });
-            await replyMsgToUser(userID, userSendContent);
+
+            // 非文本消息进行错误提示
+            if (error) {
+                await replyMsgToUser(userID, "暂不支持，文本以外的消息");
+            } else {
+                await replyMsgToUser(userID, userSendContent, "openai");
+            }
 
             resp.setHeader("Content-Type", "text/plain");
             resp.send("");
