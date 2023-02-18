@@ -18,13 +18,15 @@ exports.initializer = (context, callback) => {
 const aes_key = process.env.aes_key;
 const aes_token = process.env.aes_token;
 const req_host = process.env.req_host;
+const req_token = process.env.req_token;
 
 // 获取的 回复消息
-async function replyMsgToUser(userID, text, channel = "qywechat") {
+async function replyMsgToUser(userID, text, agentID, channel = "wecom") {
 
     var data = JSON.stringify({
+        "agent_id": parseInt(agentID),
         "channel": channel,
-        "userID": userID,
+        "user_id": userID,
         "msg": text,
     });
 
@@ -33,7 +35,8 @@ async function replyMsgToUser(userID, text, channel = "qywechat") {
         maxBodyLength: Infinity,
         url: req_host,
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': "Bearer " + req_token
         },
         data: data
     };
@@ -114,6 +117,7 @@ exports.handler = async (req, resp, context) => {
 
                 msgType = xmlResponse.xml.MsgType.text();
                 userID = xmlResponse.xml.FromUserName.text();
+                agentID = xmlResponse.xml.AgentID.text();
 
                 if (msgType === "event" && xmlResponse.xml.Event.text() === "click") {
                     userSendContent = "#清除记忆"
@@ -126,14 +130,13 @@ exports.handler = async (req, resp, context) => {
                 }
 
                 userSendContent = xmlResponse.xml.Content.text();
-                agentID = xmlResponse.xml.AgentID.text();
             });
 
             // 非文本消息进行错误提示
             if (error) {
-                await replyMsgToUser(userID, "暂不支持，文本以外的消息");
+                await replyMsgToUser(userID, "暂不支持，文本以外的消息", agentID);
             } else {
-                await replyMsgToUser(userID, userSendContent, "openai");
+                await replyMsgToUser(userID, userSendContent, agentID, "openai");
             }
 
             resp.setHeader("Content-Type", "text/plain");

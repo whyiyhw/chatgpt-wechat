@@ -1,0 +1,21 @@
+Name: chat-api
+Host: 0.0.0.0
+Port: 8888
+
+Mysql:
+  DataSource: demo:123456@tcp(192.168.56.101:53307)/demo?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
+
+RedisCache:
+  - Host: 192.168.56.101:56379
+    Pass: "123456"
+
+Auth:
+  AccessSecret: "13450cd8841c0f0"
+  AccessExpire: 25920000
+
+WeCom:
+  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"
+  CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU"
+
+OpenAi:
+  Key: "xxxxxxxxxxxxxxxxxxxxx"

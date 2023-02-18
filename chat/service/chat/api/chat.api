@@ -1,0 +1,38 @@
+syntax = "v1"
+
+import (
+	"doc/user.api"
+	"doc/chat.api"
+)
+
+info(
+	title: "chat service api"
+	desc: "chat service api desc"
+	author: "type author here"
+	email: "type email here"
+	version: "v1"
+)
+
+@server(
+	middleware: AccessLog // 路由中间件声明
+	prefix: api
+)
+
+service chat-api {
+	@handler UserRegisterHandler
+	post /user/register (UserRegisterReq) returns (UserRegisterReply)
+	
+	@handler UserLoginHandler
+	post /user/login (UserLoginReq) returns (UserLoginReply)
+}
+
+// 需要鉴权的服务
+@server(
+	middleware: AccessLog // 路由中间件声明
+	prefix: api
+	jwt: Auth // jwt中间件声明
+)
+service chat-api {
+	@handler ChatHandler
+	post /msg/push (ChatReq) returns (ChatReply)
+}

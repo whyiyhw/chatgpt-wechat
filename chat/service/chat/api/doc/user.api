@@ -1,0 +1,30 @@
+syntax = "v1"
+
+info(
+    title: "user 相关 api"
+    desc: "注册登录"
+    author: "whyiyhw"
+    email: ""
+    version: "v1"
+)
+
+type (
+    UserRegisterReq {
+        Email string `json:"email,optional" validate:"required,email" label:"邮箱"`
+        Name string `json:"name,optional" validate:"required,max=50" label:"用户名"`
+        Password string `json:"password,optional" validate:"required" label:"密码"`
+    }
+
+    UserRegisterReply {
+        Message string `json:"message"`
+    }
+
+    UserLoginReq {
+        Email string `json:"email,optional" validate:"required,email" label:"邮箱"`
+        Password string `json:"password,optional" validate:"required" label:"密码"`
+    }
+
+    UserLoginReply {
+        Token string `json:"token"`
+    }
+)
