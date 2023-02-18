@@ -101,3 +101,11 @@ url 可以通过函数的触发器管理页面获取~
 ![image14.png](./doc/image14.png)
 效果如下
 ![image15.png](./doc/image15.png)
+
+### v0.2
+
+- 后端代码已发布
+  - 需要 docker 以及简单的运维操作，实现已经卸载
+  - 如需使用，请先配置相关数据库与 redis , 各类 密钥 通过 `chat\service\chat\api\etc\chat-api.yaml` 进行配置
+  - over😀
+- 增加 阿里云新增 req_token 环境变量来进行验证 请求合法性
