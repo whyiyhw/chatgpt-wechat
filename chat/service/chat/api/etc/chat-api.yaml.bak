@@ -3,10 +3,10 @@ Host: 0.0.0.0
 Port: 8888
 
 Mysql:
-  DataSource: demo:123456@tcp(192.168.56.101:53307)/demo?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
+  DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
 
 RedisCache:
-  - Host: 192.168.56.101:56379
+  - Host: redis7:6379
     Pass: "123456"
 
 Auth:

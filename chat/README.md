@@ -78,3 +78,6 @@ docker run -i -t -d \
  -p 8990:8888 \
   --name=chat-service  chat
 ```
+
+## docker-compose 一键部署
+docker build -f ./Dockerfile -t chat . && docker-compose up

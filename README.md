@@ -102,11 +102,62 @@ npm i xmlreader
 ![image10.png](./doc/image10.png)
 
 ### 8. 在自购服务器上 部署 golang 服务，并开启对外的网络端口
+- 前提条件，需要有一个自己的服务器，或者云服务器
+- 执行 docker -v 是否有版本号？
+- 执行 docker-compose -v 是否有版本号？
+- 确认这两个软件都安装后
+- 
+```shell
+# 进入chat 后端目录
+cd ./chat
 
-- 这部分，新的后端框架在仓库 `chat/` 目录下
-- 配置好参数，docker 部署后，
-- `req_host` 就是部署服务器的 `http://host:port/route`
-- `req_token` 就是自己注册一个账号,调用登录api获取到的 token
+# 从备份生成 配置文件
+cp ./service/chat/api/etc/chat-api.yaml.bak ./service/chat/api/etc/chat-api.yaml
+vim ./service/chat/api/etc/chat-api.yaml
+```
+- 修改这三个配置项
+![image20.png](./doc/image20.png)
+
+- 前两个是企业微信 的配置
+
+- 最后一个 是 openAPI 生成 token 的值
+
+```shell
+# 修改好后生成集成应用镜像
+docker build -f ./Dockerfile -t chat
+
+# 启动集成应用
+docker-compose up -d
+```
+- 应用启动成功后 我们需要去拿 req_host 和 req_token
+  - `req_host` 就是部署服务器的 `http://{host}:8888/msg/push` `{host}` 就是你服务器的ip
+  - `req_token` 就是自己注册一个账号,调用登录api获取到的 token ，集体步骤如下
+- 调用注册api
+```shell
+curl --location 'localhost:8888/api/user/register' \
+--header 'Content-Type: application/json' \
+--data '{"email": "admin@163.com","name": "admin","password": "admin123"}'
+```
+- 调用登录api
+```shell
+curl --location 'localhost:8888/api/user/login' \
+--header 'Content-Type: application/json' \
+--data '{"email": "admin@163.com","password": "admin123"}'
+```
+- 登录API 响应
+```json
+{
+  "code":200,
+  "msg":"成功",
+  "data":{
+    "token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDM1Njk0MzgsImlhdCI6MTY3NzY0OTQzOCwidXNlcklkIjoxfQ.mjRJcu3WNaqAYHB1RbG3qoBezzbEsW6weq8amOvGAaU"
+  }
+}
+```
+- 所以 `req_token` 就是 `data.token` 的值
+
+- 最后把 `req_host` 和 `req_token` 配置到阿里云函数云的环境变量中
+- 🎉🎉 你的机器人就配置好了
 
 ### 9. 正式布发布与微信打通
 
@@ -142,3 +193,6 @@ npm i xmlreader
   - 如需使用，请先配置相关数据库与 redis , 各类 密钥 通过 `chat\service\chat\api\etc\chat-api.yaml` 进行配置
   - over😀
 - 增加 阿里云新增 req_token 环境变量来进行验证 请求合法性
+
+### v0.2.1
+- 简化后端运维操作，增加 docker-compose 来编排服务
