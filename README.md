@@ -126,7 +126,7 @@ vim ./service/chat/api/etc/chat-api.yaml
 
 ```shell
 # 修改好后生成集成应用镜像
-docker build -f ./Dockerfile -t chat
+docker build -f ./Dockerfile -t chat .
 
 # 启动集成应用
 docker-compose up -d
