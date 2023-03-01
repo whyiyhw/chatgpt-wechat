@@ -126,10 +126,10 @@ vim ./service/chat/api/etc/chat-api.yaml
 
 ```shell
 # 修改好后生成集成应用镜像
-docker build -f ./Dockerfile -t chat .
+sudo docker build -f ./Dockerfile -t chat .
 
 # 启动集成应用
-docker-compose up -d
+sudo docker-compose up -d
 ```
 - 应用启动成功后 我们需要去拿 req_host 和 req_token
   - `req_host` 就是部署服务器的 `http://{host}:8888/msg/push` `{host}` 就是你服务器的ip
