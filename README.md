@@ -119,8 +119,10 @@ vim ./service/chat/api/etc/chat-api.yaml
 ![image20.png](./doc/image20.png)
 
 - 前两个是企业微信 的配置
+  - corpSecret 就是 步骤一中的 Secret
+  - 访问 企业微信-管理员页面 , 可在 我的企业 > 企业信息 > 底部 看到 CorpID
 
-- 最后一个 是 openAPI 生成 token 的值
+- 最后一个 是 openAPI 生成 KEY 的值
 
 ```shell
 # 修改好后生成集成应用镜像
