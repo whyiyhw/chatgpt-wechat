@@ -132,7 +132,7 @@ sudo docker build -f ./Dockerfile -t chat .
 sudo docker-compose up -d
 ```
 - 应用启动成功后 我们需要去拿 req_host 和 req_token
-  - `req_host` 就是部署服务器的 `http://{host}:8888/msg/push` `{host}` 就是你服务器的ip
+  - `req_host` 就是部署服务器的 `http://{host}:8888/api/msg/push` `{host}` 就是你服务器的ip
   - `req_token` 就是自己注册一个账号,调用登录api获取到的 token ，集体步骤如下
 - 调用注册api
 ```shell
