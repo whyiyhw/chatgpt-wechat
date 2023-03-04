@@ -16,6 +16,15 @@ Auth:
 WeCom:
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"
   CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU"
+  MultipleApplication:
+  - AgentID: 1000002
+    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
+  - AgentID: 1000003
+    AgentSecret: "lwAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"
+
+Proxy:
+  Enable: false
+  Socket5: "127.0.0.1:1080"

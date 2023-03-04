@@ -1,10 +1,13 @@
 package logic
 
 import (
+	"chat/service/chat/api/internal/config"
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/proxy"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
@@ -60,7 +63,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				for _, val := range collection {
 					_ = l.svcCtx.ChatModel.Delete(context.Background(), val.Id)
 				}
-				wecom.SendToUser(req.AgentID, req.UserID, "记忆清除完成，来开始新一轮的chat吧", l.svcCtx.Config.WeCom.CorpID, l.svcCtx.Config.WeCom.CorpSecret)
+				sendToUser(req.AgentID, req.UserID, "记忆清除完成，来开始新一轮的chat吧", l.svcCtx.Config)
 				return
 			}
 
@@ -97,10 +100,28 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			payload := strings.NewReader(string(bytes))
 
 			client := &http.Client{}
+
+			// 是否开启代理
+			if l.svcCtx.Config.Proxy.Enable {
+				dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
+				if err != nil {
+					sendToUser(req.AgentID, req.UserID, "代理设置失败"+err.Error(), l.svcCtx.Config)
+					return
+				}
+				//	设置传输方式
+				httpTransport := &http.Transport{}
+				//	设置 socks5 代理
+				httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+					return dialer.Dial(network, addr)
+				}
+
+				client.Transport = httpTransport
+			}
+
 			c, err := http.NewRequest(method, url, payload)
 
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("client request build fail:" + err.Error())
 				return
 			}
 
@@ -109,7 +130,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 			res, err := client.Do(c)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("client req ing fail:" + err.Error())
 				return
 			}
 			defer func(Body io.ReadCloser) {
@@ -177,15 +198,30 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			})
 
 			// 然后把数据 发给微信用户
-			wecom.SendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config.WeCom.CorpID, l.svcCtx.Config.WeCom.CorpSecret)
+			sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
 		}()
 	}
 
 	if req.Channel == "wecom" {
-		wecom.SendToUser(req.AgentID, req.UserID, req.MSG, l.svcCtx.Config.WeCom.CorpID, l.svcCtx.Config.WeCom.CorpSecret)
+		sendToUser(req.AgentID, req.UserID, req.MSG, l.svcCtx.Config)
 	}
 
 	return &types.ChatReply{
 		Message: "ok",
 	}, nil
+}
+
+func sendToUser(agentID int64, userID, msg string, config config.Config) {
+	// 先去查询多应用模式是否开启
+	corpSecret := ""
+	for _, application := range config.WeCom.MultipleApplication {
+		if application.AgentID == agentID {
+			corpSecret = application.AgentSecret
+		}
+	}
+
+	if corpSecret == "" {
+		corpSecret = config.WeCom.CorpSecret
+	}
+	wecom.SendToUser(agentID, userID, msg, config.WeCom.CorpID, corpSecret)
 }

@@ -203,10 +203,27 @@ curl --location 'localhost:8888/api/user/login' \
 ### v0.2.1
 - 简化后端运维操作，增加 docker-compose 来编排服务
 
+### v0.2.2
+- 新增多应用支持(可选), 如果你有多个应用只开了一个服务，现在你可以开启多应用配置，相关参数就在企业微信应用详情页
+```
+  MultipleApplication:
+  - AgentID: 1000002
+    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
+  - AgentID: 1000003
+    AgentSecret: "lwAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+- 因为 服务器在国内，新增代理设置来保证服务可用, 暂时只支持socket5（可选）
+```
+Proxy:
+  Enable: false
+  Socket5: "127.0.0.1:1080"
+```
+
 ### feature 版本 考虑与执行中
-- [ ] 单服务-多应用支持
-- [ ] 支持 prompt 自定义配置，以及预定义模板
+- [x] 单服务-多应用支持 2023-03-05
+- [x] 新增代理设置      2023-03-05
 - [ ] 支持最新的 gpt3.5 与模型可自行切换
+- [ ] 支持 prompt 自定义配置，以及预定义模板
 - [ ] 支持 openapi 对话 token 累计功能， 余额不足时，支持 token 更换 
 - [ ] 支持作图功能（可选）
 - [ ] 支持英语语音输入（可选）
@@ -214,6 +231,11 @@ curl --location 'localhost:8888/api/user/login' \
 - [ ] 支持web管理页面，配置入库方便修改（可选）
 - [ ] 十分期待您的需求，可以提issue...
 
-## QA 
+## QA
+
 ### 我配置好了，发送给openai 的消息有响应，但是企业微信应用没有收到回复
 - 请参考 1.2 配置企业可信IP 
+
+### 服务器在国内，出现 `connect: connection refused`
+- 方法一 ： 请自行 安装 `proxy client` 然后开启 监听 0.0.0.0:socket 模式 ，不要开启认证，之后在配置文件中，开启配置就OK,详情请见 `v0.2.2` 
+- 方法二 ： 把服务器移到 香港/海外 , 大陆地区将长期不能访问

@@ -22,10 +22,21 @@ type Config struct {
 	WeCom struct {
 		CorpID     string
 		CorpSecret string
+
+		MultipleApplication []struct {
+			AgentID     int64
+			AgentSecret string
+		}
 	}
 
 	// openai 配置
 	OpenAi struct {
 		Key string
+	}
+
+	// http proxy 设置
+	Proxy struct {
+		Enable  bool
+		Socket5 string
 	}
 }
