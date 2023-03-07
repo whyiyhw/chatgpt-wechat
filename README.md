@@ -19,7 +19,7 @@
 
 ## 效果如图
 
-![image1.png](./doc/image1.png)
+![image24.png](./doc/image24.png)
 
 ## 如何使用本项目代码？
 
@@ -218,12 +218,41 @@ Proxy:
   Enable: false
   Socket5: "127.0.0.1:1080"
 ```
+### v0.3
+- 新增最新版本的 gpt3.5 api 配置 与 prompt 自定义配置
+```
+WeCom:
+  BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
+  Model: "text-davinci-003"
+  MultipleApplication:
+  - AgentID: 1000002
+    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
+    Model: "gpt-3.5-turbo"
+    BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
+```
+- 新增 指令对话模式
 
+![image22.png](./doc/image22.png)
+
+- 新增 通过 指令对话模式 实时更换 角色与 model
+![image23.png](./doc/image23.png)
+
+#### changelog 升级说明
+- 从低版本，已部署系统升级上来的需要清理数据库信息才能重新 构建
+- 如 在 chat 目录下执行 去清理数据
+```shell
+sudo docker-compose down
+sudo rm -rf ./build/mysql/data/*
+sudo rm -rf ./build/redis/data/*
+sudo docker-compose up -d
+```
 ### feature 版本 考虑与执行中
 - [x] 单服务-多应用支持 2023-03-05
 - [x] 新增代理设置      2023-03-05
-- [ ] 支持最新的 gpt3.5 与模型可自行切换
-- [ ] 支持 prompt 自定义配置，以及预定义模板
+- [x] 支持最新的 gpt3.5 与模型可自行切换
+- [x] 支持 prompt 自定义配置
+- [x] 命令式动态调整对话参数
+- [ ] 系统设置&预定义模板
 - [ ] 支持 openapi 对话 token 累计功能， 余额不足时，支持 token 更换 
 - [ ] 支持作图功能（可选）
 - [ ] 支持英语语音输入（可选）

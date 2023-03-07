@@ -22,10 +22,14 @@ type Config struct {
 	WeCom struct {
 		CorpID     string
 		CorpSecret string
+		Model      string
+		BasePrompt string
 
 		MultipleApplication []struct {
 			AgentID     int64
 			AgentSecret string
+			Model       string
+			BasePrompt  string
 		}
 	}
 
