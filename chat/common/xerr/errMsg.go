@@ -10,6 +10,8 @@ func init() {
 	message[UNAUTHORIZED] = "无效的token"
 	message[FORBIDDEN] = "权限不足"
 	message[PasswordIncorrect] = "密码错误"
+	message[RouteNotFound] = "请求资源不存在"
+	message[RouteNotMatch] = "请求方式错误"
 	message[DBError] = "数据库繁忙,请稍后再试"
 }
 

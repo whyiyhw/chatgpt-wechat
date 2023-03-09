@@ -31,6 +31,8 @@ func main() {
 			response.Response(r, w, nil, errors.Wrapf(xerr.NewErrCode(xerr.UNAUTHORIZED), "鉴权失败 %v", err))
 			return
 		}),
+		rest.WithNotFoundHandler(&NotFoundHandler{}),
+		rest.WithNotAllowedHandler(&MethodNotMatchHandler{}),
 	)
 	defer server.Stop()
 
@@ -39,4 +41,22 @@ func main() {
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
+}
+
+type NotFoundHandler struct{}
+
+func (h *NotFoundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	bodyByte, _ := io.ReadAll(r.Body)
+	accesslog.ToLog(r, bodyByte, -1)
+	response.Response(r, w, nil, errors.Wrapf(xerr.NewErrCode(xerr.RouteNotFound), "接口不存在"))
+	return
+}
+
+type MethodNotMatchHandler struct{}
+
+func (h *MethodNotMatchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	bodyByte, _ := io.ReadAll(r.Body)
+	accesslog.ToLog(r, bodyByte, -1)
+	response.Response(r, w, nil, errors.Wrapf(xerr.NewErrCode(xerr.RouteNotMatch), "请求方式错误"))
+	return
 }
