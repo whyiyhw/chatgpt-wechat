@@ -74,11 +74,12 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				return
 			} else if strings.Contains(req.MSG, "#help") {
 				tips := fmt.Sprintf(
-					"目前支持的指令有：\n %s\n %s\n %s\n %s\n %s",
+					"目前支持的指令有：\n %s\n %s\n %s\n %s\n %s\n %s",
 					"#clear 清空当前应用的对话数据",
 					"#system 查看当前对话的系统信息",
 					"#config_prompt:您的设置 如 程序员的小助手",
 					"#config_model:您的设置 如 text-davinci-003",
+					"#config_clear:恢复当前应用的对话设置至初始值",
 					"#help 查看所有指令",
 				)
 				sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
@@ -159,11 +160,11 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			collection, _ := l.svcCtx.ChatModel.FindAll(context.Background(), whereBuilder)
 
 			var bytes []byte
+			skipNum := 0
+			if len(collection) > 20 {
+				skipNum = len(collection) - 20
+			}
 			if m == openai.TextModel {
-				skipNum := 0
-				if len(collection) > 50 {
-					skipNum = len(collection) - 50
-				}
 				// TODO 将对话进行总结 然后拿总结的话进行构造请求与回复
 				for k, val := range collection {
 					if k >= skipNum {
@@ -182,15 +183,17 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					Content: basePrompt,
 				})
 
-				for _, val := range collection {
-					prompts = append(prompts, openai.ChatModelMessage{
-						Role:    "user",
-						Content: val.ReqContent,
-					})
-					prompts = append(prompts, openai.ChatModelMessage{
-						Role:    "assistant",
-						Content: val.ResContent,
-					})
+				for k, val := range collection {
+					if k >= skipNum {
+						prompts = append(prompts, openai.ChatModelMessage{
+							Role:    "user",
+							Content: val.ReqContent,
+						})
+						prompts = append(prompts, openai.ChatModelMessage{
+							Role:    "assistant",
+							Content: val.ResContent,
+						})
+					}
 				}
 
 				prompts = append(prompts, openai.ChatModelMessage{
