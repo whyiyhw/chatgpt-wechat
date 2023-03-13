@@ -43,6 +43,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			url := "https://api.openai.com/v1/completions"
 			method := "POST"
 
+			baseHost := getBaseHost(l.svcCtx.Config)
 			basePrompt := getBasePrompt(req.AgentID, l.svcCtx.Config)
 			m := getModelName(req.AgentID, l.svcCtx.Config)
 
@@ -175,7 +176,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 				bytes = openai.TextModelRequestBuild(basePrompt)
 
-				url = "https://api.openai.com/v1/completions"
+				url = baseHost + "/v1/completions"
 			} else {
 				var prompts []openai.ChatModelMessage
 				prompts = append(prompts, openai.ChatModelMessage{
@@ -202,7 +203,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				})
 
 				bytes = openai.ChatRequestBuild(prompts)
-				url = "https://api.openai.com/v1/chat/completions"
+				url = baseHost + "/v1/chat/completions"
 			}
 
 			payload := strings.NewReader(string(bytes))
@@ -292,6 +293,13 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 	return &types.ChatReply{
 		Message: "ok",
 	}, nil
+}
+
+func getBaseHost(c config.Config) string {
+	if c.OpenAi.Host != "" {
+		return c.OpenAi.Host
+	}
+	return "https://api.openai.com"
 }
 
 func sendToUser(agentID int64, userID, msg string, config config.Config) {

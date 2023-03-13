@@ -246,6 +246,15 @@ sudo rm -rf ./build/mysql/data/*
 sudo rm -rf ./build/redis/data/*
 sudo docker-compose up -d
 ```
+### v0.3.1
+- 新增 反向代理支持（可选）,将 host 换成 对应的反向代理域名即可
+```
+```shell
+OpenAi:
+  Key: "xxxxxxxxxxxxxxxxxxxxx"
+  Host: "https://api.openai.com"
+```
+
 ### feature 版本 考虑与执行中
 - [x] 单服务-多应用支持 2023-03-05
 - [x] 新增代理设置      2023-03-05
