@@ -120,7 +120,11 @@ exports.handler = async (req, resp, context) => {
                 agentID = xmlResponse.xml.AgentID.text();
 
                 if (msgType === "event" && xmlResponse.xml.Event.text() === "click") {
-                    userSendContent = "#清除记忆"
+                    userSendContent = "#clear"
+                    return;
+                }
+                if (msgType === "event" && xmlResponse.xml.Event.text() === "enter_agent") {
+                    userSendContent = "#welcome"
                     return;
                 }
 
