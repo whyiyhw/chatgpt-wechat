@@ -18,7 +18,7 @@ WeCom:
   CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU"
   BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
   Model: "text-davinci-003"
-  Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。"
+  Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"
   MultipleApplication:
   - AgentID: 1000002
     AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"

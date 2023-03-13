@@ -247,9 +247,13 @@ sudo rm -rf ./build/redis/data/*
 sudo docker-compose up -d
 ```
 ### v0.3.1
-- 新增 反向代理支持（可选）,将 host 换成 对应的反向代理域名即可
-```
+- 新增 WeCom.Welcome 自定义15天欢迎语
+- 新增 反向代理支持（可选）,将 OpenAi.Host 换成 对应的反向代理域名即可
+
 ```shell
+WeCom:
+  Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"
+
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"
   Host: "https://api.openai.com"

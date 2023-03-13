@@ -24,6 +24,7 @@ type Config struct {
 		CorpSecret string
 		Model      string
 		BasePrompt string
+		Welcome    string
 
 		MultipleApplication []struct {
 			AgentID     int64

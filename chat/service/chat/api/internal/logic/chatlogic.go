@@ -1,24 +1,26 @@
 package logic
 
 import (
-	"chat/common/openai"
-	"chat/service/chat/api/internal/config"
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/proxy"
 	"io"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
+	"chat/common/openai"
 	"chat/common/wecom"
+	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/go-redis/redis/v8"
 	"github.com/zeromicro/go-zero/core/logx"
+	"golang.org/x/net/proxy"
 )
 
 type ChatLogic struct {
@@ -153,6 +155,28 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					_ = l.svcCtx.ChatConfigModel.Delete(context.Background(), val.Id)
 				}
 				sendToUser(req.AgentID, req.UserID, "对话配置清除完成", l.svcCtx.Config)
+				return
+			} else if strings.Contains(req.MSG, "#welcome") {
+				cacheKey := fmt.Sprintf("chat:wecome:%d:%s", req.AgentID, req.UserID)
+				rdb := redis.NewClient(&redis.Options{
+					Addr:     l.svcCtx.Config.RedisCache[0].Host,
+					Password: l.svcCtx.Config.RedisCache[0].Pass,
+					DB:       1,
+				})
+				defer func(rdb *redis.Client) {
+					err := rdb.Close()
+					if err != nil {
+						fmt.Println("welcome3:" + err.Error())
+					}
+				}(rdb)
+				if _, err := rdb.Get(context.Background(), cacheKey).Result(); err == nil {
+					return
+				}
+				sendToUser(req.AgentID, req.UserID, l.svcCtx.Config.WeCom.Welcome, l.svcCtx.Config)
+				_, err = rdb.SetEX(context.Background(), cacheKey, "1", 24*15*time.Hour).Result()
+				if err != nil {
+					fmt.Println("welcome2:" + err.Error())
+				}
 				return
 			}
 
