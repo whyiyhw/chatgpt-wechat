@@ -9,6 +9,7 @@ import (
 const TextModel = "text-davinci-003"
 const ChatModel = "gpt-3.5-turbo"
 const ChatModelNew = "gpt-3.5-turbo-0301"
+const ChatModel4 = "gpt-4"
 
 type TextModelRequest struct {
 	Model            string   `json:"model"`
@@ -89,7 +90,7 @@ func TextModelRequestBuild(basePrompt string) []byte {
 	rq := TextModelRequest{
 		Model:       TextModel,
 		Prompt:      basePrompt,
-		MaxTokens:   1200,
+		MaxTokens:   2000,
 		Temperature: 0.8,
 		TopP:        1,
 		Stop:        []string{"#"},
@@ -116,7 +117,7 @@ func ChatRequestBuild(prompts []ChatModelMessage) []byte {
 	rq := ChatModelRequest{
 		Model:       ChatModel,
 		Messages:    prompts,
-		MaxTokens:   1200,
+		MaxTokens:   2000,
 		Temperature: 0.8,
 		TopP:        1,
 		Stop:        []string{"#"},

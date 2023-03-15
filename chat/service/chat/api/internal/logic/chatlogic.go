@@ -124,8 +124,8 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					return
 				}
 
-				if msg != openai.TextModel && msg != openai.ChatModel && msg != openai.ChatModelNew {
-					tips := fmt.Sprintf("目前只支持以下三种模型：\n %s \n %s \n %s \n", openai.TextModel, openai.ChatModel, openai.ChatModelNew)
+				if msg != openai.TextModel && msg != openai.ChatModel && msg != openai.ChatModelNew && msg != openai.ChatModel4 {
+					tips := fmt.Sprintf("目前只支持以下四种模型：\n %s \n %s \n %s \n %s \n", openai.TextModel, openai.ChatModel, openai.ChatModelNew, openai.ChatModel4)
 					sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 					return
 				}
@@ -345,7 +345,7 @@ func getModelName(agentID int64, config config.Config) string {
 		}
 	}
 
-	if m == "" || (m != openai.TextModel && m != openai.ChatModel && m != openai.ChatModelNew) {
+	if m == "" || (m != openai.TextModel && m != openai.ChatModel && m != openai.ChatModelNew && m != openai.ChatModel4) {
 		m = openai.TextModel
 	}
 	return m

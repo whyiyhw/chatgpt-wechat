@@ -22,7 +22,7 @@ WeCom:
   MultipleApplication:
   - AgentID: 1000002
     AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
-    Model: "gpt-3.5-turbo"
+    Model: "gpt-4"
     BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
   - AgentID: 1000003
     AgentSecret: "lwAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
