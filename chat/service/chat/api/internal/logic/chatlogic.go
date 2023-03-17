@@ -7,9 +7,12 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
+	"chat/common/aliocr"
 	"chat/common/openai"
 	"chat/common/wecom"
 	"chat/service/chat/api/internal/config"
@@ -53,7 +56,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			configBuilder := l.svcCtx.ChatConfigModel.RowBuilder().
 				Where(squirrel.Eq{"user": req.UserID}).
 				Where(squirrel.Eq{"agent_id": req.AgentID}).
-				OrderBy("id")
+				OrderBy("id desc")
 			configCollection, configErr := l.svcCtx.ChatConfigModel.FindOneByQuery(context.Background(), configBuilder)
 			if configErr == nil {
 				if configCollection.Id > 0 {
@@ -77,13 +80,15 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				return
 			} else if strings.Contains(req.MSG, "#help") {
 				tips := fmt.Sprintf(
-					"目前支持的指令有：\n %s\n %s\n %s\n %s\n %s\n %s",
+					"目前支持的指令有：\n %s\n %s\n %s\n %s\n %s\n %s\n %s\n %s",
 					"#clear 清空当前应用的对话数据",
-					"#system 查看当前对话的系统信息",
-					"#config_prompt:您的设置 如 程序员的小助手",
-					"#config_model:您的设置 如 text-davinci-003",
-					"#config_clear:恢复当前应用的对话设置至初始值",
 					"#help 查看所有指令",
+					"#config_prompt:您的设置，如程序员的小助手",
+					"#config_model:您的设置，如text-davinci-003",
+					"#config_clear:设置当前应用的对话设置至初始值，并清理会话记录",
+					"#prompt:list 查看所有支持的预定义角色",
+					"#prompt:set:您的设置，如 24 (诗人)",
+					"#system 查看当前对话的系统信息",
 				)
 				sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 				return
@@ -154,7 +159,15 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				for _, val := range collection {
 					_ = l.svcCtx.ChatConfigModel.Delete(context.Background(), val.Id)
 				}
-				sendToUser(req.AgentID, req.UserID, "对话配置清除完成", l.svcCtx.Config)
+				// 去数据库删除 用户的所有对话数据
+				chatBuilder := l.svcCtx.ChatModel.RowBuilder().
+					Where(squirrel.Eq{"user": req.UserID}).
+					Where(squirrel.Eq{"agent_id": req.AgentID})
+				chatCollection, _ := l.svcCtx.ChatModel.FindAll(context.Background(), chatBuilder)
+				for _, val := range chatCollection {
+					_ = l.svcCtx.ChatModel.Delete(context.Background(), val.Id)
+				}
+				sendToUser(req.AgentID, req.UserID, "对话配置,与会话设置清除完成", l.svcCtx.Config)
 				return
 			} else if strings.Contains(req.MSG, "#welcome") {
 				cacheKey := fmt.Sprintf("chat:wecome:%d:%s", req.AgentID, req.UserID)
@@ -178,6 +191,99 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					fmt.Println("welcome2:" + err.Error())
 				}
 				return
+			} else if strings.Contains(req.MSG, "#image:") {
+				// #image:https://www.baidu.com/img/bd_logo1.png
+				msg := strings.Replace(req.MSG, "#image:", "", -1)
+				if msg == "" {
+					sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：#image:https://www.google.com/img/bd_logo1.png", l.svcCtx.Config)
+					return
+				}
+				vi := reflect.ValueOf(l.svcCtx.Config.OCR)
+				if vi.Kind() == reflect.Ptr && vi.IsNil() {
+					sendToUser(req.AgentID, req.UserID, "请先配置OCR", l.svcCtx.Config)
+					return
+				}
+				if l.svcCtx.Config.OCR.Company != "ali" {
+					sendToUser(req.AgentID, req.UserID, "目前只支持阿里OCR", l.svcCtx.Config)
+					return
+				}
+				ocrCli, _err := aliocr.CreateClient(&l.svcCtx.Config.OCR.AliYun.AccessKeyId, &l.svcCtx.Config.OCR.AliYun.AccessKeySecret)
+				if _err != nil {
+					// 创建失败
+					sendToUser(req.AgentID, req.UserID, "图片识别客户端创建失败失败:"+_err.Error(), l.svcCtx.Config)
+					return
+				}
+
+				// 进行图片识别
+				txt, err := aliocr.OcrImage2Txt(msg, ocrCli)
+				if err != nil {
+					sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+					return
+				}
+				if msg == "" {
+					sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+					return
+				}
+				// 图片识别成功
+				sendToUser(req.AgentID, req.UserID, "图片识别成功:\n\n"+txt, l.svcCtx.Config)
+
+				req.MSG = txt
+			} else if strings.Contains(req.MSG, "#prompt:") {
+				if strings.Contains(req.MSG, "#prompt:list") {
+					// #prompt:list
+					// 去数据库获取用户的所有prompt
+					collection, _ := l.svcCtx.PromptConfigModel.FindAll(context.Background(),
+						l.svcCtx.PromptConfigModel.RowBuilder().Where(squirrel.Gt{"id": 1}),
+					)
+					var prompts []string
+					for _, val := range collection {
+						prompts = append(prompts, fmt.Sprintf("%s:%d", val.Key, val.Id))
+					}
+					sendToUser(req.AgentID, req.UserID, "您的prompt如下：\n"+strings.Join(prompts, "\n"), l.svcCtx.Config)
+					return
+				}
+
+				if strings.Contains(req.MSG, "#prompt:set:") {
+					// #prompt:您的设置 如：您好，我是小助手，很高兴为您服务\n
+					msg := strings.Trim(strings.Replace(req.MSG, "#prompt:set:", "", -1), " ")
+
+					if msg == "" {
+						sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：\n#prompt:set:24\n", l.svcCtx.Config)
+						return
+					}
+					// msg 转 int64
+					mId, err := strconv.ParseInt(msg, 10, 64)
+					if err != nil {
+						sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：\n#prompt:set:24\n", l.svcCtx.Config)
+						return
+					}
+					//去根据用户输入的prompt去数据库查询是否存在
+					prompt, _err := l.svcCtx.PromptConfigModel.FindOne(context.Background(), mId)
+					switch _err {
+					case model.ErrNotFound:
+						sendToUser(req.AgentID, req.UserID, "此 prompt 不存在，请确认后再试", l.svcCtx.Config)
+					case nil:
+						// 去数据库新增用户的对话配置
+						chatConfig := model.ChatConfig{
+							AgentId: req.AgentID,
+							User:    req.UserID,
+							Prompt:  prompt.Value,
+							Model:   m,
+						}
+						_, configErr := l.svcCtx.ChatConfigModel.Insert(context.Background(), &chatConfig)
+
+						if configErr != nil {
+							sendToUser(req.AgentID, req.UserID, msg+"设置失败:"+configErr.Error(), l.svcCtx.Config)
+							return
+						}
+						sendToUser(req.AgentID, req.UserID, "设置成功，您目前的对话配置如下：\n prompt: "+prompt.Value+"\n model: "+m, l.svcCtx.Config)
+					default:
+						sendToUser(req.AgentID, req.UserID, "设置失败, prompt 查询失败"+err.Error(), l.svcCtx.Config)
+					}
+					return
+				}
+				// 拒绝
+				sendToUser(req.AgentID, req.UserID, "您的设置有误，目前 #prompt 仅支持 \n prompt:list \n prompt:set: \n 请确认后再试", l.svcCtx.Config)
 			}
 
 			// 从数据库中读取 用户的所有 请求与 响应数据 进行请求拼接
@@ -284,6 +390,16 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			sysErr := json.Unmarshal(body, openAiResError)
 			messageText := ""
 			if sysErr != nil || openAiResError.Error.Type != "" {
+				// 请求错误
+				if openAiResError.Error.Type == "invalid_request_error" {
+					switch openAiResError.Error.Code.(type) {
+					case string:
+						if openAiResError.Error.Code.(string) == "context_length_exceeded" {
+							sendToUser(req.AgentID, req.UserID, "上下文超过最大长度的限制，请输入 #clear 来清理上下文", l.svcCtx.Config)
+							return
+						}
+					}
+				}
 
 				messageText = fmt.Sprintf("%s \n\n系统错误，请清理后重试: type:%v code:%v",
 					req.MSG, openAiResError.Error.Type, openAiResError.Error.Code,

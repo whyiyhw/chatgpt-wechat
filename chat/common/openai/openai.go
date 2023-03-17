@@ -117,7 +117,7 @@ func ChatRequestBuild(prompts []ChatModelMessage) []byte {
 	rq := ChatModelRequest{
 		Model:       ChatModel,
 		Messages:    prompts,
-		MaxTokens:   2000,
+		MaxTokens:   3000,
 		Temperature: 0.8,
 		TopP:        1,
 		Stop:        []string{"#"},

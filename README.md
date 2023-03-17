@@ -1,10 +1,27 @@
 # chatgpt-wechat
 
-微信用户可自建的 ChatGPT 机器人
+可在微信 **安全使用（通过企业微信中转到微信，无封号风险）** 的 ChatGPT 个人助手应用,
 
-## 食用前提条件
-- 域名（备案/不备案）都可以，
+- 主要能力 
+  - 第一个为自定义 prompt
+    <p align="center">
+      <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
+          <img width="400" src="./doc/image24.png" alt="image24" />
+      </a>
+    </p>
+  - 第二个为预定义 prompt
+    <p align="center">
+      <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
+          <img width="400" src="./doc/image28.png" alt="image26" />
+          <img width="400" src="./doc/image27.png" alt="image27" />
+      </a>
+    </p>
+- 可选能力（图片识别-小猿搜题目青春版）
+  - [点击查看示例](./doc/image25.jpg)
+
+## 使用前提条件
 - 云服务器 1h2g 就够了
+- 域名（备案/不备案）都可以，
 - 需要去注册一个个人[企业微信](https://work.weixin.qq.com/)
 - 阿里云开通云函数服务（新人一年88的额度，绝对够用）
   - 其它腾讯云，华为云 云函数都适用，需要自行修改 js 文件。
@@ -19,7 +36,6 @@
 
 ## 效果如图
 
-![image24.png](./doc/image24.png)
 
 ## 如何使用本项目代码？
 
@@ -130,7 +146,7 @@ vim ./service/chat/api/etc/chat-api.yaml
 
 ```shell
 # 修改好后生成集成应用镜像
-sudo docker build -f ./Dockerfile -t chat .
+sudo docker-compose build
 
 # 启动集成应用
 sudo docker-compose up -d
@@ -180,84 +196,7 @@ curl --location 'localhost:8888/api/user/login' \
 
 ## FAQ
 
-## 版本更新记录
-
-### v0.1
-
-- add 支持记忆多轮对话与记忆清理
-- fix 对非文本格式数据进行回复拒绝
-
-为了支持多轮对话，新增菜单配置  企业微信>应用管理>自定义菜单
-![image14.png](./doc/image14.png)
-效果如下
-![image15.png](./doc/image15.png)
-
-### v0.2
-
-- 后端代码已发布
-  - 需要 docker 以及简单的运维操作，实现已经卸载
-  - 如需使用，请先配置相关数据库与 redis , 各类 密钥 通过 `chat\service\chat\api\etc\chat-api.yaml` 进行配置
-  - over😀
-- 增加 阿里云新增 req_token 环境变量来进行验证 请求合法性
-
-### v0.2.1
-- 简化后端运维操作，增加 docker-compose 来编排服务
-
-### v0.2.2
-- 新增多应用支持(可选), 如果你有多个应用只开了一个服务，现在你可以开启多应用配置，相关参数就在企业微信应用详情页
-```
-  MultipleApplication:
-  - AgentID: 1000002
-    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
-  - AgentID: 1000003
-    AgentSecret: "lwAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-```
-- 因为 服务器在国内，新增代理设置来保证服务可用, 暂时只支持socket5（可选）
-```
-Proxy:
-  Enable: false
-  Socket5: "127.0.0.1:1080"
-```
-### v0.3
-- 新增最新版本的 gpt3.5 api 配置 与 prompt 自定义配置
-```
-WeCom:
-  BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
-  Model: "text-davinci-003"
-  MultipleApplication:
-  - AgentID: 1000002
-    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
-    Model: "gpt-3.5-turbo"
-    BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
-```
-- 新增 指令对话模式
-
-![image22.png](./doc/image22.png)
-
-- 新增 通过 指令对话模式 实时更换 角色与 model
-![image23.png](./doc/image23.png)
-
-#### changelog 升级说明
-- 从低版本，已部署系统升级上来的需要清理数据库信息才能重新 构建
-- 如 在 chat 目录下执行 去清理数据
-```shell
-sudo docker-compose down
-sudo rm -rf ./build/mysql/data/*
-sudo rm -rf ./build/redis/data/*
-sudo docker-compose up -d
-```
-### v0.3.1
-- 新增 WeCom.Welcome 自定义15天欢迎语
-- 新增 反向代理支持（可选）,将 OpenAi.Host 换成 对应的反向代理域名即可
-
-```shell
-WeCom:
-  Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"
-
-OpenAi:
-  Key: "xxxxxxxxxxxxxxxxxxxxx"
-  Host: "https://api.openai.com"
-```
+## [版本更新日志,点击查看](./doc/CHANGELOG.md)
 
 ### feature 版本 考虑与执行中
 - [x] 单服务-多应用支持 2023-03-05
@@ -265,7 +204,7 @@ OpenAi:
 - [x] 支持最新的 gpt3.5 与模型可自行切换
 - [x] 支持 prompt 自定义配置
 - [x] 命令式动态调整对话参数
-- [ ] 系统设置&预定义模板
+- [x] 系统设置&预定义模板
 - [ ] 支持 openapi 对话 token 累计功能， 余额不足时，支持 token 更换 
 - [ ] 支持作图功能（可选）
 - [ ] 支持英语语音输入（可选）

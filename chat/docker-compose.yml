@@ -2,7 +2,9 @@ version: '3'
 
 services:
   web:
-    image: chat:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8888:8888"
     privileged: true
@@ -27,6 +29,7 @@ services:
     ports:
       - "43306:3306"
     environment:
+      TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: '123456'
       MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
       MYSQL_DATABASE: 'chat'

@@ -23,14 +23,14 @@ const req_token = process.env.req_token;
 // 获取的 回复消息
 async function replyMsgToUser(userID, text, agentID, channel = "wecom") {
 
-    var data = JSON.stringify({
+    const data = JSON.stringify({
         "agent_id": parseInt(agentID),
         "channel": channel,
         "user_id": userID,
         "msg": text,
     });
 
-    var config = {
+    const config = {
         method: 'post',
         maxBodyLength: Infinity,
         url: req_host,
@@ -54,7 +54,7 @@ async function replyMsgToUser(userID, text, agentID, channel = "wecom") {
 
 exports.handler = async (req, resp, context) => {
 
-    var params = {
+    const params = {
         path: req.path,
         queries: req.queries,
         headers: req.headers,
@@ -62,19 +62,19 @@ exports.handler = async (req, resp, context) => {
         requestURI: req.url,
         body: req.body,
         clientIP: req.clientIP,
-    }
+    };
 
     console.log(params);
 
     // 验证服务是否存在
     if (req.queries.hasOwnProperty("msg_signature") && params.method === "GET") {
         // 从 query 中获取相关参数
-        const { msg_signature, timestamp, nonce, echostr } = req.queries;
+        const {msg_signature, timestamp, nonce, echostr} = req.queries;
         const signature = crypto.getSignature(aes_token, timestamp, nonce, echostr);
         console.log('signature', signature);
         if (msg_signature === signature) {
             console.log('signture ok');
-            const { message } = crypto.decrypt(aes_key, echostr);
+            const {message} = crypto.decrypt(aes_key, echostr);
 
             resp.setHeader("Content-Type", "text/plain");
             resp.send(message);
@@ -85,9 +85,9 @@ exports.handler = async (req, resp, context) => {
     // 用户消息回调事件
     if (req.queries.hasOwnProperty("msg_signature") && params.method === "POST") {
         // 从 query 中获取相关参数
-        const { msg_signature, timestamp, nonce } = req.queries;
+        const {msg_signature, timestamp, nonce} = req.queries;
 
-        var echostr = "";
+        let echostr = "";
         readXml.read(params.body.toString(), (errors, xmlResponse) => {
             if (null !== errors) {
                 console.log(errors)
@@ -101,13 +101,13 @@ exports.handler = async (req, resp, context) => {
         console.log('signature', signature);
         if (msg_signature === signature) {
             console.log('content signture ok');
-            const { message } = crypto.decrypt(aes_key, echostr);
+            const {message} = crypto.decrypt(aes_key, echostr);
 
             console.log(message);
-            var userSendContent = "";
-            var userID = "";
-            var agentID = "";
-            var error = false;
+            let userSendContent = "";
+            let userID = "";
+            let agentID = "";
+            let error = false;
             readXml.read(message, (errors, xmlResponse) => {
                 if (null !== errors) {
                     console.log(errors)
@@ -115,7 +115,7 @@ exports.handler = async (req, resp, context) => {
                 }
                 console.log(xmlResponse);
 
-                msgType = xmlResponse.xml.MsgType.text();
+                let msgType = xmlResponse.xml.MsgType.text();
                 userID = xmlResponse.xml.FromUserName.text();
                 agentID = xmlResponse.xml.AgentID.text();
 
@@ -123,8 +123,14 @@ exports.handler = async (req, resp, context) => {
                     userSendContent = "#clear"
                     return;
                 }
+                //支持进入事件
                 if (msgType === "event" && xmlResponse.xml.Event.text() === "enter_agent") {
                     userSendContent = "#welcome"
+                    return;
+                }
+                //支持图片消息
+                if (msgType === "image" && xmlResponse.xml.PicUrl.text() !== "") {
+                    userSendContent = "#image:" + xmlResponse.xml.PicUrl.text();
                     return;
                 }
 
@@ -138,7 +144,7 @@ exports.handler = async (req, resp, context) => {
 
             // 非文本消息进行错误提示
             if (error) {
-                await replyMsgToUser(userID, "暂不支持，文本以外的消息", agentID);
+                await replyMsgToUser(userID, "暂不支持，此类型的数据", agentID);
             } else {
                 await replyMsgToUser(userID, userSendContent, agentID, "openai");
             }
@@ -150,8 +156,8 @@ exports.handler = async (req, resp, context) => {
     }
 
     getRawBody(req, function (err, body) {
-        for (var key in req.queries) {
-            var value = req.queries[key];
+        for (const key in req.queries) {
+            const value = req.queries[key];
             resp.setHeader(key, value);
         }
         resp.setHeader("Content-Type", "text/plain");

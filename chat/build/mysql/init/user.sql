@@ -1,3 +1,4 @@
+SET NAMES 'utf8';
 CREATE TABLE `user`
 (
     `id`         bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '用户全局唯一主键',

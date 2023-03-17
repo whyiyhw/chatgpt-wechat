@@ -21,6 +21,6 @@
 # Go workspace file
 go.work
 
-.idea/*
 .idea
+.DS_Store
 chat-api.yaml

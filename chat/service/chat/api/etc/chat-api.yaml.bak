@@ -1,38 +1,17 @@
-Name: chat-api
-Host: 0.0.0.0
-Port: 8888
+Name: chat-api                                      # 项目名称
+Host: 0.0.0.0                                       # 项目监听地址
+Port: 8888                                          # 项目监听端口
 
 Mysql:
-  DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
+  DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
 
 RedisCache:
-  - Host: redis7:6379
-    Pass: "123456"
-
-Auth:
-  AccessSecret: "13450cd8841c0f0"
-  AccessExpire: 25920000
+  - Host: redis7:6379                               # redis缓存地址
+    Pass: "123456"                                  # redis缓存密码
 
 WeCom:
-  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"
-  CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU"
-  BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
-  Model: "text-davinci-003"
-  Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"
-  MultipleApplication:
-  - AgentID: 1000002
-    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"
-    Model: "gpt-4"
-    BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
-  - AgentID: 1000003
-    AgentSecret: "lwAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    Model: "gpt-3.5-turbo-0301"
-    BasePrompt: "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
+  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID
+  CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU" # 企业微信应用 Secret
 
 OpenAi:
-  Key: "xxxxxxxxxxxxxxxxxxxxx"
-  Host: "https://api.openai.com"
-
-Proxy:
-  Enable: false
-  Socket5: "127.0.0.1:1080"
+  Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key

@@ -1,3 +1,4 @@
+SET NAMES 'utf8';
 CREATE TABLE `chat`
 (
     `id`          bigint unsigned NOT NULL AUTO_INCREMENT,
