@@ -12,6 +12,8 @@ RedisCache:
 WeCom:
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID
   CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU" # 企业微信应用 Secret
+  Token: "xxxxxxxxxx"                               # 企业微信应用 Token
+  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用 EncodingAESKey
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key

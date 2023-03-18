@@ -1,3 +1,35 @@
+### v0.4
+#### 新增8887端口，支持服务器ip直接对接企业微信
+
+#### 新增OCR支持，可用于答题相关场景
+- [点击查看示例](./image25.jpg)
+- 相关配置
+```yaml
+OCR:                                                # OCR配置 ,开启图片识别（可选）
+  Company: "ali"                                    # 识别公司，目前支持阿里云（可选）
+  AliYun:                                           # 阿里云配置
+    AccessKeyId: ""                                 # 阿里云 key
+    AccessKeySecret: ""                             # 阿里云 secret
+```
+#### 新增预定义模板指令 `#prompt:list`
+![image24.png](./image28.png)
+#### 新增预定义模板选择 `#prompt:set:{id}`
+![image27.png](./image27.png)
+
+#### changelog 升级说明
+- 从低版本，已部署系统升级上来的需要清理数据库信息才能重新 构建
+- 如 在 chat 目录下执行 去清理数据
+```shell
+sudo docker-compose down
+sudo rm -rf ./build/mysql/data/*
+sudo rm -rf ./build/redis/data/*
+sudo docker-compose build 
+sudo docker-compose up -d
+```
+#### fix
+- 数据库对于中文字符乱码问题
+- 微信端发送文字长度限制问题
+- 优化了上下文过长时的错误提示文案
 
 ### v0.3.1
 - 新增 WeCom.Welcome 自定义15天欢迎语

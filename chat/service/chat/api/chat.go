@@ -1,19 +1,22 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+
 	"chat/common/accesslog"
 	"chat/common/response"
+	"chat/common/wecom"
 	"chat/common/xerr"
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/handler"
 	"chat/service/chat/api/internal/svc"
-	"flag"
-	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
-	"io"
-	"net/http"
 )
 
 var configFile = flag.String("f", "etc/chat-api.yaml", "the config file")
@@ -38,7 +41,7 @@ func main() {
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
-
+	go wecom.XmlServe(c.WeCom.Token, c.WeCom.EncodingAESKey, c.Auth.AccessSecret, c.Auth.AccessExpire)
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }

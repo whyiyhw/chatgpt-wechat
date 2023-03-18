@@ -7,6 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8888:8888"
+      - "8887:8887"
     privileged: true
     restart: always
     networks:
