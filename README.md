@@ -76,7 +76,7 @@ vim ./service/chat/api/etc/chat-api.yaml
 - 前两个是企业微信 的配置
   - 访问 企业微信-管理员页面 , 可在 我的企业 > 企业信息 > 底部 看到 CorpID
   - corpSecret 就是 步骤一中的 Secret
-  - Token 跟 EncodingAESKey 可以在步骤二中拿到
+  - Token 跟 EncodingAESKey 可以在步骤三中拿到
 
 - 最后一个 是 openAPI 生成 KEY 的值
 ---
