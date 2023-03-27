@@ -9,6 +9,9 @@ RedisCache:
   - Host: redis7:6379                               # redis缓存地址
     Pass: "123456"                                  # redis缓存密码
 
+Log:
+  stat: false
+
 WeCom:
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID
   CorpSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxU" # 企业微信应用 Secret
