@@ -53,10 +53,17 @@
 会进入验证步骤, 先不验证 url 我们可以 拿到  Token 跟 EncodingAESKey
 ![image2.png](./doc/image2.png)
 
+
+
 ### 4. 在自购服务器上 部署 golang 服务，并开启对外的网络端口
-- 前提条件，需要有一个自己的服务器，或者云服务器
+
+
+**（本项目不提供宝塔面板安装咨询，请各位大佬自行摸索）**
+
+- **前提条件，需要有一个自己的服务器，或者云服务器**
 - 执行 docker -v 是否有版本号？
 - 执行 docker-compose -v 是否有版本号？
+
   ![image29](./doc/image29.png)
 
 - 确认这两个软件都安装后
@@ -75,7 +82,7 @@ vim ./service/chat/api/etc/chat-api.yaml
 
 - 前两个是企业微信 的配置
   - 访问 企业微信-管理员页面 , 可在 我的企业 > 企业信息 > 底部 看到 CorpID
-  - corpSecret 就是 步骤一中的 Secret
+  - DefaultAgentSecret 就是 步骤一中的 Secret
   - Token 跟 EncodingAESKey 可以在步骤三中拿到
 
 - 最后一个 是 openAPI 生成 KEY 的值
