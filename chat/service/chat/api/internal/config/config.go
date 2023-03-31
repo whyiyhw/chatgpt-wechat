@@ -26,6 +26,7 @@ type Config struct {
 
 	// 企业微信，配置信息
 	WeCom struct {
+		Port                int `json:",optional,default=8887"`
 		CorpID              string
 		DefaultAgentSecret  string `json:",optional"`
 		CorpSecret          string `json:",optional"`

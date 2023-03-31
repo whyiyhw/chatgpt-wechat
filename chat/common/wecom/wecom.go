@@ -12,7 +12,10 @@ import (
 	"github.com/xen0n/go-workwx"
 )
 
-var Token string
+var (
+	Token    string
+	RestPort int
+)
 
 func SendToUser(agentID int64, userID string, msg string, corpID string, corpSecret string) {
 
@@ -80,8 +83,8 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 	return nil
 }
 
-func XmlServe(pToken, pEncodingAESKey, accessSecret string, accessExpire int64) {
-	pAddr := "[::]:8887"
+func XmlServe(pToken, pEncodingAESKey, accessSecret string, accessExpire int64, port, restPort int) {
+	pAddr := fmt.Sprintf("[::]:%d", port)
 
 	// build a json web token
 	iat := time.Now().Unix()
@@ -92,6 +95,7 @@ func XmlServe(pToken, pEncodingAESKey, accessSecret string, accessExpire int64) 
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = claims
 	Token, _ = token.SignedString([]byte(accessSecret))
+	RestPort = restPort
 
 	hh, err := workwx.NewHTTPHandler(pToken, pEncodingAESKey, dummyRxMessageHandler{})
 	if err != nil {
@@ -107,7 +111,7 @@ func XmlServe(pToken, pEncodingAESKey, accessSecret string, accessExpire int64) 
 }
 
 func realLogic(channel, msg, userID string, agentID int64) {
-	url := "http://localhost:8888/api/msg/push"
+	url := fmt.Sprintf("http://localhost:%d/api/msg/push", RestPort)
 	method := "POST"
 
 	type ChatReq struct {

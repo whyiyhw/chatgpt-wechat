@@ -41,7 +41,7 @@ func main() {
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
-	go wecom.XmlServe(c.WeCom.Token, c.WeCom.EncodingAESKey, c.Auth.AccessSecret, c.Auth.AccessExpire)
+	go wecom.XmlServe(c.WeCom.Token, c.WeCom.EncodingAESKey, c.Auth.AccessSecret, c.Auth.AccessExpire, c.WeCom.Port, c.RestConf.Port)
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }

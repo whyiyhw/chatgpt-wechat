@@ -3,11 +3,11 @@ Host: 0.0.0.0                                       # 项目监听地址
 Port: 8888                                          # 项目监听端口
 
 Mysql:                                              # mysql配置
-  DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
+  DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址 自建最好修改下密码
 
 RedisCache:                                         # redis缓存配置
   - Host: redis7:6379                               # redis缓存地址
-    Pass: "123456"                                  # redis缓存密码
+    Pass: "123456"                                  # redis缓存密码 自建最好修改下密码
 
 Log:
   stat: false
@@ -17,7 +17,8 @@ Auth:                                               # jwt配置（可选）自�
   AccessExpire: 25920000                            # jwt过期时间(可选) 默认为 25920000
 
 WeCom:                                              # 企业微信配置
-  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID
+  Port                                              # 企业微信回调监听端口（可选）默认为8887
+  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
   BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型， 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"                                   # openai 基础设定（可选）
   Model: "text-davinci-003"                                                                                                                     # openai 模型（可选）默认为 gpt-3.5-turbo-0301
