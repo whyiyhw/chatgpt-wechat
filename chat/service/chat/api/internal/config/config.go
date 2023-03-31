@@ -27,6 +27,7 @@ type Config struct {
 	// 企业微信，配置信息
 	WeCom struct {
 		CorpID              string
+		DefaultAgentSecret  string `json:",optional"`
 		CorpSecret          string `json:",optional"`
 		Model               string `json:",optional,default=gpt-3.5-turbo-0301"`
 		BasePrompt          string `json:",optional,default=你是ChatGPT，一个由OpenAI训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`

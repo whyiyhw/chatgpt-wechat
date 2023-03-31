@@ -232,8 +232,12 @@ func (l *ChatLogic) setBaseHost() (ls *ChatLogic) {
 }
 
 func sendToUser(agentID int64, userID, msg string, config config.Config) {
-	// 先去查询多应用模式是否开启
-	corpSecret := config.WeCom.CorpSecret
+	// 确认多应用模式是否开启
+	corpSecret := config.WeCom.DefaultAgentSecret
+	// 兼容性调整 取 DefaultAgentSecret 作为默认值 兼容老版本 CorpSecret
+	if corpSecret == "" {
+		corpSecret = config.WeCom.CorpSecret
+	}
 	for _, application := range config.WeCom.MultipleApplication {
 		if application.AgentID == agentID {
 			corpSecret = application.AgentSecret
