@@ -1,17 +1,9 @@
 package logic
 
 import (
-	"chat/common/aliocr"
-	"chat/common/openai"
-	"chat/common/wecom"
-	"chat/service/chat/api/internal/config"
-	"chat/service/chat/api/internal/svc"
-	"chat/service/chat/api/internal/types"
-	"chat/service/chat/model"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"io"
 	"net"
 	"net/http"
@@ -19,6 +11,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"chat/common/aliocr"
+	"chat/common/openai"
+	"chat/common/redis"
+	"chat/common/wecom"
+	"chat/service/chat/api/internal/config"
+	"chat/service/chat/api/internal/svc"
+	"chat/service/chat/api/internal/types"
+	"chat/service/chat/model"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -243,7 +244,7 @@ func sendToUser(agentID int64, userID, msg string, config config.Config) {
 			corpSecret = application.AgentSecret
 		}
 	}
-	wecom.SendToUser(agentID, userID, msg, config.WeCom.CorpID, corpSecret)
+	wecom.SendToWeComUser(agentID, userID, msg, config.WeCom.CorpID, corpSecret)
 }
 
 func (l *ChatLogic) setModelName(agentID int64) (ls *ChatLogic) {
@@ -437,23 +438,12 @@ func (p CommendConfigClear) exec(l *ChatLogic, req *types.ChatReq) bool {
 type CommendWelcome struct{}
 
 func (p CommendWelcome) exec(l *ChatLogic, req *types.ChatReq) bool {
-	cacheKey := fmt.Sprintf("chat:wecome:%d:%s", req.AgentID, req.UserID)
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     l.svcCtx.Config.RedisCache[0].Host,
-		Password: l.svcCtx.Config.RedisCache[0].Pass,
-		DB:       1,
-	})
-	defer func(rdb *redis.Client) {
-		err := rdb.Close()
-		if err != nil {
-			fmt.Println("welcome3:" + err.Error())
-		}
-	}(rdb)
-	if _, err := rdb.Get(context.Background(), cacheKey).Result(); err == nil {
+	cacheKey := fmt.Sprintf(redis.WelcomeCacheKey, req.AgentID, req.UserID)
+	if _, err := redis.Rdb.Get(context.Background(), cacheKey).Result(); err == nil {
 		return false
 	}
 	sendToUser(req.AgentID, req.UserID, l.svcCtx.Config.WeCom.Welcome, l.svcCtx.Config)
-	_, err := rdb.SetEX(context.Background(), cacheKey, "1", 24*15*time.Hour).Result()
+	_, err := redis.Rdb.SetEX(context.Background(), cacheKey, "1", 24*15*time.Hour).Result()
 	if err != nil {
 		fmt.Println("welcome2:" + err.Error())
 	}

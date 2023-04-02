@@ -35,4 +35,7 @@ service chat-api {
 service chat-api {
 	@handler ChatHandler
 	post /msg/push (ChatReq) returns (ChatReply)
+	
+	@handler CustomerChatHandler
+	post /msg/customer/push (CustomerChatReq) returns (CustomerChatReply)
 }

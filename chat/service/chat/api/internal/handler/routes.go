@@ -38,6 +38,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Path:    "/msg/push",
 					Handler: ChatHandler(serverCtx),
 				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/msg/customer/push",
+					Handler: CustomerChatHandler(serverCtx),
+				},
 			}...,
 		),
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

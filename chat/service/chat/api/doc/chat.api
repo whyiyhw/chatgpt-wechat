@@ -19,4 +19,15 @@ type (
     ChatReply {
         Message string `json:"message"`
     }
+
+    CustomerChatReq struct {
+        MsgID      string `json:"msg_id"`
+        Msg        string `json:"msg"`
+        CustomerID string `json:"customer_id"`
+        OpenKfID   string `json:"open_kf_id"`
+    }
+
+    CustomerChatReply {
+        Message string `json:"message"`
+    }
 )

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chat/common/redis"
 	"flag"
 	"fmt"
 	"io"
@@ -39,9 +40,19 @@ func main() {
 	)
 	defer server.Stop()
 
+	redis.Init(c.RedisCache[0].Host, c.RedisCache[0].Pass)
+	defer redis.Close()
+
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
-	go wecom.XmlServe(c.WeCom.Token, c.WeCom.EncodingAESKey, c.Auth.AccessSecret, c.Auth.AccessExpire, c.WeCom.Port, c.RestConf.Port)
+	go wecom.XmlServe(
+		c.WeCom.CorpID,
+		c.WeCom.Token,
+		c.WeCom.EncodingAESKey,
+		c.WeCom.CustomerServiceSecret,
+		c.Auth.AccessSecret, c.Auth.AccessExpire,
+		c.WeCom.Port, c.RestConf.Port,
+	)
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }

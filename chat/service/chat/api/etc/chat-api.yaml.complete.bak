@@ -17,14 +17,15 @@ Auth:                                               # jwt配置（可选）自�
   AccessExpire: 25920000                            # jwt过期时间(可选) 默认为 25920000
 
 WeCom:                                              # 企业微信配置
-  Port                                              # 企业微信回调监听端口（可选）默认为8887
+  Port:                                             # 企业微信回调监听端口（可选）默认为8887
+  CustomerServiceSecret: "xxxx-xxxx-xxxx"           # 企业微信客服消息 Secret
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
-  BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型， 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"                                   # openai 基础设定（可选）
+  BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型， 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"                                  # openai 基础设定（可选）
   Model: "text-davinci-003"                                                                                                                     # openai 模型（可选）默认为 gpt-3.5-turbo-0301
   Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语（可选）
-  Token: "xxxxxxxxxx"                               # 企业微信应用 Token
-  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用 EncodingAESKey
+  Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
+  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
   MultipleApplication:                              # 多应用配置（可选）
   - AgentID: 1000002                                # 企业微信应用ID
     AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret

@@ -15,8 +15,8 @@ Log:
 WeCom:
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxxU"    # 企业微信应用 Secret
-  Token: "xxxxxxxxxx"                               # 企业微信应用 Token
-  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用 EncodingAESKey
+  Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
+  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key

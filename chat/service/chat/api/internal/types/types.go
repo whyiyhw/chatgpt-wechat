@@ -30,3 +30,14 @@ type ChatReq struct {
 type ChatReply struct {
 	Message string `json:"message"`
 }
+
+type CustomerChatReq struct {
+	MsgID      string `json:"msg_id"`
+	Msg        string `json:"msg"`
+	CustomerID string `json:"customer_id"`
+	OpenKfID   string `json:"open_kf_id"`
+}
+
+type CustomerChatReply struct {
+	Message string `json:"message"`
+}

@@ -40,7 +40,9 @@ type (
 
 	Chat struct {
 		Id         int64     `db:"id"`
-		User       string    `db:"user"`        // 用户标识
+		User       string    `db:"user"`        // weCom用户标识/customer用户标识
+		MessageId  string    `db:"message_id"`  // message_id customer消息唯一ID
+		OpenKfId   string    `db:"open_kf_id"`  // 客服标识
 		AgentId    int64     `db:"agent_id"`    // 应用ID
 		ReqContent string    `db:"req_content"` // 用户发送内容
 		ResContent string    `db:"res_content"` // openai响应内容
@@ -85,8 +87,8 @@ func (m *defaultChatModel) FindOne(ctx context.Context, id int64) (*Chat, error)
 func (m *defaultChatModel) Insert(ctx context.Context, data *Chat) (sql.Result, error) {
 	chatIdKey := fmt.Sprintf("%s%v", cacheChatIdPrefix, data.Id)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?)", m.table, chatRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.User, data.AgentId, data.ReqContent, data.ResContent)
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?)", m.table, chatRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.User, data.MessageId, data.OpenKfId, data.AgentId, data.ReqContent, data.ResContent)
 	}, chatIdKey)
 	return ret, err
 }
@@ -95,7 +97,7 @@ func (m *defaultChatModel) Update(ctx context.Context, data *Chat) error {
 	chatIdKey := fmt.Sprintf("%s%v", cacheChatIdPrefix, data.Id)
 	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, chatRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, data.User, data.AgentId, data.ReqContent, data.ResContent, data.Id)
+		return conn.ExecCtx(ctx, query, data.User, data.MessageId, data.OpenKfId, data.AgentId, data.ReqContent, data.ResContent, data.Id)
 	}, chatIdKey)
 	return err
 }
