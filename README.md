@@ -16,8 +16,17 @@
           <img width="400" src="./doc/image27.png" alt="image27" />
       </a>
     </p>
-- 可选能力（图片识别-小猿搜题 青春版）
-  - [点击查看示例](./doc/image25.jpg)
+- 可选能力
+  - （视频号/公众号/小程序/微信/企微/app/web）[支持多渠道客服消息接入](https://work.weixin.qq.com/wework_admin/frame#/app/servicer)
+    - **通过链接即可在微信中共享企微的 chatgpt 能力，再也不用强制要求加入企业才能使用**
+    <p align="center">
+    <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
+        <img width="600" src="./doc/image33.png" alt="image33" />
+    </a>
+  </p>
+  
+  - （图片识别-小猿搜题 青春版）
+    - [点击查看示例](./doc/image25.jpg)
 
 ## 使用前提条件
 - 需要去注册一个个人[企业微信](https://work.weixin.qq.com/)
@@ -141,6 +150,7 @@ sudo docker-compose up -d
 - [x] 命令式动态调整对话参数
 - [x] 系统设置&预定义模板 2023-03-17
 - [x] 支持服务端直接对接企业微信，无需云函数中转 2023-03-18
+- [x] 支持多渠道客服消息 2023-04-02
 - [ ] 支持 openapi 对话 token 累计功能， 余额不足时，支持 token 更换
 - [ ] 支持作图功能（可选）
 - [ ] 支持英语语音输入（可选）

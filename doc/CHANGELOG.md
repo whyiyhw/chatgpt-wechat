@@ -1,3 +1,15 @@
+### v0.5
+#### 新增多渠道客服消息,支持自定义端口
+
+- 相关配置
+```yaml
+WeCom:                                              # 企业微信配置
+  Port:                                             # 企业微信回调监听端口（可选）默认为8887
+  CustomerServiceSecret: "xxxx-xxxx-xxxx"           # 企业微信客服消息 Secret
+  Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
+  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
+```
+
 ### v0.4
 #### 新增8887端口，支持服务器ip直接对接企业微信
 
