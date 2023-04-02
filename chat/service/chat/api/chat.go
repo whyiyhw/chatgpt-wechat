@@ -53,6 +53,16 @@ func main() {
 		c.Auth.AccessSecret, c.Auth.AccessExpire,
 		c.WeCom.Port, c.RestConf.Port,
 	)
+
+	if len(c.WeCom.MultipleApplication) > 0 {
+		for _, v := range c.WeCom.MultipleApplication {
+			if v.GroupEnable {
+				fmt.Println("初始化群聊", v.GroupName, v.GroupChatID, c.WeCom.CorpID, v.AgentSecret, v.AgentID)
+				go wecom.InitGroup(v.GroupName, v.GroupChatID, c.WeCom.CorpID, v.AgentSecret, v.AgentID)
+			}
+		}
+	}
+
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }

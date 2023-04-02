@@ -286,3 +286,67 @@ func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
 	}
 	fmt.Println(string(body))
 }
+
+// InitGroup 初始化群组
+func InitGroup(name, chatID, corpID, corpSecret string, agentID int64) {
+	// 然后把数据 发给微信用户
+	app := workwx.New(corpID).WithApp(corpSecret, agentID)
+
+	//  获取群聊会话
+	appChat, err := app.GetAppchat(chatID)
+	if err == nil && appChat != nil {
+		fmt.Println("群聊已经存在，不需要创建")
+
+		// 推送一条消息
+		err = app.SendTextMessage(&workwx.Recipient{
+			ChatID: appChat.ChatID,
+		}, "应用重新部署完成", false)
+		if err != nil {
+			fmt.Println("应用消息发送失败 err:", err)
+		}
+		fmt.Println("应用消息发送成功")
+		return
+	}
+	fmt.Println("群聊不存在，开始创建 err:", err)
+	// 查询根部门的管理员与成员信息
+	// 1. 获取根部门
+	root, err := app.ListUsersByDeptID(1, true)
+	if err != nil {
+		fmt.Println("获取用户信息失败，群创建失败 err:", err)
+		return
+	}
+	// 2. 获取管理员 与 成员
+	owner := ""
+	var userList []string
+	for _, info := range root {
+		if info.IsEnabled && info.Status == 1 {
+			userList = append(userList, info.UserID)
+		}
+		for _, i2 := range info.Departments {
+			if i2.DeptID == 1 && i2.IsLeader {
+				owner = info.UserID
+			}
+		}
+	}
+
+	// 创建群聊
+	chatIDInfo, err := app.CreateAppchat(&workwx.ChatInfo{
+		ChatID:        chatID,
+		Name:          name,
+		OwnerUserID:   owner,
+		MemberUserIDs: userList,
+	})
+	if err != nil {
+		fmt.Println("创建群聊失败 err:", err)
+		return
+	}
+	fmt.Println("创建群聊成功", chatIDInfo)
+	// 推送一条消息
+	err = app.SendTextMessage(&workwx.Recipient{
+		ChatID: chatIDInfo,
+	}, "应用初始化完成", false)
+	if err != nil {
+		fmt.Println("应用消息发送失败 err:", err)
+	}
+	fmt.Println("应用消息发送成功")
+}
