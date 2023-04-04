@@ -17,7 +17,7 @@
       </a>
     </p>
 - 可选能力
-  - （视频号/公众号/小程序/微信/企微/app/web）[支持多渠道客服消息接入](https://work.weixin.qq.com/wework_admin/frame#/app/servicer)
+  - （视频号/公众号/小程序/微信/企微/app/web）[支持多渠道客服消息接入](./doc/custom_support_service.md)
     - **通过链接即可在微信中共享企微的 chatgpt 能力，再也不用强制要求加入企业才能使用**
     <p align="center">
     <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
@@ -99,13 +99,13 @@ vim ./service/chat/api/etc/chat-api.yaml
 #### 3.1 重点，因为 openai 对于大陆地区的封锁，如果你的服务器在国内，这边提供了两个方案
 1. 自建 代理服务器，然后在 chat-api.yaml 中配置代理服务器的地址，相关的参数在 `chat-api.yaml.complete.bak`
 ```yaml
-Proxy:                                              # 代理配置 （可选）
-  Enable: false                                     # 是否启用代理，默认为 false（可选）
-  Socket5: "127.0.0.1:1080"                         # 代理地址 默认为 127.0.0.1:1080（可选）
-  Http: "http://127.0.0.1:1080"                     # 代理地址 默认为空（可选）
+Proxy:                                         # 代理配置 （可选）
+  Enable: false                                # 是否启用代理，默认为 false（可选）
+  Socket5: "{host}:{port}"                     # 代理地址 默认为 127.0.0.1:1080（可选）
+  Http: "http://{host}:{port}"                 # 代理地址 默认为空（可选）
 
-# 127.0.0.1 是代指你实际代理应用的IP
-# 因为本项目使用 docker-compose 搭建，所以一般应该填入代理应用所在主机的内网IP
+# host 是代指你实际代理应用的IP
+# 因为本项目使用 docker-compose 搭建，所以一般应该填入代理应用所在宿主机的内网IP
 ```
 如何自建代理，点击查看 [自建代理](./doc/proxy.md)
 
@@ -170,3 +170,5 @@ sudo docker-compose up -d
 ### 服务器在国内，出现 `connect: connection refused`
 - 方法一 ： 请自行 安装 `proxy client` 然后开启 监听 0.0.0.0:socket 模式 ，不要开启认证，之后在配置文件中，开启配置就OK,详情请见 `v0.2.2` 
 - 方法二 ： 把服务器移到 香港/海外 , 大陆地区将长期不能访问
+
+## 感谢以下朋友对于本项目的大力支持~
