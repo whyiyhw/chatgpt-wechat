@@ -102,6 +102,10 @@ vim ./service/chat/api/etc/chat-api.yaml
 Proxy:                                              # 代理配置 （可选）
   Enable: false                                     # 是否启用代理，默认为 false（可选）
   Socket5: "127.0.0.1:1080"                         # 代理地址 默认为 127.0.0.1:1080（可选）
+  Http: "http://127.0.0.1:1080"                     # 代理地址 默认为空（可选）
+
+# 127.0.0.1 是代指你实际代理应用的IP
+# 因为本项目使用 docker-compose 搭建，所以一般应该填入代理应用所在主机的内网IP
 ```
 如何自建代理，点击查看 [自建代理](./doc/proxy.md)
 
