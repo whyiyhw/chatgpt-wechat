@@ -58,6 +58,7 @@ type Config struct {
 	Proxy struct {
 		Enable  bool   `json:",optional,default=false"`
 		Socket5 string `json:",optional,default=127.0.0.1:1080"`
+		Http    string `json:",optional,default="`
 	} `json:",optional"`
 
 	// ocr 配置

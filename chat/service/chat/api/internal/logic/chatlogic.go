@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -48,7 +49,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 	// 去找 openai 获取数据
 	if req.Channel == "openai" {
-		url := "https://api.openai.com/v1/completions"
+		reqUrl := "https://api.openai.com/v1/completions"
 
 		l.setModelName(req.AgentID).setBasePrompt(req.AgentID).setBaseHost()
 
@@ -95,7 +96,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 				bytes = openai.TextModelRequestBuild(l.basePrompt)
 
-				url = l.baseHost + "/v1/completions"
+				reqUrl = l.baseHost + "/v1/completions"
 			} else {
 				var prompts []openai.ChatModelMessage
 				prompts = append(prompts, openai.ChatModelMessage{
@@ -122,7 +123,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				})
 
 				bytes = openai.ChatRequestBuild(prompts)
-				url = l.baseHost + "/v1/chat/completions"
+				reqUrl = l.baseHost + "/v1/chat/completions"
 			}
 
 			payload := strings.NewReader(string(bytes))
@@ -131,22 +132,32 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 			// 是否开启代理
 			if l.svcCtx.Config.Proxy.Enable {
-				dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
-				if err != nil {
-					sendToUser(req.AgentID, req.UserID, "代理设置失败"+err.Error(), l.svcCtx.Config)
-					return
-				}
 				//	设置传输方式
 				httpTransport := &http.Transport{}
-				//	设置 socks5 代理
-				httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-					return dialer.Dial(network, addr)
-				}
 
+				if l.svcCtx.Config.Proxy.Http != "" {
+					//	设置 http 代理
+					dialer, err := url.Parse(l.svcCtx.Config.Proxy.Http)
+					if err != nil {
+						sendToUser(req.AgentID, req.UserID, "http 代理设置失败"+err.Error(), l.svcCtx.Config)
+						return
+					}
+					httpTransport.Proxy = http.ProxyURL(dialer)
+				} else {
+					//	设置 socks5 代理
+					dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
+					if err != nil {
+						sendToUser(req.AgentID, req.UserID, "socks5 代理设置失败"+err.Error(), l.svcCtx.Config)
+						return
+					}
+					httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+						return dialer.Dial(network, addr)
+					}
+				}
 				client.Transport = httpTransport
 			}
 
-			c, err := http.NewRequest(http.MethodPost, url, payload)
+			c, err := http.NewRequest(http.MethodPost, reqUrl, payload)
 
 			if err != nil {
 				fmt.Println("openai client request build fail:" + err.Error())
