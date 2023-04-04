@@ -172,3 +172,9 @@ sudo docker-compose up -d
 - 方法二 ： 把服务器移到 香港/海外 , 大陆地区将长期不能访问
 
 ## 感谢以下朋友对于本项目的大力支持~
+  <p align="center">
+    <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
+        <img width="80" src="./doc/support01.jpg" alt="supprt01" />
+        <img width="80" src="./doc/support02.jpg" alt="supprt02" />
+    </a>
+  </p>
