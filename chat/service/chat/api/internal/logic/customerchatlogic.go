@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"chat/common/openai"
@@ -40,7 +41,7 @@ func NewCustomerChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Cust
 
 func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *types.CustomerChatReply, err error) {
 
-	url := "https://api.openai.com/v1/completions"
+	reqUrl := "https://api.openai.com/v1/completions"
 
 	l.setModelName().setBasePrompt().setBaseHost()
 
@@ -89,30 +90,38 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		})
 
 		bytes = openai.ChatRequestBuild(prompts)
-		url = l.baseHost + "/v1/chat/completions"
-
+		reqUrl = l.baseHost + "/v1/chat/completions"
 		payload := strings.NewReader(string(bytes))
 
 		client := &http.Client{}
-
 		// 是否开启代理
 		if l.svcCtx.Config.Proxy.Enable {
-			dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
-			if err != nil {
-				//sendToUser(req.AgentID, req.UserID, "代理设置失败"+err.Error(), l.svcCtx.Config)
-				return
-			}
 			//	设置传输方式
 			httpTransport := &http.Transport{}
-			//	设置 socks5 代理
-			httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dialer.Dial(network, addr)
+			if l.svcCtx.Config.Proxy.Http != "" {
+				fmt.Println("http proxy", l.svcCtx.Config.Proxy.Http)
+				//	设置 http 代理
+				dialer, err := url.Parse(l.svcCtx.Config.Proxy.Http)
+				if err != nil {
+					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "http 网络初始化失败，请稍后再试~")
+					return
+				}
+				httpTransport.Proxy = http.ProxyURL(dialer)
+			} else {
+				dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
+				if err != nil {
+					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "socks 网络初始化失败，请稍后再试~")
+					return
+				}
+				//	设置 socks5 代理
+				httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+					return dialer.Dial(network, addr)
+				}
 			}
-
 			client.Transport = httpTransport
 		}
 
-		c, err := http.NewRequest(http.MethodPost, url, payload)
+		c, err := http.NewRequest(http.MethodPost, reqUrl, payload)
 
 		if err != nil {
 			fmt.Println("openai client request build fail:" + err.Error())
