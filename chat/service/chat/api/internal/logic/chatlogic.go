@@ -136,6 +136,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				httpTransport := &http.Transport{}
 
 				if l.svcCtx.Config.Proxy.Http != "" {
+					fmt.Println("http proxy", l.svcCtx.Config.Proxy.Http)
 					//	设置 http 代理
 					dialer, err := url.Parse(l.svcCtx.Config.Proxy.Http)
 					if err != nil {
@@ -144,6 +145,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					}
 					httpTransport.Proxy = http.ProxyURL(dialer)
 				} else {
+					fmt.Println("SOCKS5 proxy", l.svcCtx.Config.Proxy.Socket5)
 					//	设置 socks5 代理
 					dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
 					if err != nil {
