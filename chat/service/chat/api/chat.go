@@ -45,20 +45,29 @@ func main() {
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
-	go wecom.XmlServe(
-		c.WeCom.CorpID,
-		c.WeCom.Token,
-		c.WeCom.EncodingAESKey,
-		c.WeCom.CustomerServiceSecret,
-		c.Auth.AccessSecret, c.Auth.AccessExpire,
-		c.WeCom.Port, c.RestConf.Port,
-	)
+	wecom.WeCom.RestPort = c.RestConf.Port
+	wecom.WeCom.Port = c.WeCom.Port
+	wecom.WeCom.DefaultAgentSecret = c.WeCom.DefaultAgentSecret
+	wecom.WeCom.CorpID = c.WeCom.CorpID
+	wecom.WeCom.CustomerServiceSecret = c.WeCom.CustomerServiceSecret
+	wecom.WeCom.Token = c.WeCom.Token
+	wecom.WeCom.EncodingAESKey = c.WeCom.EncodingAESKey
+	wecom.WeCom.Auth.AccessSecret = c.Auth.AccessSecret
+	wecom.WeCom.Auth.AccessExpire = c.Auth.AccessExpire
+	for _, v := range c.WeCom.MultipleApplication {
+		wecom.WeCom.MultipleApplication = append(wecom.WeCom.MultipleApplication, wecom.Application{
+			AgentID:     v.AgentID,
+			AgentSecret: v.AgentSecret,
+		})
+	}
+
+	go wecom.XmlServe()
 
 	if len(c.WeCom.MultipleApplication) > 0 {
 		for _, v := range c.WeCom.MultipleApplication {
 			if v.GroupEnable {
 				fmt.Println("初始化群聊", v.GroupName, v.GroupChatID, c.WeCom.CorpID, v.AgentSecret, v.AgentID)
-				go wecom.InitGroup(v.GroupName, v.GroupChatID, c.WeCom.CorpID, v.AgentSecret, v.AgentID)
+				go wecom.InitGroup(v.GroupName, v.GroupChatID, v.AgentSecret, v.AgentID)
 			}
 		}
 	}

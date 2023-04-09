@@ -20,3 +20,6 @@ WeCom:
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key
+
+Response:                                           # 回复配置
+    Stream: true                                    # 是否开启流式回复,自动断句（可选）

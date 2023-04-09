@@ -31,7 +31,7 @@ type Config struct {
 		DefaultAgentSecret    string `json:",optional"`
 		CustomerServiceSecret string `json:",optional"`
 		CorpSecret            string `json:",optional"`
-		Model                 string `json:",optional,default=gpt-3.5-turbo-0301"`
+		Model                 string `json:",optional,default=gpt-3.5-turbo"`
 		BasePrompt            string `json:",optional,default=你是ChatGPT，一个由OpenAI训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`
 		Welcome               string `json:",optional,default=您好！我是ChatGPT，一个由OpenAI训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。\n\n发送#help查看更多功能"`
 		Token                 string `json:",optional"`
@@ -39,7 +39,7 @@ type Config struct {
 		MultipleApplication   []struct {
 			AgentID     int64
 			AgentSecret string
-			Model       string `json:",optional,default=gpt-3.5-turbo-0301"`
+			Model       string `json:",optional,default=gpt-3.5-turbo"`
 			BasePrompt  string `json:",optional,default=你是ChatGPT，一个由OpenAI训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`
 			Welcome     string `json:",optional,default=您好！我是ChatGPT，一个由OpenAI训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。\n\n发送#help查看更多功能"`
 			GroupEnable bool   `json:",optional,default=false"`
@@ -69,4 +69,18 @@ type Config struct {
 			AccessKeySecret string
 		} `json:",optional"`
 	} `json:",optional"`
+
+	// embeddings 配置
+	Embeddings struct {
+		Enable bool `json:",optional,default=false"`
+		Mlvus  struct {
+			Host     string   `json:",optional,default=127.0.0.1:19530"`
+			Keywords []string `json:",optional"`
+		} `json:",optional"`
+	}
+
+	// 流式传输 加快响应速度
+	Response struct {
+		Stream bool `json:",optional,default=true"`
+	}
 }

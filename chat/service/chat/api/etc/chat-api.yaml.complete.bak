@@ -47,3 +47,13 @@ OCR:                                                # OCR配置 ,开启图片识
   AliYun:                                           # 阿里云配置
     AccessKeyId: ""                                 # 阿里云 key
     AccessKeySecret: ""                             # 阿里云 secret
+
+Embeddings:
+  Enable: true
+  Mlvus:
+    Host: "192.168.1.202:19530"
+    KeyWords:
+    - "xx"
+
+Response:                                           # 回复配置
+    Stream: true                                    # 是否开启流式回复,自动断句推荐（可选）

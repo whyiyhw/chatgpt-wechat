@@ -23,12 +23,15 @@ COPY . .
 # 将代码编译成二进制可执行文件 app
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./service/chat/api/chat.go
 
+RUN tar -xvf /build/build/ffmpeg/ffmpeg-release-amd64-static.tar.xz -C /usr/local/bin --strip-components 1 && ls  /usr/local/bin
+
 # 创建一个小镜像
 FROM scratch
 
+COPY --from=builder /usr/local/bin/ffmpeg /bin/ffmpeg
 COPY --from=builder /usr/share/zoneinfo/Asia/Shanghai /usr/share/zoneinfo/Asia/Shanghai
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY service/chat/api/etc /etc
+COPY --from=builder /build/service/chat/api/etc /etc
 ENV TZ Asia/Shanghai
 
 # 从builder镜像中把/build/app 拷贝到当前目录

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -13,20 +15,38 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/whyiyhw/go-workwx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 var (
-	Token                 string
-	RestPort              int
-	CorpID                string
-	CustomerServiceSecret string
+	Token string
+
+	WeCom struct {
+		Port                  int
+		RestPort              int
+		CorpID                string
+		DefaultAgentSecret    string
+		CustomerServiceSecret string
+		Token                 string
+		EncodingAESKey        string
+		MultipleApplication   []Application
+		Auth                  struct {
+			AccessSecret string
+			AccessExpire int64
+		}
+	}
 )
 
-func SendToWeComUser(agentID int64, userID string, msg string, corpID string, corpSecret string) {
+type Application struct {
+	AgentID     int64
+	AgentSecret string
+}
+
+func SendToWeComUser(agentID int64, userID string, msg string, corpSecret string) {
 
 	go func() {
 		// 然后把数据 发给微信用户
-		app := workwx.New(corpID).WithApp(corpSecret, agentID)
+		app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
 
 		recipient := workwx.Recipient{
 			UserIDs: []string{userID},
@@ -59,7 +79,7 @@ func splitMsg(rs []rune, i int) []string {
 }
 
 func DealUserLastMessageByToken(token, openKfID string) {
-	app := workwx.New(CorpID).WithApp(CustomerServiceSecret, 0)
+	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
 	cacheKey := fmt.Sprintf(redis.CursorCacheKey, openKfID)
 	cursor, _ := redis.Rdb.Get(context.Background(), cacheKey).Result()
 
@@ -76,6 +96,15 @@ func DealUserLastMessageByToken(token, openKfID string) {
 		if v.Msgtype == "text" && v.Origin == 3 {
 			CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, v.Text.Content)
 		}
+		if v.Msgtype == "voice" && v.Origin == 3 {
+			filePath, err := DealCustomerVoiceMessageByMediaID(v.Voice.MediaId)
+			if err != nil {
+				fmt.Println(err)
+				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "音频文件读取失败:"+err.Error())
+			} else {
+				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#voice:"+filePath)
+			}
+		}
 	}
 }
 
@@ -84,7 +113,7 @@ func SendCustomerChatMessage(openKfID, customerID, msg string) {
 
 	go func() {
 		// 然后把数据 发给微信用户
-		app := workwx.New(CorpID).WithApp(CustomerServiceSecret, 0)
+		app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
 
 		recipient := workwx.Recipient{
 			UserIDs:  []string{customerID},
@@ -127,7 +156,20 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 		if ok {
 			realLogic("openai", message.GetContent(), msg.FromUserID, msg.AgentID)
 		}
+	} else if msg.MsgType == workwx.MessageTypeVoice {
+		message, ok := msg.Voice()
+		if ok {
+			fmt.Println(message)
+			filePath, err := DealUserVoiceMessageByMediaID(message.GetMediaID(), msg.AgentID)
+			if err != nil {
+				fmt.Println(err)
+				realLogic("wecom", "音频文件读取失败:"+err.Error(), msg.FromUserID, msg.AgentID)
+			} else {
+				realLogic("openai", "#voice:"+filePath, msg.FromUserID, msg.AgentID)
+			}
+		}
 	}
+
 	if msg.MsgType == workwx.MessageTypeEvent {
 		if string(msg.Event) == "enter_agent" {
 			realLogic("openai", "#welcome", msg.FromUserID, msg.AgentID)
@@ -142,6 +184,7 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 			}
 		}
 	}
+
 	if msg.MsgType == workwx.MessageTypeImage {
 		p, ok := msg.Image()
 		if ok {
@@ -152,23 +195,20 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 	return nil
 }
 
-func XmlServe(corpID, pToken, pEncodingAESKey, customerServiceSecret, accessSecret string, accessExpire int64, port, restPort int) {
-	pAddr := fmt.Sprintf("[::]:%d", port)
+func XmlServe() {
+	pAddr := fmt.Sprintf("[::]:%d", WeCom.Port)
 
 	// build a json web token
 	iat := time.Now().Unix()
 	claims := make(jwt.MapClaims)
-	claims["exp"] = iat + accessExpire
+	claims["exp"] = iat + WeCom.Auth.AccessExpire
 	claims["iat"] = iat
 	claims["userId"] = 1
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims = claims
-	Token, _ = token.SignedString([]byte(accessSecret))
-	RestPort = restPort
-	CorpID = corpID
-	CustomerServiceSecret = customerServiceSecret
+	Token, _ = token.SignedString([]byte(WeCom.Auth.AccessSecret))
 
-	hh, err := workwx.NewHTTPHandler(pToken, pEncodingAESKey, dummyRxMessageHandler{})
+	hh, err := workwx.NewHTTPHandler(WeCom.Token, WeCom.EncodingAESKey, dummyRxMessageHandler{})
 	if err != nil {
 		panic(err)
 	}
@@ -182,7 +222,7 @@ func XmlServe(corpID, pToken, pEncodingAESKey, customerServiceSecret, accessSecr
 }
 
 func realLogic(channel, msg, userID string, agentID int64) {
-	url := fmt.Sprintf("http://localhost:%d/api/msg/push", RestPort)
+	url := fmt.Sprintf("http://localhost:%d/api/msg/push", WeCom.RestPort)
 	method := "POST"
 
 	type ChatReq struct {
@@ -199,7 +239,10 @@ func realLogic(channel, msg, userID string, agentID int64) {
 		AgentID: agentID,
 	}
 
-	b, _ := json.Marshal(r)
+	b, err := json.Marshal(r)
+	if err != nil {
+		logx.Error("内部应用消息:请求参数json构造错误", err.Error())
+	}
 
 	payload := strings.NewReader(string(b))
 
@@ -207,7 +250,7 @@ func realLogic(channel, msg, userID string, agentID int64) {
 	req, err := http.NewRequest(method, url, payload)
 
 	if err != nil {
-		fmt.Println(err)
+		logx.Error("内部应用消息:请求参数构造错误", err.Error())
 		return
 	}
 
@@ -216,26 +259,23 @@ func realLogic(channel, msg, userID string, agentID int64) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		logx.Error("内部应用消息:请求错误", err.Error())
 		return
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
 
-		}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
 	}(res.Body)
 
-	body, err := io.ReadAll(res.Body)
+	_, err = io.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		logx.Error("内部应用消息:响应读取错误", err.Error())
 		return
 	}
-	fmt.Println(string(body))
 }
 
 func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
-	url := fmt.Sprintf("http://localhost:%d/api/msg/customer/push", RestPort)
+	url := fmt.Sprintf("http://localhost:%d/api/msg/customer/push", WeCom.RestPort)
 	method := "POST"
 
 	type ChatReq struct {
@@ -260,7 +300,7 @@ func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
 	req, err := http.NewRequest(method, url, payload)
 
 	if err != nil {
-		fmt.Println(err)
+		logx.Error("客服消息:请求参数构造错误", err.Error())
 		return
 	}
 
@@ -270,27 +310,24 @@ func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
 	res, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
+		logx.Error("客服消息:请求错误", err.Error())
 		return
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
+		_ = Body.Close()
 	}(res.Body)
 
-	body, err := io.ReadAll(res.Body)
+	_, err = io.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		logx.Error("客服消息：响应读取错误", err.Error())
 		return
 	}
-	fmt.Println(string(body))
 }
 
 // InitGroup 初始化群组
-func InitGroup(name, chatID, corpID, corpSecret string, agentID int64) {
+func InitGroup(name, chatID, corpSecret string, agentID int64) {
 	// 然后把数据 发给微信用户
-	app := workwx.New(corpID).WithApp(corpSecret, agentID)
+	app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
 
 	//  获取群聊会话
 	appChat, err := app.GetAppchat(chatID)
@@ -349,4 +386,119 @@ func InitGroup(name, chatID, corpID, corpSecret string, agentID int64) {
 		fmt.Println("应用消息发送失败 err:", err)
 	}
 	fmt.Println("应用消息发送成功")
+}
+
+// DealUserVoiceMessageByMediaID 获取应用内语音消息
+func DealUserVoiceMessageByMediaID(mediaID string, agentID int64) (string, error) {
+	defaultAgentSecret := WeCom.DefaultAgentSecret
+	for _, application := range WeCom.MultipleApplication {
+		if application.AgentID == agentID {
+			defaultAgentSecret = application.AgentSecret
+		}
+	}
+	if defaultAgentSecret == "" {
+		return "", fmt.Errorf("应用密钥不匹配")
+	}
+	app := workwx.New(WeCom.CorpID).WithApp(defaultAgentSecret, agentID)
+	token := app.GetAccessToken()
+	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
+	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
+
+	fmt.Println("req voice url:", url)
+
+	filepath := fmt.Sprintf("/tmp/voice/%s", mediaID)
+	err := DownloadFile("/tmp/voice", filepath, "amr", url)
+	return filepath + ".mp3", err
+}
+
+func DownloadFile(fileDir, filepath, fileMime string, url string) error {
+
+	// 判断目录是否存在
+	_, err := os.Stat(fileDir)
+	if err != nil {
+		err := os.MkdirAll(fileDir, os.ModePerm)
+		if err != nil {
+			fmt.Println("mkdir err:", err)
+			return err
+		}
+	}
+
+	// Create the file
+	out, err := os.Create(filepath + "." + fileMime)
+	if err != nil {
+		return err
+	}
+	defer func(out *os.File) {
+		err := out.Close()
+		if err != nil {
+			fmt.Println("file close err:", err)
+		}
+	}(out)
+
+	// http download file
+	resp, err := http.Get(url)
+	if err != nil {
+		fmt.Println("http get err:", err)
+		return err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("http close err:", err)
+		}
+	}(resp.Body)
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("下载失败:", resp.Status)
+	}
+
+	// 检查文件长度
+	if resp.ContentLength <= 0 {
+		fmt.Println("文件长度错误")
+	} else {
+		fmt.Println("文件长度", resp.ContentLength)
+	}
+
+	// 将内容写入文件
+	w, err := io.Copy(out, resp.Body)
+	if err != nil {
+		fmt.Println("io copy err:", err)
+		return err
+	}
+	fmt.Println("文件大小:", w)
+
+	fmt.Println("/bin/ffmpeg", "-i", filepath+"."+fileMime, filepath+".mp3")
+	// golang  arm 格式转 mp3
+	cmd := exec.Command("/bin/ffmpeg", "-i", filepath+"."+fileMime, filepath+".mp3")
+
+	err = cmd.Start()
+	if err != nil {
+		fmt.Println("cmd start err:", err)
+		return err
+	}
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Println("cmd start err:", err)
+		return err
+	}
+
+	return nil
+}
+
+// DealCustomerVoiceMessageByMediaID 获取客服语音消息
+func DealCustomerVoiceMessageByMediaID(mediaID string) (string, error) {
+	defaultAgentSecret := WeCom.CustomerServiceSecret
+	if defaultAgentSecret == "" {
+		return "", fmt.Errorf("应用密钥不匹配")
+	}
+	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
+	token := app.GetAccessToken()
+	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
+	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
+
+	fmt.Println("req voice url:", url)
+
+	filepath := fmt.Sprintf("/tmp/voice/%s", mediaID)
+	err := DownloadFile("/tmp/voice", filepath, "amr", url)
+	return filepath + ".mp3", err
 }

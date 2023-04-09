@@ -1,14 +1,15 @@
 package logic
 
 import (
+	"chat/common/milvus"
+	"chat/common/redis"
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
-	"net/url"
 	"strings"
+	"time"
 
 	"chat/common/openai"
 	"chat/common/wecom"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/zeromicro/go-zero/core/logx"
-	"golang.org/x/net/proxy"
 )
 
 type CustomerChatLogic struct {
@@ -41,12 +41,9 @@ func NewCustomerChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Cust
 
 func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *types.CustomerChatReply, err error) {
 
-	reqUrl := "https://api.openai.com/v1/completions"
-
 	l.setModelName().setBasePrompt().setBaseHost()
 
 	// 确认消息没有被处理过
-
 	_, err = l.svcCtx.ChatModel.FindOneByQuery(context.Background(),
 		l.svcCtx.ChatModel.RowBuilder().Where(squirrel.Eq{"message_id": req.MsgID}).Where(squirrel.Eq{"user": req.CustomerID}),
 	)
@@ -56,128 +53,183 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			Message: "ok",
 		}, nil
 	}
+
+	// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
+	proceed, _ := l.FactoryCommend(req)
+	if !proceed {
+		return
+	}
+	if l.message != "" {
+		req.Msg = l.message
+	}
+
+	// openai client
+	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).WithModel(l.model).WithBaseHost(l.baseHost)
+	if l.svcCtx.Config.Proxy.Enable {
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+	}
+
+	// context
+	collection := openai.NewUserContext(
+		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
+	).WithPrompt(l.basePrompt).WithClient(c)
+
 	// 然后 把 消息 发给 openai
 	go func() {
-		// 从数据库中读取 用户的所有 请求与 响应数据 进行请求拼接
-		whereBuilder := l.svcCtx.ChatModel.RowBuilder().Where(squirrel.Eq{"user": req.CustomerID}).
-			Where(squirrel.Eq{"open_kf_id": req.OpenKfID}).
-			Limit(1).
-			OrderBy("`id` desc")
-		collection, _ := l.svcCtx.ChatModel.FindAll(context.Background(), whereBuilder)
-
-		var bytes []byte
-
-		var prompts []openai.ChatModelMessage
-		prompts = append(prompts, openai.ChatModelMessage{
-			Role:    "system",
-			Content: l.basePrompt,
-		})
-
-		for _, val := range collection {
-			prompts = append(prompts, openai.ChatModelMessage{
-				Role:    "user",
-				Content: val.ReqContent,
-			})
-			prompts = append(prompts, openai.ChatModelMessage{
-				Role:    "assistant",
-				Content: val.ResContent,
-			})
+		// 去通过 embeddings 进行数据匹配
+		type EmbeddingData struct {
+			Q string `json:"q"`
+			A string `json:"a"`
 		}
-
-		prompts = append(prompts, openai.ChatModelMessage{
-			Role:    "user",
-			Content: req.Msg,
-		})
-
-		bytes = openai.ChatRequestBuild(prompts)
-		reqUrl = l.baseHost + "/v1/chat/completions"
-		payload := strings.NewReader(string(bytes))
-
-		client := &http.Client{}
-		// 是否开启代理
-		if l.svcCtx.Config.Proxy.Enable {
-			//	设置传输方式
-			httpTransport := &http.Transport{}
-			if l.svcCtx.Config.Proxy.Http != "" {
-				fmt.Println("http proxy", l.svcCtx.Config.Proxy.Http)
-				//	设置 http 代理
-				dialer, err := url.Parse(l.svcCtx.Config.Proxy.Http)
-				if err != nil {
-					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "http 网络初始化失败，请稍后再试~")
-					return
-				}
-				httpTransport.Proxy = http.ProxyURL(dialer)
-			} else {
-				dialer, err := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, nil, proxy.Direct)
-				if err != nil {
-					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "socks 网络初始化失败，请稍后再试~")
-					return
-				}
-				//	设置 socks5 代理
-				httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-					return dialer.Dial(network, addr)
-				}
-			}
-			client.Transport = httpTransport
-		}
-
-		c, err := http.NewRequest(http.MethodPost, reqUrl, payload)
-
-		if err != nil {
-			fmt.Println("openai client request build fail:" + err.Error())
-			return
-		}
-
-		c.Header.Add("Authorization", "Bearer "+l.svcCtx.Config.OpenAi.Key)
-		c.Header.Add("Content-Type", "application/json")
-
-		res, err := client.Do(c)
-		if err != nil {
-			fmt.Println("openai client req ing fail:" + err.Error())
-			return
-		}
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-
-			}
-		}(res.Body)
-
-		body, _ := io.ReadAll(res.Body)
-
-		// 成功
-
-		openAiResError := new(openai.ResultError)
-
-		fmt.Println("openai response: " + string(body))
-
-		sysErr := json.Unmarshal(body, openAiResError)
-		messageText := ""
-		if sysErr != nil || openAiResError.Error.Type != "" {
-			// 请求错误
-			if openAiResError.Error.Type == "invalid_request_error" {
-				switch openAiResError.Error.Code.(type) {
-				case string:
-					if openAiResError.Error.Code.(string) == "context_length_exceeded" {
-						wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "上下文超过最大长度的限制，请输入 #clear 来清理上下文")
-						return
+		var embeddingData []EmbeddingData
+		// 为了避免 embedding 的冷启动问题，对问题进行缓存来避免冷启动, 先简单处理
+		if l.svcCtx.Config.Embeddings.Enable && len(l.svcCtx.Config.Embeddings.Mlvus.Keywords) > 0 {
+			for _, keyword := range l.svcCtx.Config.Embeddings.Mlvus.Keywords {
+				if strings.Contains(req.Msg, keyword) {
+					// md5 this req.MSG to key
+					key := md5.New()
+					_, _ = io.WriteString(key, req.Msg)
+					keyStr := fmt.Sprintf("%x", key.Sum(nil))
+					type EmbeddingCache struct {
+						Embedding []float64 `json:"embedding"`
 					}
+					embeddingRes, err := redis.Rdb.Get(context.Background(), fmt.Sprintf(redis.EmbeddingsCacheKey, keyStr)).Result()
+					if err == nil {
+						tmp := new(EmbeddingCache)
+						_ = json.Unmarshal([]byte(embeddingRes), tmp)
+
+						result := milvus.Search(tmp.Embedding, l.svcCtx.Config.Embeddings.Mlvus.Host)
+						tempMessage := ""
+						for _, qa := range result {
+							if qa.Score > 0.3 {
+								continue
+							}
+							if len(embeddingData) < 2 {
+								embeddingData = append(embeddingData, EmbeddingData{
+									Q: qa.Q,
+									A: qa.A,
+								})
+							} else {
+								tempMessage += qa.Q + "\n"
+							}
+						}
+						if tempMessage != "" {
+							go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
+						}
+					} else {
+						c := openai.NewClient(l.svcCtx.Config.OpenAi.Key)
+						if l.svcCtx.Config.Proxy.Enable {
+							if l.svcCtx.Config.Proxy.Http != "" {
+								c.WithHttpProxy(l.svcCtx.Config.Proxy.Http)
+							} else {
+								c.WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+							}
+						}
+						c.WithModel(openai.ADA002)
+						go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据")
+						res, err := c.CreateOpenAIEmbeddings(req.Msg)
+						if err == nil {
+							fmt.Println(res.Data)
+							fmt.Println(l.svcCtx.Config.Embeddings)
+							embedding := res.Data[0].Embedding
+							// 去将其存入 redis
+							embeddingCache := EmbeddingCache{
+								Embedding: embedding,
+							}
+							redisData, err := json.Marshal(embeddingCache)
+							if err == nil {
+								redis.Rdb.Set(context.Background(), fmt.Sprintf(redis.EmbeddingsCacheKey, keyStr), string(redisData), -1*time.Second)
+							}
+							// 将 embedding 数据与 milvus 数据库 内的数据做对比响应前3个相关联的数据
+							result := milvus.Search(embedding, l.svcCtx.Config.Embeddings.Mlvus.Host)
+
+							tempMessage := ""
+							for _, qa := range result {
+								if qa.Score > 0.3 {
+									continue
+								}
+								if len(embeddingData) < 2 {
+									embeddingData = append(embeddingData, EmbeddingData{
+										Q: qa.Q,
+										A: qa.A,
+									})
+								} else {
+									tempMessage += qa.Q + "\n"
+								}
+							}
+							if tempMessage != "" {
+								go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
+							}
+						}
+					}
+					break
 				}
 			}
-
-			messageText = fmt.Sprintf("%s \n\n系统错误，请清理后重试: type:%v code:%v",
-				req.Msg, openAiResError.Error.Type, openAiResError.Error.Code,
-			)
 		}
 
-		if messageText == "" {
-			if l.model == openai.TextModel {
-				messageText = openai.GetTextModelResult(body)
-			} else {
-				messageText = openai.GetChatModelResult(body)
+		// 基于 summary 进行补充
+		messageText := ""
+		for _, chat := range embeddingData {
+			collection.Set(chat.Q, chat.A, false)
+		}
+		collection.Set(req.Msg, "", false)
+
+		prompts := collection.GetChatSummary()
+		if l.svcCtx.Config.Response.Stream {
+			channel := make(chan string, 100)
+			go func() {
+				messageText, err := c.WithModel(l.model).WithBaseHost(l.baseHost).ChatStream(prompts, channel)
+				if err != nil {
+					logx.Error("读取 stream 失败：", err.Error())
+					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统拥挤，稍后再试~"+err.Error())
+					return
+				}
+				collection.Set("", messageText, true)
+				// 再去插入数据
+				_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
+					User:       req.CustomerID,
+					OpenKfId:   req.OpenKfID,
+					MessageId:  req.MsgID,
+					ReqContent: req.Msg,
+					ResContent: messageText,
+				})
+			}()
+
+			var rs []rune
+			// 加快初次响应的时间 后续可改为阶梯式（用户体验好）
+			first := true
+			for {
+				s, ok := <-channel
+				if !ok {
+					// 数据接受完成
+					if len(rs) > 0 {
+						go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, string(rs)+"\n--------------------------------\n"+req.Msg)
+					}
+					return
+				}
+				rs = append(rs, []rune(s)...)
+
+				if first && len(rs) > 50 && strings.Contains(s, "\n\n") {
+					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, strings.TrimRight(string(rs), "\n\n"))
+					rs = []rune{}
+					first = false
+				} else if len(rs) > 200 && strings.Contains(s, "\n\n") {
+					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, strings.TrimRight(string(rs), "\n\n"))
+					rs = []rune{}
+				}
 			}
 		}
 
+		messageText, err := c.WithModel(l.model).WithBaseHost(l.baseHost).Chat(prompts)
+
+		if err != nil {
+			wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error())
+			return
+		}
+
+		// 然后把数据 发给对应的客户
+		go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, messageText)
+		collection.Set("", messageText, true)
 		_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
 			User:       req.CustomerID,
 			OpenKfId:   req.OpenKfID,
@@ -185,9 +237,6 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			ReqContent: req.Msg,
 			ResContent: messageText,
 		})
-
-		// 然后把数据 发给对应的客户
-		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, messageText)
 	}()
 
 	return &types.CustomerChatReply{
@@ -219,4 +268,68 @@ func (l *CustomerChatLogic) setBaseHost() (ls *CustomerChatLogic) {
 	}
 	l.baseHost = l.svcCtx.Config.OpenAi.Host
 	return l
+}
+
+func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed bool, err error) {
+	template := make(map[string]CustomerTemplateData)
+	//当 message 以 # 开头时，表示是特殊指令
+	if !strings.HasPrefix(req.Msg, "#") {
+		return true, nil
+	}
+
+	template["#voice"] = CustomerCommendVoice{}
+	template["#clear"] = CustomerCommendClear{}
+
+	for s, data := range template {
+		if strings.HasPrefix(req.Msg, s) {
+			proceed = data.customerExec(l, req)
+			return proceed, nil
+		}
+	}
+
+	return true, nil
+}
+
+type CustomerTemplateData interface {
+	customerExec(svcCtx *CustomerChatLogic, req *types.CustomerChatReq) (proceed bool)
+}
+
+type CustomerCommendVoice struct{}
+
+func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	msg := strings.Replace(req.Msg, "#voice:", "", -1)
+	if msg == "" {
+		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:未能读取到音频信息")
+		return false
+	}
+
+	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key)
+
+	if l.svcCtx.Config.Proxy.Enable {
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+	}
+
+	txt, err := c.SpeakToTxt(msg)
+
+	if txt == "" || err != nil {
+		logx.Info("openai转换错误", err.Error())
+		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:音频信息转换错误")
+		return false
+	}
+	// 语音识别成功
+	wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "语音识别成功:\n\n"+txt+"\n\n系统正在思考中...")
+
+	l.message = txt
+	return true
+}
+
+type CustomerCommendClear struct{}
+
+func (p CustomerCommendClear) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	// 清理上下文
+	openai.NewUserContext(
+		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
+	).Clear()
+	wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "记忆清除完成:来开始新一轮的chat吧")
+	return false
 }
