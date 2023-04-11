@@ -83,7 +83,7 @@ func DealUserLastMessageByToken(token, openKfID string) {
 	cacheKey := fmt.Sprintf(redis.CursorCacheKey, openKfID)
 	cursor, _ := redis.Rdb.Get(context.Background(), cacheKey).Result()
 
-	msg, err := app.GetKFSyncMsg(cursor, token, openKfID, 20, 0)
+	msg, err := app.GetKFSyncMsg(cursor, token, openKfID, 200, 0)
 	if err != nil {
 		fmt.Println("客服消息 获取body err:", err)
 		return
@@ -93,6 +93,11 @@ func DealUserLastMessageByToken(token, openKfID string) {
 
 	_, _ = redis.Rdb.Set(context.Background(), cacheKey, msg.NextCursor, 24*30*time.Hour).Result()
 	for _, v := range msg.MsgList {
+		// 仅处理发送时间在5分钟内的消息
+		if v.SendTime < time.Now().Unix()-300 {
+			logx.Info("客服消息-消息过期", v.SendTime, time.Now().Unix()-300)
+			continue
+		}
 		if v.Msgtype == "text" && v.Origin == 3 {
 			CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, v.Text.Content)
 		}

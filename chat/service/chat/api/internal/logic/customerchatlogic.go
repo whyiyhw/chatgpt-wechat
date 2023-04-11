@@ -1,8 +1,6 @@
 package logic
 
 import (
-	"chat/common/milvus"
-	"chat/common/redis"
 	"context"
 	"crypto/md5"
 	"encoding/json"
@@ -11,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"chat/common/milvus"
 	"chat/common/openai"
+	"chat/common/redis"
 	"chat/common/wecom"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
@@ -83,86 +83,88 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		}
 		var embeddingData []EmbeddingData
 		// 为了避免 embedding 的冷启动问题，对问题进行缓存来避免冷启动, 先简单处理
-		if l.svcCtx.Config.Embeddings.Enable && len(l.svcCtx.Config.Embeddings.Mlvus.Keywords) > 0 {
-			for _, keyword := range l.svcCtx.Config.Embeddings.Mlvus.Keywords {
-				if strings.Contains(req.Msg, keyword) {
-					// md5 this req.MSG to key
-					key := md5.New()
-					_, _ = io.WriteString(key, req.Msg)
-					keyStr := fmt.Sprintf("%x", key.Sum(nil))
-					type EmbeddingCache struct {
-						Embedding []float64 `json:"embedding"`
-					}
-					embeddingRes, err := redis.Rdb.Get(context.Background(), fmt.Sprintf(redis.EmbeddingsCacheKey, keyStr)).Result()
-					if err == nil {
-						tmp := new(EmbeddingCache)
-						_ = json.Unmarshal([]byte(embeddingRes), tmp)
+		matchEmbeddings := len(l.svcCtx.Config.Embeddings.Mlvus.Keywords) == 0
+		for _, keyword := range l.svcCtx.Config.Embeddings.Mlvus.Keywords {
+			if strings.Contains(req.Msg, keyword) {
+				matchEmbeddings = true
+			}
+		}
 
-						result := milvus.Search(tmp.Embedding, l.svcCtx.Config.Embeddings.Mlvus.Host)
-						tempMessage := ""
-						for _, qa := range result {
-							if qa.Score > 0.3 {
-								continue
-							}
-							if len(embeddingData) < 2 {
-								embeddingData = append(embeddingData, EmbeddingData{
-									Q: qa.Q,
-									A: qa.A,
-								})
-							} else {
-								tempMessage += qa.Q + "\n"
-							}
-						}
-						if tempMessage != "" {
-							go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
-						}
+		if matchEmbeddings {
+			// md5 this req.MSG to key
+			key := md5.New()
+			_, _ = io.WriteString(key, req.Msg)
+			keyStr := fmt.Sprintf("%x", key.Sum(nil))
+			type EmbeddingCache struct {
+				Embedding []float64 `json:"embedding"`
+			}
+			embeddingRes, err := redis.Rdb.Get(context.Background(), fmt.Sprintf(redis.EmbeddingsCacheKey, keyStr)).Result()
+			if err == nil {
+				tmp := new(EmbeddingCache)
+				_ = json.Unmarshal([]byte(embeddingRes), tmp)
+
+				result := milvus.Search(tmp.Embedding, l.svcCtx.Config.Embeddings.Mlvus.Host)
+				tempMessage := ""
+				for _, qa := range result {
+					if qa.Score > 0.3 {
+						continue
+					}
+					if len(embeddingData) < 2 {
+						embeddingData = append(embeddingData, EmbeddingData{
+							Q: qa.Q,
+							A: qa.A,
+						})
 					} else {
-						c := openai.NewClient(l.svcCtx.Config.OpenAi.Key)
-						if l.svcCtx.Config.Proxy.Enable {
-							if l.svcCtx.Config.Proxy.Http != "" {
-								c.WithHttpProxy(l.svcCtx.Config.Proxy.Http)
-							} else {
-								c.WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
-							}
-						}
-						c.WithModel(openai.ADA002)
-						go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据")
-						res, err := c.CreateOpenAIEmbeddings(req.Msg)
-						if err == nil {
-							fmt.Println(res.Data)
-							fmt.Println(l.svcCtx.Config.Embeddings)
-							embedding := res.Data[0].Embedding
-							// 去将其存入 redis
-							embeddingCache := EmbeddingCache{
-								Embedding: embedding,
-							}
-							redisData, err := json.Marshal(embeddingCache)
-							if err == nil {
-								redis.Rdb.Set(context.Background(), fmt.Sprintf(redis.EmbeddingsCacheKey, keyStr), string(redisData), -1*time.Second)
-							}
-							// 将 embedding 数据与 milvus 数据库 内的数据做对比响应前3个相关联的数据
-							result := milvus.Search(embedding, l.svcCtx.Config.Embeddings.Mlvus.Host)
+						tempMessage += qa.Q + "\n"
+					}
+				}
+				if tempMessage != "" {
+					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
+				}
+			} else {
+				c := openai.NewClient(l.svcCtx.Config.OpenAi.Key)
+				if l.svcCtx.Config.Proxy.Enable {
+					if l.svcCtx.Config.Proxy.Http != "" {
+						c.WithHttpProxy(l.svcCtx.Config.Proxy.Http)
+					} else {
+						c.WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+					}
+				}
+				c.WithModel(openai.ADA002)
+				go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据")
+				res, err := c.CreateOpenAIEmbeddings(req.Msg)
+				if err == nil {
+					fmt.Println(res.Data)
+					fmt.Println(l.svcCtx.Config.Embeddings)
+					embedding := res.Data[0].Embedding
+					// 去将其存入 redis
+					embeddingCache := EmbeddingCache{
+						Embedding: embedding,
+					}
+					redisData, err := json.Marshal(embeddingCache)
+					if err == nil {
+						redis.Rdb.Set(context.Background(), fmt.Sprintf(redis.EmbeddingsCacheKey, keyStr), string(redisData), -1*time.Second)
+					}
+					// 将 embedding 数据与 milvus 数据库 内的数据做对比响应前3个相关联的数据
+					result := milvus.Search(embedding, l.svcCtx.Config.Embeddings.Mlvus.Host)
 
-							tempMessage := ""
-							for _, qa := range result {
-								if qa.Score > 0.3 {
-									continue
-								}
-								if len(embeddingData) < 2 {
-									embeddingData = append(embeddingData, EmbeddingData{
-										Q: qa.Q,
-										A: qa.A,
-									})
-								} else {
-									tempMessage += qa.Q + "\n"
-								}
-							}
-							if tempMessage != "" {
-								go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
-							}
+					tempMessage := ""
+					for _, qa := range result {
+						if qa.Score > 0.3 {
+							continue
+						}
+						if len(embeddingData) < 2 {
+							embeddingData = append(embeddingData, EmbeddingData{
+								Q: qa.Q,
+								A: qa.A,
+							})
+						} else {
+							tempMessage += qa.Q + "\n"
 						}
 					}
-					break
+					if tempMessage != "" {
+						go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
+					}
 				}
 			}
 		}
