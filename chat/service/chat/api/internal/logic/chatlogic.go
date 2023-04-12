@@ -195,6 +195,10 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					go func() {
 						messageText, err := c.ChatStream(prompts, channel)
 						if err != nil {
+							errInfo := err.Error()
+							if strings.Contains(errInfo, "maximum context length") {
+								errInfo += "\n 请使用 #clear 清理所有上下文"
+							}
 							sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
 							return
 						}
@@ -236,6 +240,10 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			}
 
 			if err != nil {
+				errInfo := err.Error()
+				if strings.Contains(errInfo, "maximum context length") {
+					errInfo += "\n 请使用 #clear 清理所有上下文"
+				}
 				sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
 				return
 			}
