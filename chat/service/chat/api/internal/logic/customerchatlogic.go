@@ -90,7 +90,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			}
 		}
 
-		if matchEmbeddings {
+		if l.svcCtx.Config.Embeddings.Enable && matchEmbeddings {
 			// md5 this req.MSG to key
 			key := md5.New()
 			_, _ = io.WriteString(key, req.Msg)
