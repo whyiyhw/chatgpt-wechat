@@ -6,7 +6,7 @@
   - 第一个为自定义 prompt
     <p align="center">
       <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
-          <img width="400" src="./doc/image24.png" alt="image24" />
+          <img width="400" src="./doc/image24.png" alt="image24"/>
       </a>
     </p>
   - 第二个为预定义 prompt
@@ -38,10 +38,11 @@
 
 ## 如何使用本项目代码？
 
-### 1. 创建个人企业微信 并获取到对应的 企业id(corp_id)
+### 1. 创建个人企业微信 并获取到对应的 **企业id(corp_id)**
 
 访问 [管理员页面](https://work.weixin.qq.com/wework_admin/frame#profile) ,
 可在 我的企业 > 企业信息 > 底部 看到  企业ID
+![image3.png](./doc/image38.png)
 
 #### 1.1 创建一个企业微信内部应用，并获取到 AgentId 和 Secret
 
