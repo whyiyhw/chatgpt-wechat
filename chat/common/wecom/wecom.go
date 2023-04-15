@@ -42,40 +42,44 @@ type Application struct {
 	AgentSecret string
 }
 
+// SendToWeComUser 发送应用消息给用户
 func SendToWeComUser(agentID int64, userID string, msg string, corpSecret string) {
 
 	go func() {
-		// 然后把数据 发给微信用户
 		app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
-
 		recipient := workwx.Recipient{
 			UserIDs: []string{userID},
 		}
 		rs := []rune(msg)
 
-		//当 msg 大于 1000个字符 的时候切割发送
-		//3. 企业微信会话发送文字的字符上限
-		//（1）会话消息目前支持2000（不确定）？字符，1个汉字=2字符，1个英文、符号=1个字符。
+		//当 msg 大于 850 个字符 的时候切割发送，避免被企业微信吞掉
 		if len(rs) > 850 {
-			msgs := splitMsg(rs, 850)
-			for _, v := range msgs {
-				_ = app.SendTextMessage(&recipient, v, false)
+			messages := splitMsg(rs, 850)
+			for _, message := range messages {
+				err := app.SendTextMessage(&recipient, message, false)
+				if err != nil {
+					logx.Error("应用消息-发送失败 err:", err)
+				}
 			}
 			return
 		}
 
-		_ = app.SendTextMessage(&recipient, msg, false)
+		err := app.SendTextMessage(&recipient, msg, false)
+		if err != nil {
+			logx.Error("应用消息-发送失败 err:", err)
+		}
 	}()
 }
 
+// splitMsg 切割多字节字符串
 func splitMsg(rs []rune, i int) []string {
-	var msgs []string
+	var msgList []string
 	for len(rs) > i {
-		msgs = append(msgs, string(rs[:i]))
+		msgList = append(msgList, string(rs[:i]))
 		rs = rs[i:]
 	}
-	msgs = append(msgs, string(rs))
-	return msgs
+	msgList = append(msgList, string(rs))
+	return msgList
 }
 
 func DealUserLastMessageByToken(token, openKfID string) {
@@ -83,7 +87,7 @@ func DealUserLastMessageByToken(token, openKfID string) {
 	cacheKey := fmt.Sprintf(redis.CursorCacheKey, openKfID)
 	cursor, _ := redis.Rdb.Get(context.Background(), cacheKey).Result()
 
-	msg, err := app.GetKFSyncMsg(cursor, token, openKfID, 200, 0)
+	msg, err := app.GetKFSyncMsg(cursor, token, openKfID, 500, 0)
 	if err != nil {
 		fmt.Println("客服消息 获取body err:", err)
 		return
@@ -113,7 +117,7 @@ func DealUserLastMessageByToken(token, openKfID string) {
 	}
 }
 
-// SendCustomerChatMessage 发送给客户消息
+// SendCustomerChatMessage 发送客服消息
 func SendCustomerChatMessage(openKfID, customerID, msg string) {
 
 	go func() {
@@ -126,13 +130,11 @@ func SendCustomerChatMessage(openKfID, customerID, msg string) {
 		}
 		rs := []rune(msg)
 
-		//当 msg 大于 1000个字符 的时候切割发送
-		//3. 企业微信会话发送文字的字符上限
-		//（1）会话消息目前支持2000（不确定）？字符，1个汉字=2字符，1个英文、符号=1个字符。
+		//当 msg 大于 850 个字符 的时候切割发送，避免被企业微信吞掉
 		if len(rs) > 850 {
-			msgs := splitMsg(rs, 850)
-			for _, v := range msgs {
-				err := app.SendTextMessage(&recipient, v, false)
+			messages := splitMsg(rs, 850)
+			for _, message := range messages {
+				err := app.SendTextMessage(&recipient, message, false)
 				if err != nil {
 					fmt.Println("客服消息-发送失败 err:", err)
 				}
