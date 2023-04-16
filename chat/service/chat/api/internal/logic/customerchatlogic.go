@@ -122,15 +122,6 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
 				}
 			} else {
-				c := openai.NewClient(l.svcCtx.Config.OpenAi.Key)
-				if l.svcCtx.Config.Proxy.Enable {
-					if l.svcCtx.Config.Proxy.Http != "" {
-						c.WithHttpProxy(l.svcCtx.Config.Proxy.Http)
-					} else {
-						c.WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
-					}
-				}
-				c.WithModel(openai.ADA002)
 				go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据")
 				res, err := c.CreateOpenAIEmbeddings(req.Msg)
 				if err == nil {

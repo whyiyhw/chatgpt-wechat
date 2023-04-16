@@ -203,6 +203,7 @@ func (c *ChatClient) buildConfig() copenai.ClientConfig {
 	return config
 }
 
+// ChatStream 数据流式传输
 func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (string, error) {
 
 	config := c.buildConfig()

@@ -129,15 +129,6 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 							go sendToUser(req.AgentID, req.UserID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage, l.svcCtx.Config)
 						}
 					} else {
-						c := openai.NewClient(l.svcCtx.Config.OpenAi.Key)
-						if l.svcCtx.Config.Proxy.Enable {
-							if l.svcCtx.Config.Proxy.Http != "" {
-								c.WithHttpProxy(l.svcCtx.Config.Proxy.Http)
-							} else {
-								c.WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
-							}
-						}
-						c.WithModel(openai.ADA002)
 						sendToUser(req.AgentID, req.UserID, "正在为您查询相关数据", l.svcCtx.Config)
 						res, err := c.CreateOpenAIEmbeddings(req.MSG)
 						if err == nil {
