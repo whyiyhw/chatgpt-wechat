@@ -34,9 +34,7 @@
 ![image2.png](./image2.png)
 
 
-
 ### 4. 在自购服务器上 部署 golang 服务，并开启对外的网络端口
-
 
 **（本项目不提供宝塔面板安装咨询，请各位大佬自行摸索）**
 
@@ -66,8 +64,10 @@ vim ./service/chat/api/etc/chat-api.yaml
     - Token 跟 EncodingAESKey 可以在步骤三中拿到
 
 - 最后一个 是 openAPI 生成 KEY 的值
+
 ---
-#### 3.1 重点，因为 openai 对于大陆地区的封锁，如果你的服务器在国内，这边提供了两个方案
+
+#### 4.1 重点，因为 openai 对于大陆地区的封锁，如果你的服务器在国内，这边提供了两个方案
 1. 自建 代理服务器，然后在 chat-api.yaml 中配置代理服务器的地址，相关的参数在 `chat-api.yaml.complete.bak`
 ```yaml
 Proxy:                                         # 代理配置 （可选）

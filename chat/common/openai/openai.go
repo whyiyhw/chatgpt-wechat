@@ -211,10 +211,33 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 
 	// 打印请求信息
 	logx.Info("req: ", req)
+	first := 0
+	var system ChatModelMessage
+	for i, msg := range req {
+		if msg.Role == "system" {
+			system = msg
+		}
+		if i%2 == 0 {
+			continue
+		}
+		//估算长度
+		if NumTokensFromMessages(req[len(req)-i-1:], ChatModel) < (3900 - c.MaxToken) {
+			first = len(req) - i - 1
+		} else {
+			break
+		}
+	}
 
 	var messages []copenai.ChatCompletionMessage
 
-	for _, message := range req {
+	if first != 0 {
+		messages = append(messages, copenai.ChatCompletionMessage{
+			Role:    system.Role,
+			Content: system.Content,
+		})
+	}
+
+	for _, message := range req[first:] {
 		messages = append(messages, copenai.ChatCompletionMessage{
 			Role:    message.Role,
 			Content: message.Content,
