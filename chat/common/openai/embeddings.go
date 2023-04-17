@@ -29,7 +29,7 @@ type (
 
 func (c *ChatClient) CreateOpenAIEmbeddings(input string) (EmbeddingResponse, error) {
 	config := c.buildConfig()
-
+	config.APIVersion = "2022-12-01"
 	cli := copenai.NewClientWithConfig(config)
 	requestBody := copenai.EmbeddingRequest{
 		Model: copenai.AdaEmbeddingV2,

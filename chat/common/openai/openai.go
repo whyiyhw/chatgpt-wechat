@@ -96,6 +96,7 @@ func (c *ChatClient) WithSocks5Proxy(proxyUrl string) *ChatClient {
 func (c *ChatClient) SpeakToTxt(voiceUrl string) (string, error) {
 	config := c.buildConfig()
 	cli := copenai.NewClientWithConfig(config)
+	config.APIVersion = "2022-12-01"
 
 	// 打印文件信息
 	logx.Info("File: ", voiceUrl)
