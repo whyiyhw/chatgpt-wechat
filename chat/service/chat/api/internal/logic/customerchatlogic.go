@@ -64,7 +64,11 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	}
 
 	// openai client
-	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).WithModel(l.model).WithBaseHost(l.baseHost)
+	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+		WithModel(l.model).
+		WithBaseHost(l.baseHost).
+		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 	if l.svcCtx.Config.Proxy.Enable {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
 	}
@@ -125,8 +129,6 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据")
 				res, err := c.CreateOpenAIEmbeddings(req.Msg)
 				if err == nil {
-					fmt.Println(res.Data)
-					fmt.Println(l.svcCtx.Config.Embeddings)
 					embedding := res.Data[0].Embedding
 					// 去将其存入 redis
 					embeddingCache := EmbeddingCache{
@@ -171,7 +173,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		if l.svcCtx.Config.Response.Stream {
 			channel := make(chan string, 100)
 			go func() {
-				messageText, err := c.WithModel(l.model).WithBaseHost(l.baseHost).ChatStream(prompts, channel)
+				messageText, err := c.ChatStream(prompts, channel)
 				if err != nil {
 					logx.Error("读取 stream 失败：", err.Error())
 					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统拥挤，稍后再试~"+err.Error())
@@ -213,7 +215,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			}
 		}
 
-		messageText, err := c.WithModel(l.model).WithBaseHost(l.baseHost).Chat(prompts)
+		messageText, err := c.Chat(prompts)
 
 		if err != nil {
 			wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error())
@@ -296,7 +298,10 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 		return false
 	}
 
-	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key)
+	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+		WithBaseHost(l.svcCtx.Config.OpenAi.Host).
+		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 
 	if l.svcCtx.Config.Proxy.Enable {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)

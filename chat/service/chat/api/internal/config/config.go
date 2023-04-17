@@ -50,8 +50,10 @@ type Config struct {
 
 	// openai 配置
 	OpenAi struct {
-		Key  string
-		Host string `json:"host,optional,default=https://api.openai.com"`
+		Key    string
+		Host   string `json:"host,optional,default=https://api.openai.com"`
+		Origin string `json:"origin,optional,default=open_ai"`
+		Engine string `json:"engine,optional,default="`
 	}
 
 	// http proxy 设置

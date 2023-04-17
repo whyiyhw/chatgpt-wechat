@@ -23,7 +23,7 @@ COPY . .
 # 将代码编译成二进制可执行文件 app
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./service/chat/api/chat.go
 
-RUN tar -xvf /build/build/ffmpeg/ffmpeg-release-amd64-static.tar.xz -C /usr/local/bin --strip-components 1 && ls  /usr/local/bin
+RUN tar -xvf /build/build/ffmpeg/ffmpeg-release-amd64-static.tar.xz -C /usr/local/bin --strip-components 1
 
 # 创建一个小镜像
 FROM scratch

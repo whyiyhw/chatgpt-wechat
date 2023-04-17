@@ -72,7 +72,11 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		}
 
 		// openai client
-		c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).WithModel(l.model).WithBaseHost(l.baseHost)
+		c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+			WithModel(l.model).
+			WithBaseHost(l.baseHost).
+			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+			WithEngine(l.svcCtx.Config.OpenAi.Engine)
 		if l.svcCtx.Config.Proxy.Enable {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
 		}
@@ -591,7 +595,10 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 	}
 	fmt.Println(msg)
 
-	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key)
+	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+		WithBaseHost(l.svcCtx.Config.OpenAi.Host).
+		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 
 	if l.svcCtx.Config.Proxy.Enable {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)

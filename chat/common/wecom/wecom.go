@@ -93,7 +93,7 @@ func DealUserLastMessageByToken(token, openKfID string) {
 		return
 	}
 
-	fmt.Println("客服消息 获取 message success", msg.NextCursor, msg.MsgList)
+	fmt.Println("客服消息 获取 message success. NextCursor:", msg.NextCursor)
 
 	_, _ = redis.Rdb.Set(context.Background(), cacheKey, msg.NextCursor, 24*30*time.Hour).Result()
 	for _, v := range msg.MsgList {
@@ -108,7 +108,7 @@ func DealUserLastMessageByToken(token, openKfID string) {
 		if v.Msgtype == "voice" && v.Origin == 3 {
 			filePath, err := DealCustomerVoiceMessageByMediaID(v.Voice.MediaId)
 			if err != nil {
-				fmt.Println(err)
+				logx.Info("音频文件读取失败", v.Voice.MediaId)
 				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "音频文件读取失败:"+err.Error())
 			} else {
 				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#voice:"+filePath)
@@ -166,10 +166,9 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 	} else if msg.MsgType == workwx.MessageTypeVoice {
 		message, ok := msg.Voice()
 		if ok {
-			fmt.Println(message)
 			filePath, err := DealUserVoiceMessageByMediaID(message.GetMediaID(), msg.AgentID)
 			if err != nil {
-				fmt.Println(err)
+				logx.Error("应用音频文件读取失败:", err.Error())
 				realLogic("wecom", "音频文件读取失败:"+err.Error(), msg.FromUserID, msg.AgentID)
 			} else {
 				realLogic("openai", "#voice:"+filePath, msg.FromUserID, msg.AgentID)
@@ -316,7 +315,6 @@ func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		logx.Error("客服消息:请求错误", err.Error())
 		return
 	}

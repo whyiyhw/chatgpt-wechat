@@ -36,6 +36,8 @@ WeCom:                                              # 企业微信配置
 OpenAi:                                             # openai配置
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # openai key
   Host: "https://api.openai.com"                    # openai host （可选，使用cf进行反向代理时，修改可用）
+  Origin: "open_ai"                                 # 默认为 调用 open_ai 也支持 azure , azure_ad (可选 默认为 open_ai)
+  Engine: "deployment_name"                         # engine = "deployment_name".
 
 Proxy:                                              # 代理配置 （可选）
   Enable: false                                     # 是否启用代理，默认为 false（可选）
