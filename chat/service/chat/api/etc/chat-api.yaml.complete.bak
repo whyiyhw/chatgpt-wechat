@@ -37,7 +37,7 @@ OpenAi:                                             # openai配置
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # openai key
   Host: "https://api.openai.com"                    # openai host （可选，使用cf进行反向代理时，修改可用）
   Origin: "open_ai"                                 # 默认为 调用 open_ai 也支持 azure , azure_ad (可选 默认为 open_ai)
-  Engine: "deployment_name"                         # engine = "deployment_name".
+  Engine: "deployment_name"                         # engine = "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
 
 Proxy:                                              # 代理配置 （可选）
   Enable: false                                     # 是否启用代理，默认为 false（可选）
