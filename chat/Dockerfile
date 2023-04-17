@@ -10,7 +10,7 @@ ENV GO111MODULE=on \
 # 移动到工作目录：/build
 WORKDIR /build
 
-RUN  apk add tzdata
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && apk add tzdata
 
 # 复制项目中的 go.mod 和 go.sum文件并下载依赖信息
 COPY go.mod .

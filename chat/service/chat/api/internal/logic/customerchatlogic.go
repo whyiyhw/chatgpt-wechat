@@ -76,7 +76,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	// context
 	collection := openai.NewUserContext(
 		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
-	).WithPrompt(l.basePrompt).WithClient(c)
+	).WithModel(l.model).WithPrompt(l.basePrompt).WithClient(c)
 
 	// 然后 把 消息 发给 openai
 	go func() {
@@ -245,6 +245,7 @@ func (l *CustomerChatLogic) setModelName() (ls *CustomerChatLogic) {
 		m = openai.TextModel
 	}
 	l.svcCtx.Config.WeCom.Model = m
+	l.model = m
 	return l
 }
 

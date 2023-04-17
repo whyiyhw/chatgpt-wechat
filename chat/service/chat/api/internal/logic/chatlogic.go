@@ -84,7 +84,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		// context
 		collection := openai.NewUserContext(
 			openai.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
-		).WithPrompt(l.basePrompt).WithClient(c)
+		).WithModel(l.model).WithPrompt(l.basePrompt).WithClient(c)
 
 		go func() {
 			// 去通过 embeddings 进行数据匹配
