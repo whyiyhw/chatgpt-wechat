@@ -62,6 +62,10 @@
 - 方法一 ： 请自行 安装 `proxy client` 然后开启 监听 0.0.0.0:socket 模式 ，不要开启认证，之后在配置文件中，开启配置就OK,详情请见 `v0.2.2` 
 - 方法二 ： 把服务器移到 香港/海外 , 大陆地区将长期不能访问
 
+### 修改 `chat-api.yaml` 配置后如何让其生效
+- 你可以通过 `docker-compose restart web` 重启 web 服务
+- 或者 `docker-compose build && docker-compose up -d` 重启整个服务
+
 ## 感谢以下朋友对于本项目的大力支持~
   <p align="center">
     <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">

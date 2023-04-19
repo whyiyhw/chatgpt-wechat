@@ -8,6 +8,8 @@ services:
     ports:
       - "8888:8888"
       - "8887:8887"
+    volumes:
+      - ./service/chat/api/etc/chat-api.yaml:/etc/chat-api.yaml
     privileged: true
     restart: always
     networks:
