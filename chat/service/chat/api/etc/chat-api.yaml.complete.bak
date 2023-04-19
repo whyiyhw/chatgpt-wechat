@@ -17,7 +17,7 @@ Auth:                                               # jwt配置（可选）自�
   AccessExpire: 25920000                            # jwt过期时间(可选) 默认为 25920000
 
 WeCom:                                              # 企业微信配置
-  Port:                                             # 企业微信回调监听端口（可选）默认为8887
+  Port: 8887                                        # 企业微信回调监听端口（可选）默认为8887
   CustomerServiceSecret: "xxxx-xxxx-xxxx"           # 企业微信客服消息 Secret
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
