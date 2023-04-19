@@ -85,4 +85,21 @@ type Config struct {
 	Response struct {
 		Stream bool `json:",optional,default=true"`
 	}
+
+	// Plugins 配置
+	Plugins struct {
+		Enable bool `json:",optional,default=false"`
+		List   []struct {
+			NameForHuman string `json:",optional"`
+			NameForModel string `json:",optional"`
+			DescForHuman string `json:",optional"`
+			DescModel    string `json:",optional"`
+			Auth         struct {
+				Type string `json:",optional"`
+			} `json:",optional"`
+			API struct {
+				URL string `json:",optional"`
+			}
+		} `json:",optional"`
+	}
 }

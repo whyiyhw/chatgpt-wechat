@@ -14,6 +14,7 @@ import (
 	"chat/common/aliocr"
 	"chat/common/milvus"
 	"chat/common/openai"
+	"chat/common/plugin"
 	"chat/common/redis"
 	"chat/common/wecom"
 	"chat/service/chat/api/internal/config"
@@ -168,6 +169,28 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 								go sendToUser(req.AgentID, req.UserID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage, l.svcCtx.Config)
 							}
 						}
+					}
+				}
+			}
+
+			// 通过插件处理数据
+			if l.svcCtx.Config.Plugins.Enable && len(l.svcCtx.Config.Plugins.List) > 0 {
+				// 通过插件处理
+				var p []plugin.Plugin
+				for _, i2 := range l.svcCtx.Config.Plugins.List {
+					p = append(p, plugin.Plugin{
+						NameForModel: i2.NameForModel,
+						DescModel:    i2.DescModel,
+						API:          i2.API,
+					})
+				}
+				pluginInfo, err := c.WithMaxToken(1000).WithTemperature(0.2).
+					Completion(plugin.GetPluginPromptInfo(req.MSG, p))
+				if err == nil {
+					msg, ok := plugin.RunPlugin(pluginInfo, p)
+					if ok && msg != "" {
+						// 插件处理成功，存入上下文
+						collection.Set(req.MSG+"\n"+msg, "已确认", false)
 					}
 				}
 			}
