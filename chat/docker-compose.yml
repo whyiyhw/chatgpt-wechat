@@ -22,6 +22,8 @@ services:
     volumes:
       - ./build/redis/redis.conf:/etc/redis/redis.conf
       - ./build/redis/data:/data
+    environment:
+      TZ: Asia/Shanghai
     networks:
       - chat_network
     restart: always

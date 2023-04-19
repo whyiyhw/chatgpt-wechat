@@ -66,6 +66,19 @@
 - 你可以通过 `docker-compose restart web` 重启 web 服务
 - 或者 `docker-compose build && docker-compose up -d` 重启整个服务
 
+### 如何修改 redis 密码? 
+
+- 首先修改 `chat/service/chat/api/etc/chat-api.yaml` 
+```yaml
+RedisCache:
+    Pass: "xxxxxx"
+```
+- 再修改 `chat/build/redis/redis.conf`
+```ini
+requirepass "xxxxx"
+```
+- 最后 `docker-compose down && docker-compose up -d` 重启整个服务
+
 ## 感谢以下朋友对于本项目的大力支持~
   <p align="center">
     <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
