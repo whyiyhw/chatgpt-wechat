@@ -14,6 +14,7 @@
 - 支持图片消息（答题场景）
 - 支持插件机制（可扩展性👍👍），
   - 可按照规则自行开发接入其他能力（知识库, summary , search...）
+- 支持 stable diffusion 1.5 作图
 
 ## 完整安装步骤（[点击查看详情](./doc/install.md)）
 
@@ -84,5 +85,6 @@ requirepass "xxxxx"
     <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
         <img width="40" src="./doc/support01.jpg" alt="supprt01" />
         <img width="40" src="./doc/support02.jpg" alt="supprt02" />
+        <img width="40" src="./doc/support03.jpg" alt="supprt03" />
     </a>
   </p>
