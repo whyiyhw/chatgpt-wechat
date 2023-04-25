@@ -102,4 +102,14 @@ type Config struct {
 			}
 		} `json:",optional"`
 	}
+
+	// 语音解析与合成 后续可能会使用
+	Speaker struct {
+		Company string `json:",optional,default=openai"`
+		AliYun  struct {
+			AccessKeyId     string
+			AccessKeySecret string
+			AppKey          string
+		} `json:",optional"`
+	} `json:",optional"`
 }

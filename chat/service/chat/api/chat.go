@@ -1,13 +1,13 @@
 package main
 
 import (
-	"chat/common/redis"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
 
 	"chat/common/accesslog"
+	"chat/common/redis"
 	"chat/common/response"
 	"chat/common/wecom"
 	"chat/common/xerr"

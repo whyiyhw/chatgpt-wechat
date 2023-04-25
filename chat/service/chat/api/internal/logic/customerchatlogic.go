@@ -300,6 +300,7 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 	}
 
 	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+		WithModel(l.model).
 		WithBaseHost(l.svcCtx.Config.OpenAi.Host).
 		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
@@ -308,8 +309,30 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
 	}
 
-	txt, err := c.SpeakToTxt(msg)
+	var cli openai.Speaker
+	switch l.svcCtx.Config.Speaker.Company {
+	case "openai":
+		logx.Info("使用openai音频转换")
+		cli = c
+	case "ali":
+		logx.Info("使用阿里云音频转换")
+		//s, err := voice.NewSpeakClient(
+		//	l.svcCtx.Config.Speaker.AliYun.AccessKeyId,
+		//	l.svcCtx.Config.Speaker.AliYun.AccessKeySecret,
+		//	l.svcCtx.Config.Speaker.AliYun.AppKey,
+		//)
+		//if err != nil {
+		//	wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "阿里云音频转换初始化失败:"+err.Error())
+		//	return false
+		//}
+		//msg = strings.Replace(msg, ".mp3", ".amr", -1)
+		//cli = s
+	default:
+		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:未知的音频转换服务商")
+		return false
+	}
 
+	txt, err := cli.SpeakToTxt(msg)
 	if txt == "" || err != nil {
 		logx.Info("openai转换错误", err.Error())
 		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:音频信息转换错误")

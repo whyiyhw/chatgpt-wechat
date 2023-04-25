@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"chat/common/aliocr"
+	"chat/common/ali/ocr"
 	"chat/common/milvus"
 	"chat/common/openai"
 	"chat/common/plugin"
@@ -526,7 +526,7 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 		sendToUser(req.AgentID, req.UserID, "目前只支持阿里OCR", l.svcCtx.Config)
 		return false
 	}
-	ocrCli, _err := aliocr.CreateClient(&l.svcCtx.Config.OCR.AliYun.AccessKeyId, &l.svcCtx.Config.OCR.AliYun.AccessKeySecret)
+	ocrCli, _err := ocr.CreateClient(&l.svcCtx.Config.OCR.AliYun.AccessKeyId, &l.svcCtx.Config.OCR.AliYun.AccessKeySecret)
 	if _err != nil {
 		// 创建失败
 		sendToUser(req.AgentID, req.UserID, "图片识别客户端创建失败失败:"+_err.Error(), l.svcCtx.Config)
@@ -534,7 +534,7 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 	}
 
 	// 进行图片识别
-	txt, err := aliocr.OcrImage2Txt(msg, ocrCli)
+	txt, err := ocr.Image2Txt(msg, ocrCli)
 	if err != nil {
 		sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
 		return false
@@ -616,9 +616,9 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		sendToUser(req.AgentID, req.UserID, "未能读取到音频信息", l.svcCtx.Config)
 		return false
 	}
-	fmt.Println(msg)
 
 	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+		WithModel(l.model).
 		WithBaseHost(l.svcCtx.Config.OpenAi.Host).
 		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
@@ -627,8 +627,30 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
 	}
 
-	txt, err := c.SpeakToTxt(msg)
-
+	var cli openai.Speaker
+	switch l.svcCtx.Config.Speaker.Company {
+	case "openai":
+		logx.Info("使用openai音频转换")
+		cli = c
+	case "ali":
+		//logx.Info("使用阿里云音频转换")
+		//s, err := voice.NewSpeakClient(
+		//	l.svcCtx.Config.Speaker.AliYun.AccessKeyId,
+		//	l.svcCtx.Config.Speaker.AliYun.AccessKeySecret,
+		//	l.svcCtx.Config.Speaker.AliYun.AppKey,
+		//)
+		//if err != nil {
+		//	sendToUser(req.AgentID, req.UserID, "阿里云音频转换初始化失败:"+err.Error(), l.svcCtx.Config)
+		//	return false
+		//}
+		//msg = strings.Replace(msg, ".mp3", ".amr", -1)
+		//cli = s
+	default:
+		sendToUser(req.AgentID, req.UserID, "系统错误:未知的音频转换服务商", l.svcCtx.Config)
+		return false
+	}
+	fmt.Println(cli)
+	txt, err := cli.SpeakToTxt(msg)
 	if txt == "" {
 		sendToUser(req.AgentID, req.UserID, "音频信息转换错误:"+err.Error(), l.svcCtx.Config)
 		return false

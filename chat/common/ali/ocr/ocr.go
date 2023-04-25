@@ -1,7 +1,8 @@
-package aliocr
+package ocr
 
 import (
 	"encoding/json"
+
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	ocrapi20210707 "github.com/alibabacloud-go/ocr-api-20210707/client"
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
@@ -22,7 +23,7 @@ func CreateClient(accessKeyId *string, accessKeySecret *string) (_result *ocrapi
 	return _result, _err
 }
 
-func OcrImage2Txt(arg string, client *ocrapi20210707.Client) (res string, _err error) {
+func Image2Txt(arg string, client *ocrapi20210707.Client) (res string, _err error) {
 	recognizeGeneralRequest := &ocrapi20210707.RecognizeGeneralRequest{
 		Url: tea.String(arg),
 	}
@@ -53,14 +54,14 @@ func OcrImage2Txt(arg string, client *ocrapi20210707.Client) (res string, _err e
 	}()
 
 	if tryErr != nil {
-		var error = &tea.SDKError{}
+		var sdkError = &tea.SDKError{}
 		if _t, ok := tryErr.(*tea.SDKError); ok {
-			error = _t
+			sdkError = _t
 		} else {
-			error.Message = tea.String(tryErr.Error())
+			sdkError.Message = tea.String(tryErr.Error())
 		}
 		// 如有需要，请打印 error
-		r, _err := util.AssertAsString(error.Message)
+		r, _err := util.AssertAsString(sdkError.Message)
 		if _err != nil {
 			return *r, _err
 		}

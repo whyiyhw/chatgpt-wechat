@@ -2,6 +2,7 @@ package tiktoken
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -22,8 +23,9 @@ func loadTokenBee(filename string) (map[string]int, error) {
 		if err != nil {
 			return nil, err
 		}
-		rank, err := strconv.Atoi(parts[1])
+		rank, err := strconv.Atoi(strings.Trim(parts[1], "\r"))
 		if err != nil {
+			fmt.Println("strconv.Atoi error", parts[0], parts[1])
 			return nil, err
 		}
 		bpeRanks[string(token)] = rank
