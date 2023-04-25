@@ -61,4 +61,24 @@ Embeddings:
 
 Response:                                           # 回复配置
   Stream: true                                    # 是否开启流式回复,自动断句推荐（可选）
+
+Plugins:
+  Enable: true
+  List:
+    - NameForHuman: "date_shell"
+      NameForModel: "date_shell"
+      DescForHuman: "这个插件可以提供日期相关的信息"
+      DescModel: "This plugin can execute shell commands used to get the date."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8886/api/webhook"
+
+Draw:                                               # 绘画配置
+  Enable: false                                     # 是否开启绘画功能（可选）
+  StableDiffusion:                                  # 绘画配置
+    Host: "http://xx.xxx.xxx.xxx:7860"              # 绘画服务地址
+    Auth:                                           # 绘画服务认证
+      Username: "xxxxxxxx"                          # 绘画服务用户名
+      Password: "xxxxxxxx"                          # 绘画服务密码
 ```

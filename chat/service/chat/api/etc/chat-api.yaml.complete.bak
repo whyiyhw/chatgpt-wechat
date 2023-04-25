@@ -71,3 +71,11 @@ Plugins:
         Type: "none"
       API:
         URL: "http://192.168.1.202:8886/api/webhook"
+
+Draw:                                               # 绘画配置
+  Enable: false                                     # 是否开启绘画功能（可选）
+  StableDiffusion:                                  # 绘画配置
+    Host: "http://xx.xxx.xxx.xxx:7860"              # 绘画服务地址
+    Auth:                                           # 绘画服务认证
+      Username: "xxxxxxxx"                          # 绘画服务用户名
+      Password: "xxxxxxxx"                          # 绘画服务密码

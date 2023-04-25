@@ -112,4 +112,16 @@ type Config struct {
 			AppKey          string
 		} `json:",optional"`
 	} `json:",optional"`
+
+	// 作图相关配置，目前只支持 StableDiffusion
+	Draw struct {
+		Enable          bool `json:",optional,default=false"`
+		StableDiffusion struct {
+			Host string `json:",optional,default=http://localhost:7890"`
+			Auth struct {
+				Username string
+				Password string
+			}
+		}
+	}
 }
