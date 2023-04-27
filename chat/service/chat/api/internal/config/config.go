@@ -123,5 +123,5 @@ type Config struct {
 				Password string
 			}
 		}
-	}
+	} `json:",optional"`
 }
