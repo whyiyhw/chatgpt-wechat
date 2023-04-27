@@ -41,7 +41,9 @@ func GetPluginPromptInfo(req string, l []Plugin) string {
 		})
 	}
 	t.UserInput = req
-	t.Prompt = "Please determine if the user needs to use the plugin and reply in the following json format, the command should be an executable shell command and the result will help you answer the user's question. Do not explain. \\n {\"is_need\":true,\"plugins\":[{\"name\":\"date_deal\",\"input\":{\"command\":\"\"}}]}"
+	t.Prompt = "Please determine if the user needs to use the plugin and reply in the following json format, " +
+		//"the command should be an executable shell command and" +
+		"the result will help you answer the user's question. Do not explain. \\n {\"is_need\":true,\"plugins\":[{\"name\":\"date_deal\",\"input\":{\"command\":\"\"}}]}"
 	reqStr, _ := json.Marshal(t)
 
 	return string(reqStr)

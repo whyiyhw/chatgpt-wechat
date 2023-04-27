@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  search:
+    build:
+      context: ./search/
+      dockerfile: Dockerfile
+
+    ports:
+      - "8885:8885"
+    privileged: true
+    restart: always
+    networks:
+      - chat_plugins_network
+networks:
+  chat_plugins_network:

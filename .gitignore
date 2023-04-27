@@ -24,3 +24,4 @@ go.work
 .idea
 .DS_Store
 chat-api.yaml
+venv

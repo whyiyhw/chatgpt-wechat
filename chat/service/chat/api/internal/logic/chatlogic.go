@@ -188,13 +188,16 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						API:          i2.API,
 					})
 				}
-				pluginInfo, err := c.WithMaxToken(1000).WithTemperature(0.2).
+				pluginInfo, err := c.WithMaxToken(1000).WithTemperature(0).
 					Completion(plugin.GetPluginPromptInfo(req.MSG, p))
 				if err == nil {
 					msg, ok := plugin.RunPlugin(pluginInfo, p)
 					if ok && msg != "" {
 						// 插件处理成功，存入上下文
-						collection.Set(req.MSG+"\n"+msg, "已确认", false)
+						collection.Set(req.MSG+"\n"+msg+
+							"\n 你已经确认以上信息，如果信息中存在与你目前信息不一致的地方，请以上方插件提供的信息为准，比如日期... 并将其作为后续回答的依据，确认请回复 ok",
+							"ok", false,
+						)
 					}
 				}
 			}
