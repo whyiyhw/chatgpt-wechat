@@ -28,7 +28,10 @@
 
 ### 3. 点击启用消息
 
-会进入验证步骤, 先不验证 url 我们可以 拿到  Token 跟 EncodingAESKey
+- 会进入验证步骤, **先不验证 url** 跳过
+- 我们可以 拿到  **Token** 跟 **EncodingAESKey**
+- 在第4步 完成后再填写 url 来进行验证
+
 ![image2.png](./image2.png)
 
 
