@@ -6,7 +6,7 @@ ENV GO111MODULE=on \
     GOARCH=amd64
 
 # 判定 docker 是否能够访问外部网络
-RUN ping -c 1 -W 2 google.com > /dev/null \
+RUN ping -c 1 -W 1 google.com > /dev/null \
     && echo "外部服务器-无需加入任何配置" \
     || echo "内部服务器" \
     && go env -w GOPROXY=https://goproxy.cn,direct \
