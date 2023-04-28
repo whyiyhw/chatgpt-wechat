@@ -21,10 +21,6 @@
 可在 我的企业 > 应用管理 > 自建  看到创建应用，创建一个名为 **ChatGPT** 的应用，并上传应用头像。创建完成后可以在应用详情页看到到 AgentId 和 Secret
 ![image3.png](./image3.png)
 
-#### 1.2 配置企业可信IP
-- 可以在详情页看到 企业可信IP的配置，把你服务器的公网IP 填入就好，如果没有这个配置项，就说明是老应用，无需处理，这步跳过
-  ![image21.png](./image21.png)
-
 ### 2. 获取 OpenAI 的 KEY
 
 访问 [Account API Keys - OpenAI API](https://platform.openai.com/account/api-keys) ，点击 `Create new secret key` ，创建一个新的 key ，并保存备用。
@@ -49,7 +45,13 @@
 - 确认这两个软件都安装后
 
 ```shell
-# 进入chat 后端目录
+# git clone 项目 
+git clone https://github.com/whyiyhw/chatgpt-wechat.git
+
+# 完成后进入项目
+cd ./chatgpt-wechat
+
+# 接下来进入 chat 后端目录
 cd ./chat
 
 # 从备份生成 配置文件
@@ -70,7 +72,8 @@ vim ./service/chat/api/etc/chat-api.yaml
 ---
 
 #### 4.1 重点，因为 openai 对于大陆地区的封锁，如果你的服务器在国内，这边提供了两个方案
-1. 自建 代理服务器，然后在 chat-api.yaml 中配置代理服务器的地址，相关的参数在 `chat-api.yaml.complete.bak`
+
+- （一）自建 代理服务器，然后在 chat-api.yaml 中配置代理服务器的地址，相关的参数在 `chat-api.yaml.complete.bak`
 ```yaml
 Proxy:                                         # 代理配置 （可选）
   Enable: false                                # 是否启用代理，默认为 false（可选）
@@ -82,7 +85,7 @@ Proxy:                                         # 代理配置 （可选）
 ```
 如何自建代理，点击查看 [自建代理](./proxy.md)
 
-2. 使用 cf 自建反向域名代理，然后用的代理域名替换掉,OpenAi 的 Host 即可
+- （二）使用 cf 自建反向域名代理，然后用的代理域名替换掉,OpenAi 的 Host 即可
 ```yaml
 OpenAi:                                             # openai配置
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # openai key
@@ -97,12 +100,17 @@ sudo docker-compose build
 # 启动集成应用
 sudo docker-compose up -d
 ```
-- 最后在 企业微信的配置中，把 服务器地址 `http://{host}:8887` 填入，如下图
+
+- 最后在 企业微信的配置中，把 **云服务器地址:8887** `http://{host}:8887` 填入，如下图
   ![image26.png](./image26.png)
+
+### 5. 配置企业可信IP
+- 可以在详情页看到 企业可信IP的配置，把你服务器的公网IP 填入就好，如果没有这个配置项，就说明是老应用，无需处理，这步跳过
+  ![image21.png](./image21.png)
 
 - 🎉🎉 你的机器人就配置好了
 
-### 5. 正式布发布与微信打通
+### 6. 正式布发布与微信打通
 
 可在 我的企业 > 微信插件 > 下方找到 一个邀请关注二维码，
 ![image13.png](./image13.png)
@@ -112,8 +120,8 @@ sudo docker-compose up -d
 上述这些都配置完成后，你的机器人就配置好了
 
 
-如果此项目对您有帮助，也可以扫码我的公众号，感谢关注！
-- 
+如果此项目对您有帮助，也可以扫码我的公众号，感谢关注！ 
+
 - 如果需要企业自定义方案，也可以wx我 `whyiyhwxy`
 
 ![image99.png](./image99.png)

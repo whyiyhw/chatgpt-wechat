@@ -12,8 +12,9 @@
 - 支持动态修改 prompt ，与预定义 prompt 模板
 - 支持 http/sock5 代理,支持反向域名代理,支持 azure_openai
 - 支持图片消息（答题场景）
-- 支持插件机制（可扩展性👍👍），
-  - 可按照规则自行开发接入其他能力（知识库, summary , search...）
+- 支持插件机制（可扩展性👍👍）
+  - 目前已支持 日期, search
+  - 也可按照规则自行开发接入其他能力（知识库, summary, 天气 ...）
 - 支持 stable diffusion 1.5 作图
 
 ## 完整安装步骤（[点击查看详情](./doc/install.md)）
@@ -40,6 +41,7 @@
 - [x] 自适应的上下文长度，不用再频繁手动清理上下文环境 2023-04-09
 - [x] 基础插件功能 2023-04-15
 - [x] 支持 stable diffusion 1.5作图 [服务配置](https://help.aliyun.com/practice_detail/611227) 2023-04-25
+- [x] 加入搜索插件 2023-04-27
 ---
 - [ ] 支持 多 key 轮询，应对 openai 的限流机制（可选）
 - [ ] 支持 openapi 对话 token 累计功能， 余额不足时，支持 token 更换（可选）
