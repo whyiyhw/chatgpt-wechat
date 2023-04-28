@@ -8,9 +8,11 @@ ENV GO111MODULE=on \
 # 判定 docker 是否能够访问外部网络
 RUN ping -c 1 -W 1 google.com > /dev/null \
     && echo "外部服务器-无需加入任何配置" \
-    || echo "内部服务器" \
-    && go env -w GOPROXY=https://goproxy.cn,direct \
-    && sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+    || go env -w GOPROXY=https://goproxy.cn,direct
+
+RUN ping -c 1 -W 1 google.com > /dev/null \
+    && echo "外部服务器-无需加入任何配置" \
+    || sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 移动到工作目录：/build
 WORKDIR /build

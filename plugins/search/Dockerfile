@@ -10,10 +10,9 @@ WORKDIR /code
 COPY ./requirements.txt /code/requirements.txt
 
 # 4、运行 pip 命令安装依赖项
-RUN ping -c 1 -W 1 google.com > /dev/null \
+RUN curl -s --head google.com --connect-timeout 1  > /dev/null \
     &&  pip install --no-cache-dir --upgrade -r /code/requirements.txt \
-    || echo "内部服务器" \
-    && pip install --no-cache-dir --upgrade -r /code/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+    || pip install --no-cache-dir --upgrade -r /code/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 5、复制 FastAPI 项目代码
 COPY ./app /code/app
