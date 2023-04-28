@@ -109,6 +109,21 @@ sudo docker-compose up -d
 
 # 后续如果进行了版本升级，需要重新 build 再 up ，一般配置文件(chat-api.yaml)改动，只需要 docker-compose restart  web 就好
 ```
+- 请确认 ip:8887 端口对外开放，如果是云服务器，需要在云服务器的安全组中，开放 8887 端口
+  - 验证方式 `curl --location http://{host}:8887 -v` ，如果返回 400 响应就说明端口已开放，服务已经启动成功了
+```txt
+> GET / HTTP/1.1
+> Host: xxxx.xxxx.xxx.xxx:8887
+> User-Agent: curl/7.87.0
+> Accept: */*
+>
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 400 Bad Request
+< Date: Fri, 28 Apr 2023 03:59:37 GMT
+< Content-Length: 0
+<
+* Connection #0 to host xxx.xxx.xxx.xxx left intact
+```
 
 - 最后在 企业微信的配置中，把 **云服务器地址:8887** `http://{host}:8887` 填入，如下图
   ![image26.png](./image26.png)
