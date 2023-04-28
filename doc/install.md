@@ -99,11 +99,15 @@ OpenAi:                                             # openai配置
 #### 4.2 应用启动 与 配置企业微信应用消息的回调 url
 
 ```shell
-# 修改好后生成集成应用镜像
+# 确保 你现在的目录 在 chatgpt-wechat/chat 下, 再执行以下命令
+
+# 去 build 项目（第一次需要下载依赖，可能会比较慢）
 sudo docker-compose build
 
 # 启动集成应用
 sudo docker-compose up -d
+
+# 后续如果进行了版本升级，需要重新 build 再 up ，一般配置文件(chat-api.yaml)改动，只需要 docker-compose restart  web 就好
 ```
 
 - 最后在 企业微信的配置中，把 **云服务器地址:8887** `http://{host}:8887` 填入，如下图
