@@ -30,7 +30,7 @@
 
 - 会进入验证步骤, **先不验证 url** 跳过
 - 我们可以 拿到  **Token** 跟 **EncodingAESKey**
-- 在第4步 完成后再填写 url 来进行验证
+- 在[第4步](#42-应用启动-与-配置企业微信应用消息的回调-url)完成后再填写 url 来进行验证
 
 ![image2.png](./image2.png)
 
@@ -68,13 +68,13 @@ vim ./service/chat/api/etc/chat-api.yaml
 - 前四个是企业微信 的配置
     - 访问 企业微信-管理员页面 , 可在 我的企业 > 企业信息 > 底部 看到 CorpID
     - DefaultAgentSecret 就是 步骤一中的 Secret
-    - Token 跟 EncodingAESKey 可以在步骤三中拿到
+    - Token 跟 EncodingAESKey 可以在[步骤3](#3-点击启用消息)中拿到
 
 - 最后一个 是 openAPI 生成 KEY 的值
 
 ---
 
-#### 4.1 重点，因为 openai 对于大陆地区的封锁，如果你的服务器在国内，这边提供了两个方案
+#### 4.1 重点，[(国外服务器-跳过这一步，点击至下一步)](#42-应用启动-与-配置企业微信应用消息的回调-url) 因为 openai 对于大陆地区的封锁，如果你的服务器在国内，这边提供了两个方案
 
 - （一）自建 代理服务器，然后在 chat-api.yaml 中配置代理服务器的地址，相关的参数在 `chat-api.yaml.complete.bak`
 ```yaml
@@ -96,6 +96,8 @@ OpenAi:                                             # openai配置
 ```
 如何自建反向域名代理，点击查看 [自建反向域名代理](./cf.md)
 
+#### 4.2 应用启动 与 配置企业微信应用消息的回调 url
+
 ```shell
 # 修改好后生成集成应用镜像
 sudo docker-compose build
@@ -106,6 +108,7 @@ sudo docker-compose up -d
 
 - 最后在 企业微信的配置中，把 **云服务器地址:8887** `http://{host}:8887` 填入，如下图
   ![image26.png](./image26.png)
+
 
 ### 5. 配置企业可信IP
 - 可以在详情页看到 企业可信IP的配置，把你服务器的公网IP 填入就好，如果没有这个配置项，就说明是老应用，无需处理，这步跳过
