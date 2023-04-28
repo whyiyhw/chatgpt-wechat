@@ -65,7 +65,7 @@ vim ./service/chat/api/etc/chat-api.yaml
 - 修改这5个配置项  
   ![image25.png](./image25.png)
 
-- 前两个是企业微信 的配置
+- 前四个是企业微信 的配置
     - 访问 企业微信-管理员页面 , 可在 我的企业 > 企业信息 > 底部 看到 CorpID
     - DefaultAgentSecret 就是 步骤一中的 Secret
     - Token 跟 EncodingAESKey 可以在步骤三中拿到
