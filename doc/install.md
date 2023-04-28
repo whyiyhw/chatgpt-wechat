@@ -98,19 +98,6 @@ OpenAi:                                             # openai配置
 
 #### 4.2 应用编译、启动 与 配置企业微信应用消息的回调 url
 ```shell
-# 在编译容器之前，选取合适的Dockerfile增加编译速度
-
-# 确保 你现在的目录 在 chatgpt-wechat/chat 下, 再执行以下命令 (二选一)
-
-# 国内用户采用 Dockerfile.domestic.bak  
-cp Dockerfile.domestic.bak Dockerfile
-
-# 或者 国外用户，采用 Dockerfile.oversea.bak
-
-cp Dockerfile.oversea.bak Dockerfile
-```
-
-```shell
 # 确保 你现在的目录 在 chatgpt-wechat/chat 下, 再执行以下命令
 
 # 去 build 项目（第一次需要下载依赖，可能会比较慢）
