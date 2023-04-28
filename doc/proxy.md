@@ -29,7 +29,7 @@ vim /data/v2ray/config.json
     {
       "port": 1080,
       "listen": "0.0.0.0",
-      "protocol": "socks",
+      "protocol": "http",
       "sniffing": {
         "enabled": true,
         "destOverride": [
