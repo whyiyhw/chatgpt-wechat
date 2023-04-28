@@ -32,7 +32,7 @@
 ![image2.png](./image2.png)
 
 
-### 4. 在自购服务器上 部署 golang 服务，并开启对外的网络端口
+### 4. 在自购服务器上 通过 docker-compose 部署服务，并开启对外的网络端口
 
 **（本项目不提供宝塔面板安装咨询，请各位大佬自行摸索）**
 
@@ -59,7 +59,7 @@ cp ./service/chat/api/etc/chat-api.yaml.bak ./service/chat/api/etc/chat-api.yaml
 vim ./service/chat/api/etc/chat-api.yaml
 ```
 
-- 修改这5个配置项
+- 修改这5个配置项  
   ![image25.png](./image25.png)
 
 - 前两个是企业微信 的配置
