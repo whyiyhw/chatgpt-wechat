@@ -310,6 +310,9 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 	}
 
 	var cli openai.Speaker
+	if l.svcCtx.Config.Speaker.Company == "" {
+		l.svcCtx.Config.Speaker.Company = "openai"
+	}
 	switch l.svcCtx.Config.Speaker.Company {
 	case "openai":
 		logx.Info("使用openai音频转换")

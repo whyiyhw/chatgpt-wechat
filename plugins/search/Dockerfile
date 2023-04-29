@@ -1,6 +1,13 @@
 # 1、从官方 Python 基础镜像开始
 FROM python:3.11
 
+# 导入环境变量 http_proxy
+ARG http_proxy
+
+RUN curl -s --head google.com --connect-timeout 1  > /dev/null \
+    && echo "外部服务器-无需加入任何配置" \
+    || echo "http_proxy=$http_proxy" >> /etc/environment
+
 # 2、将当前工作目录设置为 /code
 # 这是放置 requirements.txt 文件和应用程序目录的地方
 WORKDIR /code

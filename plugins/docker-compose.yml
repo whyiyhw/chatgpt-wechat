@@ -5,7 +5,8 @@ services:
     build:
       context: ./search/
       dockerfile: Dockerfile
-
+      args:
+        http_proxy: "http://192.168.1.202:1081"
     ports:
       - "8885:8885"
     privileged: true
