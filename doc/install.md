@@ -149,3 +149,13 @@ sudo docker-compose up -d
 - 如果需要企业自定义方案，也可以wx我 `whyiyhwxy`
 
 ![image99.png](./image99.png)
+
+### 7. 进阶玩法
+
+- [企业微信客服](./custom_support_service.md)
+---
+- [个人知识库-文档待补充](./embedding.md)
+- [插件的使用-文档待补充](./plugin.md)
+- [图片识别-OCR-文档待补充](./ocr.md)
+- [图片生成-stable-diffusion-文档待补充](./sd.md)
+- [远程调用本地服务-文档待补充](./prg.md)
