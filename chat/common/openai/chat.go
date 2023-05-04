@@ -51,8 +51,11 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 			Content: message.Content,
 		})
 	}
+	if c.Model == "" || (c.Model != ChatModel && c.Model != ChatModelNew && c.Model != ChatModel4) {
+		c.Model = ChatModel
+	}
 	request := copenai.ChatCompletionRequest{
-		Model:       ChatModel,
+		Model:       c.Model,
 		Messages:    messages,
 		MaxTokens:   c.MaxToken,
 		Temperature: c.Temperature,
@@ -136,8 +139,11 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 			Content: message.Content,
 		})
 	}
+	if c.Model == "" || (c.Model != ChatModel && c.Model != ChatModelNew && c.Model != ChatModel4) {
+		c.Model = ChatModel
+	}
 	request := copenai.ChatCompletionRequest{
-		Model:       ChatModel,
+		Model:       c.Model,
 		Messages:    messages,
 		MaxTokens:   c.MaxToken,
 		Temperature: c.Temperature,

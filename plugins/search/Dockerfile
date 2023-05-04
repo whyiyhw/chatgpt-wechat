@@ -4,9 +4,12 @@ FROM python:3.11
 # 导入环境变量 http_proxy
 ARG http_proxy
 
-RUN curl -s --head google.com --connect-timeout 1  > /dev/null \
-    && echo "外部服务器-无需加入任何配置" \
-    || echo "http_proxy=$http_proxy" >> /etc/environment
+ENV HTTP_PROXY=$http_proxy
+ENV http_proxy=$http_proxy
+ENV HTTPS_PROXY=$http_proxy
+ENV https_proxy=$http_proxy
+
+RUN apt-get update -y && apt-get install iputils-ping -y
 
 # 2、将当前工作目录设置为 /code
 # 这是放置 requirements.txt 文件和应用程序目录的地方
@@ -17,7 +20,7 @@ WORKDIR /code
 COPY ./requirements.txt /code/requirements.txt
 
 # 4、运行 pip 命令安装依赖项
-RUN curl -s --head google.com --connect-timeout 1  > /dev/null \
+RUN ping -c 1 -W 1 google.com > /dev/null \
     &&  pip install --no-cache-dir --upgrade -r /code/requirements.txt \
     || pip install --no-cache-dir --upgrade -r /code/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
