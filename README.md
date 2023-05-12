@@ -54,7 +54,7 @@
 - [ ] 长期记忆插件（规划中）
 - [ ] 十分期待您的需求，可以提issue...
 
-## QA
+## FQA
 
 ### 我配置好了，发送给 openai 的消息有响应，但是企业微信应用没有收到回复
 - 请确认 [1.2 配置企业可信IP](./doc/install.md) ，已配置
@@ -91,5 +91,8 @@ requirepass "xxxxx"
         <img width="40" src="./doc/support01.jpg" alt="supprt01" />
         <img width="40" src="./doc/support02.jpg" alt="supprt02" />
         <img width="40" src="./doc/support03.jpg" alt="supprt03" />
+    </a>
+    <a href="https://www.chaotiinfo.cn" target="_blank" rel="noopener noreferrer">
+        <img width="40" src="./doc/support04.png" alt="supprt04" />
     </a>
   </p>
