@@ -102,6 +102,6 @@ requirepass "xxxxx"
         <img width="40" src="./doc/support03.jpg" alt="supprt03" />
     </a>
     <a href="https://www.chaotiinfo.cn" target="_blank" rel="noopener noreferrer">
-        <img width="40" src="./doc/support04.png" alt="supprt04" />
+        <img width="60" src="./doc/support04.png" alt="supprt04" />
     </a>
   </p>
