@@ -17,6 +17,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -73,6 +74,9 @@ func main() {
 	}
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
+	// disable stat
+	logx.DisableStat()
+
 	server.Start()
 }
 

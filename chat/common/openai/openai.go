@@ -121,7 +121,16 @@ func (c *ChatClient) Completion(req string) (string, error) {
 func (c *ChatClient) buildConfig() copenai.ClientConfig {
 	config := copenai.DefaultConfig(c.APIKey)
 	if c.Origin == "azure" || c.Origin == "azure_ad" {
-		config = copenai.DefaultAzureConfig(c.APIKey, c.BaseHost, c.Engine)
+		config = copenai.DefaultAzureConfig(c.APIKey, c.BaseHost)
+
+		// 默认只使用 一个部署的模型
+		config.AzureModelMapperFunc = func(model string) string {
+			//azureModelMapping := map[string]string{
+			//	defaultModelType: c.Engine,
+			//}
+			//return azureModelMapping[model]
+			return c.Engine
+		}
 	}
 	if c.HttpProxy != "" {
 		proxyUrl, _ := url.Parse(c.HttpProxy)

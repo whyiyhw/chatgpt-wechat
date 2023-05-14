@@ -14,10 +14,6 @@ type Config struct {
 
 	RedisCache cache.CacheConf
 
-	Log struct {
-		Stat bool `json:"stat,optional,default=false"`
-	}
-
 	// jwt 配置
 	Auth struct {
 		AccessSecret string `json:",optional,default=13450cd8841c0f0"`

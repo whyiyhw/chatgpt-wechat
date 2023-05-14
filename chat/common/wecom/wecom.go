@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"chat/common/redis"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/whyiyhw/go-workwx"
 	"github.com/zeromicro/go-zero/core/logx"
 )
