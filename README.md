@@ -97,9 +97,9 @@ requirepass "xxxxx"
 ## 感谢以下朋友对于本项目的大力支持~
   <p align="center">
     <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
-        <img width="40" src="./doc/support01.jpg" alt="supprt01" />
-        <img width="40" src="./doc/support02.jpg" alt="supprt02" />
-        <img width="40" src="./doc/support03.jpg" alt="supprt03" />
+        <img width="60" src="./doc/support01.jpg" alt="supprt01" />
+        <img width="60" src="./doc/support02.jpg" alt="supprt02" />
+        <img width="60" src="./doc/support03.jpg" alt="supprt03" />
     </a>
     <a href="https://www.chaotiinfo.cn" target="_blank" rel="noopener noreferrer">
         <img width="60" src="./doc/support04.png" alt="supprt04" />

@@ -352,6 +352,7 @@ func (l *ChatLogic) FactoryCommend(req *types.ChatReq) (proceed bool, err error)
 	template["#prompt:set:"] = CommendPromptSet{}
 	template["#system"] = CommendSystem{}
 	template["#welcome"] = CommendWelcome{}
+	template["#about"] = CommendAbout{}
 
 	for s, data := range template {
 		if strings.HasPrefix(req.MSG, s) {
@@ -363,19 +364,26 @@ func (l *ChatLogic) FactoryCommend(req *types.ChatReq) (proceed bool, err error)
 	return true, nil
 }
 
-func sendToUser(agentID int64, userID, msg string, config config.Config, images ...string) {
-	// 确认多应用模式是否开启
-	corpSecret := config.WeCom.DefaultAgentSecret
-	// 兼容性调整 取 DefaultAgentSecret 作为默认值 兼容老版本 CorpSecret
-	if corpSecret == "" {
-		corpSecret = config.WeCom.CorpSecret
-	}
-	for _, application := range config.WeCom.MultipleApplication {
-		if application.AgentID == agentID {
-			corpSecret = application.AgentSecret
+// 发送消息给用户
+func sendToUser(agentID any, userID, msg string, config config.Config, images ...string) {
+	// 根据 agentID 的类型 执行不同的方法
+	switch agentID.(type) {
+	case int64:
+		// 确认多应用模式是否开启
+		corpSecret := config.WeCom.DefaultAgentSecret
+		// 兼容性调整 取 DefaultAgentSecret 作为默认值 兼容老版本 CorpSecret
+		if corpSecret == "" {
+			corpSecret = config.WeCom.CorpSecret
 		}
+		for _, application := range config.WeCom.MultipleApplication {
+			if application.AgentID == agentID {
+				corpSecret = application.AgentSecret
+			}
+		}
+		wecom.SendToWeComUser(agentID.(int64), userID, msg, corpSecret, images...)
+	case string:
+		wecom.SendCustomerChatMessage(agentID.(string), userID, msg)
 	}
-	wecom.SendToWeComUser(agentID, userID, msg, corpSecret, images...)
 }
 
 type TemplateData interface {
@@ -399,8 +407,8 @@ type CommendHelp struct{}
 func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 	tips := fmt.Sprintf(
 		"支持指令：\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
-		"基础模块🕹️\n\n#help 查看所有指令",
-		"#system 查看当前对话的系统信息",
+		"基础模块🕹️\n\n#help       查看所有指令",
+		"#system 查看会话系统信息",
 		"#clear 清空当前会话的数据\n",
 		"会话设置🦄\n\n#config_prompt:xxx，如程序员的小助手",
 		"#config_model:xxx，如text-davinci-003",
@@ -422,7 +430,12 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 type CommendSystem struct{}
 
 func (p CommendSystem) exec(l *ChatLogic, req *types.ChatReq) bool {
-	tips := "系统信息\n model 版本为：" + l.model + "\n 系统基础设定：" + l.basePrompt + " \n"
+	tips := fmt.Sprintf(
+		"系统信息\n系统版本为：%s \nmodel 版本为：%s \n系统基础设定：%s \n",
+		l.svcCtx.Config.SystemVersion,
+		l.model,
+		l.basePrompt,
+	)
 	sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 	return false
 }
@@ -500,6 +513,13 @@ func (p CommendConfigClear) exec(l *ChatLogic, req *types.ChatReq) bool {
 		_ = l.svcCtx.ChatConfigModel.Delete(context.Background(), val.Id)
 	}
 	sendToUser(req.AgentID, req.UserID, "对话设置已恢复初始化", l.svcCtx.Config)
+	return false
+}
+
+type CommendAbout struct{}
+
+func (p CommendAbout) exec(l *ChatLogic, req *types.ChatReq) bool {
+	sendToUser(req.AgentID, req.UserID, "https://github.com/whyiyhw/chatgpt-wechat", l.svcCtx.Config)
 	return false
 }
 

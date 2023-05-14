@@ -12,7 +12,6 @@ import (
 	"chat/common/milvus"
 	"chat/common/openai"
 	"chat/common/redis"
-	"chat/common/wecom"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
@@ -123,10 +122,10 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 					}
 				}
 				if tempMessage != "" {
-					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
+					go sendToUser(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage, l.svcCtx.Config)
 				}
 			} else {
-				go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据")
+				go sendToUser(req.OpenKfID, req.CustomerID, "正在为您搜索相关数据", l.svcCtx.Config)
 				res, err := c.CreateOpenAIEmbeddings(req.Msg)
 				if err == nil {
 					embedding := res.Data[0].Embedding
@@ -156,7 +155,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 						}
 					}
 					if tempMessage != "" {
-						go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage)
+						go sendToUser(req.OpenKfID, req.CustomerID, "正在思考中，也许您还想知道"+"\n\n"+tempMessage, l.svcCtx.Config)
 					}
 				}
 			}
@@ -176,7 +175,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				messageText, err := c.ChatStream(prompts, channel)
 				if err != nil {
 					logx.Error("读取 stream 失败：", err.Error())
-					wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统拥挤，稍后再试~"+err.Error())
+					sendToUser(req.OpenKfID, req.CustomerID, "系统拥挤，稍后再试~"+err.Error(), l.svcCtx.Config)
 					return
 				}
 				collection.Set("", messageText, true)
@@ -198,18 +197,21 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				if !ok {
 					// 数据接受完成
 					if len(rs) > 0 {
-						go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, string(rs)+"\n--------------------------------\n"+req.Msg)
+						go sendToUser(req.OpenKfID, req.CustomerID,
+							string(rs)+"\n--------------------------------\n"+req.Msg,
+							l.svcCtx.Config,
+						)
 					}
 					return
 				}
 				rs = append(rs, []rune(s)...)
 
 				if first && len(rs) > 50 && strings.Contains(s, "\n\n") {
-					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, strings.TrimRight(string(rs), "\n\n"))
+					go sendToUser(req.OpenKfID, req.CustomerID, strings.TrimRight(string(rs), "\n\n"), l.svcCtx.Config)
 					rs = []rune{}
 					first = false
 				} else if len(rs) > 200 && strings.Contains(s, "\n\n") {
-					go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, strings.TrimRight(string(rs), "\n\n"))
+					go sendToUser(req.OpenKfID, req.CustomerID, strings.TrimRight(string(rs), "\n\n"), l.svcCtx.Config)
 					rs = []rune{}
 				}
 			}
@@ -218,12 +220,12 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		messageText, err := c.Chat(prompts)
 
 		if err != nil {
-			wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error())
+			sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error(), l.svcCtx.Config)
 			return
 		}
 
 		// 然后把数据 发给对应的客户
-		go wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, messageText)
+		go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
 		collection.Set("", messageText, true)
 		_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
 			User:       req.CustomerID,
@@ -274,7 +276,10 @@ func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed 
 	}
 
 	template["#voice"] = CustomerCommendVoice{}
+	template["#help"] = CustomerCommendHelp{}
+	template["#system"] = CustomerCommendSystem{}
 	template["#clear"] = CustomerCommendClear{}
+	template["#about"] = CustomerCommendAbout{}
 
 	for s, data := range template {
 		if strings.HasPrefix(req.Msg, s) {
@@ -295,7 +300,7 @@ type CustomerCommendVoice struct{}
 func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
 	msg := strings.Replace(req.Msg, "#voice:", "", -1)
 	if msg == "" {
-		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:未能读取到音频信息")
+		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:未能读取到音频信息", l.svcCtx.Config)
 		return false
 	}
 
@@ -331,19 +336,18 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 		//msg = strings.Replace(msg, ".mp3", ".amr", -1)
 		//cli = s
 	default:
-		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:未知的音频转换服务商")
+		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:未知的音频转换服务商", l.svcCtx.Config)
 		return false
 	}
 
 	txt, err := cli.SpeakToTxt(msg)
 	if txt == "" || err != nil {
 		logx.Info("openai转换错误", err.Error())
-		wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "系统错误:音频信息转换错误")
+		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:音频信息转换错误", l.svcCtx.Config)
 		return false
 	}
 	// 语音识别成功
-	wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "语音识别成功:\n\n"+txt+"\n\n系统正在思考中...")
-
+	sendToUser(req.OpenKfID, req.CustomerID, "语音识别成功:\n\n"+txt+"\n\n系统正在思考中...", l.svcCtx.Config)
 	l.message = txt
 	return true
 }
@@ -355,6 +359,41 @@ func (p CustomerCommendClear) customerExec(l *CustomerChatLogic, req *types.Cust
 	openai.NewUserContext(
 		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
 	).Clear()
-	wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "记忆清除完成:来开始新一轮的chat吧")
+	sendToUser(req.OpenKfID, req.CustomerID, "记忆清除完成:来开始新一轮的chat吧", l.svcCtx.Config)
+	return false
+}
+
+// CustomerCommendSystem 查看系统信息
+type CustomerCommendSystem struct{}
+
+func (p CustomerCommendSystem) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	tips := fmt.Sprintf(
+		"系统信息\n系统版本为：%s \nmodel 版本为：%s \n系统基础设定：%s \n",
+		l.svcCtx.Config.SystemVersion,
+		l.model,
+		l.basePrompt,
+	)
+	sendToUser(req.OpenKfID, req.CustomerID, tips, l.svcCtx.Config)
+	return false
+}
+
+// CustomerCommendHelp 查看所有指令
+type CustomerCommendHelp struct{}
+
+func (p CustomerCommendHelp) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	tips := fmt.Sprintf(
+		"支持指令：\n\n%s\n%s\n%s\n",
+		"基础模块🕹️\n\n#help       查看所有指令",
+		"#system 查看会话系统信息",
+		"#clear 清空当前会话的数据",
+	)
+	sendToUser(req.OpenKfID, req.CustomerID, tips, l.svcCtx.Config)
+	return false
+}
+
+type CustomerCommendAbout struct{}
+
+func (p CustomerCommendAbout) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	sendToUser(req.OpenKfID, req.CustomerID, "https://github.com/whyiyhw/chatgpt-wechat", l.svcCtx.Config)
 	return false
 }
