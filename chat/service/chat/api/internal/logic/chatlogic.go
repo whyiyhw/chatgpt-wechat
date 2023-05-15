@@ -353,6 +353,7 @@ func (l *ChatLogic) FactoryCommend(req *types.ChatReq) (proceed bool, err error)
 	template["#system"] = CommendSystem{}
 	template["#welcome"] = CommendWelcome{}
 	template["#about"] = CommendAbout{}
+	template["#usage"] = CommendUsage{}
 
 	for s, data := range template {
 		if strings.HasPrefix(req.MSG, s) {
@@ -406,9 +407,10 @@ type CommendHelp struct{}
 
 func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 	tips := fmt.Sprintf(
-		"支持指令：\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+		"支持指令：\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"基础模块🕹️\n\n#help       查看所有指令",
 		"#system 查看会话系统信息",
+		"#usage 查看额度使用情况\n#usage:sk-xxx 查看指定 key 的使用情况",
 		"#clear 清空当前会话的数据\n",
 		"会话设置🦄\n\n#config_prompt:xxx，如程序员的小助手",
 		"#config_model:xxx，如text-davinci-003",
@@ -417,7 +419,7 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 		"#prompt:set:xx 如 24(诗人)，角色应用",
 		"\n会话控制🚀\n",
 		"#session:start 开启新的会话",
-		"#session:list  查看所有会话",
+		"#session:list    查看所有会话",
 		"#session:clear 清空所有会话",
 		"#session:exchange:xxx 切换指定会话",
 		"\n绘图🎨\n",
@@ -842,4 +844,30 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 	}
 	sendToUser(req.AgentID, req.UserID, "未知的命令，您可以通过 \n#help \n查看帮助", l.svcCtx.Config)
 	return false
+}
+
+type CommendUsage struct{}
+
+func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
+	if strings.HasPrefix(req.MSG, "#usage") {
+		// 查询自己key的使用情况
+		key := l.svcCtx.Config.OpenAi.Key
+		if strings.HasPrefix(req.MSG, "#usage:") {
+			key = strings.Replace(req.MSG, "#usage:", "", -1)
+		}
+		// 查询使用情况
+		usage, err := openai.GetUsageByKey(key, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5)
+
+		if err != nil {
+			logx.Info("get usage fail", err)
+			sendToUser(req.AgentID, req.UserID, "查询使用情况失败，请重新尝试~", l.svcCtx.Config)
+			return false
+		}
+		sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
+			"当前key的使用情况：\n到期时间：%s\n总计可用金额：%f$\n账户名称：%s\n已使用金额：%f$\n剩余可用金额：%f$\n",
+			usage.AccessUntil, usage.HardLimitUsd, usage.AccountName, usage.UsedAmountUsd, usage.RemainingAmountUsd,
+		), l.svcCtx.Config)
+		return false
+	}
+	return true
 }

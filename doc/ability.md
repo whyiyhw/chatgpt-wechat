@@ -24,3 +24,11 @@
 
     - （图片识别-小猿搜题 青春版）
         - [点击查看示例](./image25.jpg)
+
+### 余额查询： `openai key` 余额查询功能
+
+- 在应用消息中 发送 `#usage` 查询默认 key 的使用情况
+![image39.png](image39.png)
+- 在应用消息中 发送 `#usage:sk-P8OUnFOUJ8xxxxxxxxxxxxxh1b6sEQgbru1` 查询其它 key 的使用额度
+![image40.png](image40.png)
+- //TODO 其它待完善（每日账单、账单发送到邮箱/本地、每个用户使用情况...）
