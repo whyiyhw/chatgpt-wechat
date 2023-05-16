@@ -11,9 +11,6 @@ RedisCache:                                         # redis缓存配置
   - Host: redis7:6379                               # redis缓存地址
     Pass: "123456"                                  # redis缓存密码 自建最好修改下密码
 
-Log:
-  stat: false
-
 Auth:                                               # jwt配置（可选）自建最好修改下
   AccessSecret: "xxxxxxxxxxxxxxx"                   # jwt加密密钥(可选) 默认为 xxxxxxxxxxxx
   AccessExpire: 25920000                            # jwt过期时间(可选) 默认为 25920000

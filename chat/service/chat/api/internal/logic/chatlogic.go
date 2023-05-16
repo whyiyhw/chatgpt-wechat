@@ -354,6 +354,7 @@ func (l *ChatLogic) FactoryCommend(req *types.ChatReq) (proceed bool, err error)
 	template["#welcome"] = CommendWelcome{}
 	template["#about"] = CommendAbout{}
 	template["#usage"] = CommendUsage{}
+	template["#plugin"] = CommendPlugin{}
 
 	for s, data := range template {
 		if strings.HasPrefix(req.MSG, s) {
@@ -407,12 +408,12 @@ type CommendHelp struct{}
 
 func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 	tips := fmt.Sprintf(
-		"支持指令：\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+		"支持指令：\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 		"基础模块🕹️\n\n#help       查看所有指令",
 		"#system 查看会话系统信息",
 		"#usage 查看额度使用情况\n#usage:sk-xxx 查看指定 key 的使用情况",
-		"#clear 清空当前会话的数据\n",
-		"会话设置🦄\n\n#config_prompt:xxx，如程序员的小助手",
+		"#clear 清空当前会话的数据",
+		"\n会话设置🦄\n\n#config_prompt:xxx，如程序员的小助手",
 		"#config_model:xxx，如text-davinci-003",
 		"#config_clear 初始化对话设置",
 		"#prompt:list 查看所有支持的预定义角色",
@@ -424,6 +425,10 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 		"#session:exchange:xxx 切换指定会话",
 		"\n绘图🎨\n",
 		"#draw:xxx 按照指定 prompt 进行绘画",
+		"\n插件🛒\n",
+		"#plugin:list 查看所有插件",
+		//"#plugin:enable:xxx 启用指定插件\n",
+		//"#plugin:disable:xxx 禁用指定插件\n",
 	)
 	sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 	return false
@@ -868,6 +873,32 @@ func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			usage.AccessUntil, usage.HardLimitUsd, usage.AccountName, usage.UsedAmountUsd, usage.RemainingAmountUsd,
 		), l.svcCtx.Config)
 		return false
+	}
+	return true
+}
+
+type CommendPlugin struct{}
+
+func (p CommendPlugin) exec(l *ChatLogic, req *types.ChatReq) bool {
+	if strings.HasPrefix(req.MSG, "#plugin") {
+		if strings.HasPrefix(req.MSG, "#plugin:list") {
+			var pluginStr string
+			if l.svcCtx.Config.Plugins.Enable {
+				for _, plus := range l.svcCtx.Config.Plugins.List {
+					status := "禁用"
+					if plus.Enable {
+						status = "启用"
+					}
+					pluginStr += fmt.Sprintf(
+						"插件名称：%s\n插件描述：%s\n插件状态：%s\n\n", plus.NameForHuman, plus.DescForHuman, status,
+					)
+				}
+			} else {
+				pluginStr = "暂无"
+			}
+			sendToUser(req.AgentID, req.UserID, fmt.Sprintf("当前可用的插件列表：\n%s", pluginStr), l.svcCtx.Config)
+			return false
+		}
 	}
 	return true
 }

@@ -72,23 +72,37 @@
 
 ## FQA
 
-### 我配置好了，发送给 openai 的消息有响应，但是企业微信应用没有收到回复
-- 请确认 [1.2 配置企业可信IP](./doc/install.md) ，已配置
+### 配置完成，发送给 openai 的消息有响应，但是应用没有收到回复？
+<details>
+<summary></summary>
+
+- 请确认 [5. 配置企业可信IP](./doc/install.md#5-配置企业可信ip) ，已配置
 - 如果还是没有响应，请通过 `docker logs -f chat_web_1` 进行查看，
   - 应用消息的 关键字为 `应用消息-发送失败 err:` 
   - 客服消息的 关键字为 `客服消息-发送失败 err:`
 - 如果存在 `Code 41001， Msg: "access token mising` ... 等 access_token 异常的,请再次确认
 安装流程中的对应参数`CorpID ,corpSercret ,agentID` 是否正确配置
+</details>
 
 ### 服务器在国内，出现 `connect: connection refused`
+<details>
+<summary></summary>
+
 - 方法一 ： 请自行 安装 `proxy client` 然后开启 监听 0.0.0.0:socket 模式 ，不要开启认证，之后在配置文件中，开启配置就OK,详情请见 `v0.2.2` 
 - 方法二 ： 把服务器移到 香港/海外 , 大陆地区将长期不能访问
+</details>
 
 ### 修改 `chat-api.yaml` 配置后如何让其生效
+<details>
+<summary></summary>
+
 - 你可以通过 `docker-compose restart web` 重启 web 服务
 - 或者 `docker-compose build && docker-compose up -d` 重启整个服务
+</details>
 
 ### 如何修改 redis 密码? 
+<details>
+<summary></summary>
 
 - 首先修改 `chat/service/chat/api/etc/chat-api.yaml` 
 ```yaml
@@ -100,6 +114,7 @@ RedisCache:
 requirepass "xxxxx"
 ```
 - 最后 `docker-compose down && docker-compose up -d` 重启整个服务
+</details>
 
 ## 感谢以下朋友对于本项目的大力支持~
   <p align="center">

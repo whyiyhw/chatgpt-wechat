@@ -60,7 +60,7 @@ Response:                                           # 回复配置
 Plugins:
   Enable: true
   List:
-    - NameForHuman: "date_shell"
+    - NameForHuman: "日期_shell"
       NameForModel: "date_shell"
       DescForHuman: "这个插件可以提供日期相关的信息"
       DescModel: "This plugin can execute shell commands used to get the date."
@@ -68,7 +68,7 @@ Plugins:
         Type: "none"
       API:
         URL: "http://192.168.1.202:8886/api/webhook"
-    - NameForHuman: "search"
+    - NameForHuman: "互联网查询"
       NameForModel: "search"
       DescForHuman: "这个插件可以提供最近实事的相关信息"
       DescModel: "This plugin can Useful for when you need to answer questions about current events. Input should be a search query."
@@ -76,6 +76,14 @@ Plugins:
         Type: "none"
       API:
         URL: "http://192.168.1.202:8885/chat"
+    - NameForHuman: "维基百科查询"
+      NameForModel: "wikipedia"
+      DescForHuman: "这个插件可以提供关于人、地点、公司、历史事件或其他主题的一般性问题。"
+      DescModel: "This plugin can Useful for when you need to answe  general questions about people, places, companies, historical events, or other subjects. Input should be a search query."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8885/wikipedia"
 
 Draw:                                               # 绘画配置
   Enable: false                                     # 是否开启绘画功能（可选）
