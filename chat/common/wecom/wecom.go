@@ -138,13 +138,17 @@ func DealUserLastMessageByToken(token, openKfID string) {
 			continue
 		}
 		if v.Msgtype == "text" && v.Origin == 3 {
+			if len([]rune(v.Text.Content)) > 500 {
+				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#direct:发送的消息最大500字符，请分段发送~")
+				return
+			}
 			CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, v.Text.Content)
 		}
 		if v.Msgtype == "voice" && v.Origin == 3 {
 			filePath, err := DealCustomerVoiceMessageByMediaID(v.Voice.MediaId)
 			if err != nil {
 				logx.Info("音频文件读取失败", v.Voice.MediaId)
-				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "音频文件读取失败:"+err.Error())
+				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#direct:音频文件读取失败:"+err.Error())
 			} else {
 				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#voice:"+filePath)
 			}
@@ -193,9 +197,14 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 	// You can do much more!
 	fmt.Printf("incoming message: %s\n", msg)
 
+	// 企业应用 文本 & 语音 & 图片 消息
 	if msg.MsgType == workwx.MessageTypeText {
 		message, ok := msg.Text()
 		if ok {
+			if len([]rune(message.GetContent())) > 500 {
+				realLogic("wecom", "发送的消息最大500字符，请分段发送~", msg.FromUserID, msg.AgentID)
+				return nil
+			}
 			realLogic("openai", message.GetContent(), msg.FromUserID, msg.AgentID)
 		}
 	} else if msg.MsgType == workwx.MessageTypeVoice {
@@ -208,6 +217,11 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 			} else {
 				realLogic("openai", "#voice:"+filePath, msg.FromUserID, msg.AgentID)
 			}
+		}
+	} else if msg.MsgType == workwx.MessageTypeImage {
+		p, ok := msg.Image()
+		if ok {
+			realLogic("openai", "#image:"+p.GetPicURL(), msg.FromUserID, msg.AgentID)
 		}
 	}
 
@@ -223,13 +237,6 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 				fmt.Println("客服消息 Token:", p.Token, "OpenKfID:", p.OpenKfID)
 				DealUserLastMessageByToken(p.Token, p.OpenKfID)
 			}
-		}
-	}
-
-	if msg.MsgType == workwx.MessageTypeImage {
-		p, ok := msg.Image()
-		if ok {
-			realLogic("openai", "#image:"+p.GetPicURL(), msg.FromUserID, msg.AgentID)
 		}
 	}
 

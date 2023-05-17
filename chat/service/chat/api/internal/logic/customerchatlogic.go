@@ -275,6 +275,7 @@ func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed 
 		return true, nil
 	}
 
+	template["#direct"] = CustomerCommendDirect{}
 	template["#voice"] = CustomerCommendVoice{}
 	template["#help"] = CustomerCommendHelp{}
 	template["#system"] = CustomerCommendSystem{}
@@ -395,5 +396,13 @@ type CustomerCommendAbout struct{}
 
 func (p CustomerCommendAbout) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
 	sendToUser(req.OpenKfID, req.CustomerID, "https://github.com/whyiyhw/chatgpt-wechat", l.svcCtx.Config)
+	return false
+}
+
+type CustomerCommendDirect struct{}
+
+func (p CustomerCommendDirect) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	msg := strings.Replace(req.Msg, "#direct:", "", -1)
+	sendToUser(req.OpenKfID, req.CustomerID, msg, l.svcCtx.Config)
 	return false
 }

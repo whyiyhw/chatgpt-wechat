@@ -437,11 +437,17 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 type CommendSystem struct{}
 
 func (p CommendSystem) exec(l *ChatLogic, req *types.ChatReq) bool {
+	// 是否开启插件
+	pluginStatus := "关闭"
+	if l.svcCtx.Config.Plugins.Enable {
+		pluginStatus = "开启"
+	}
 	tips := fmt.Sprintf(
-		"系统信息\n系统版本为：%s \nmodel 版本为：%s \n系统基础设定：%s \n",
+		"系统信息\n系统版本为：%s \n\nmodel 版本为：%s \n\n系统基础设定：%s \n\n插件是否开启：%s ",
 		l.svcCtx.Config.SystemVersion,
 		l.model,
 		l.basePrompt,
+		pluginStatus,
 	)
 	sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 	return false
