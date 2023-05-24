@@ -49,7 +49,7 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 		for k, val := range strings.Split(prompt, "\n") {
 			// 正面提示
 			if k == 0 {
-				reqPayload.Prompt += val
+				reqPayload.Prompt = val
 				continue
 			}
 			// 负面提示配置
