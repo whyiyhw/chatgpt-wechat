@@ -116,7 +116,7 @@ type Config struct {
 	Draw struct {
 		Enable          bool `json:",optional,default=false"`
 		StableDiffusion struct {
-			Host string `json:",optional,default=http://localhost:7890"`
+			Host string `json:",optional,default="`
 			Auth struct {
 				Username string
 				Password string

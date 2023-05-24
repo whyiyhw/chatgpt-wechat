@@ -2,6 +2,18 @@
 
 ## [云服务sd](https://help.aliyun.com/practice_detail/611227)
 
+- 搭建好后去 修改 chat-api.yaml 配置文件
+
+```yaml
+Draw:
+  Enable: true
+  StableDiffusion:
+    Host: "http://192.168.1.202:7511"
+    Auth:
+      Username: "xxx"
+      Password: "xxx"
+```
+- 再重启 `docker-compose restart web` 服务, 就可以了
 
 ## 本地搭建 sd 并提供给远程服务使用
 
@@ -21,6 +33,7 @@ token = xxxxxxxxxxxxxxxxxxxxxxxx
 
 # 开启转发
 vhost_http_port = 7000
+vhost_http_timeout = 600
 
 # frp管理后台端口，请按自己需求更改
 dashboard_port = 7500
@@ -146,7 +159,15 @@ server {
     }
 }
 ```
-- 然后去 修改 chat-api.yaml 配置文件
+- 再修改本地 host
+```shell
+vim /etc/hosts
+
+# 加入
+127.0.0.1       web01.sd.com
+```
+
+- 最后去 修改 chat-api.yaml 配置文件
 
 ```yaml
 Draw:

@@ -75,6 +75,8 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, images ...st
 				if err != nil {
 					logx.Error("应用图片消息-发送失败 err:", err)
 				}
+				// 删除本地图片
+				_ = os.Remove(path)
 			}
 		}()
 		return
@@ -138,10 +140,6 @@ func DealUserLastMessageByToken(token, openKfID string) {
 			continue
 		}
 		if v.Msgtype == "text" && v.Origin == 3 {
-			if len([]rune(v.Text.Content)) > 500 {
-				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#direct:发送的消息最大500字符，请分段发送~")
-				return
-			}
 			CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, v.Text.Content)
 		}
 		if v.Msgtype == "voice" && v.Origin == 3 {
@@ -201,10 +199,6 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 	if msg.MsgType == workwx.MessageTypeText {
 		message, ok := msg.Text()
 		if ok {
-			if len([]rune(message.GetContent())) > 500 {
-				realLogic("wecom", "发送的消息最大500字符，请分段发送~", msg.FromUserID, msg.AgentID)
-				return nil
-			}
 			realLogic("openai", message.GetContent(), msg.FromUserID, msg.AgentID)
 		}
 	} else if msg.MsgType == workwx.MessageTypeVoice {

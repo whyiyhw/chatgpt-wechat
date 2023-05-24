@@ -1,14 +1,12 @@
 package logic
 
 import (
+	"chat/common/draw"
 	"context"
 	"crypto/md5"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -26,7 +24,6 @@ import (
 	"chat/service/chat/model"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -762,95 +759,48 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 	if strings.HasPrefix(req.MSG, "#draw:") {
 		prompt := strings.Replace(req.MSG, "#draw:", "", -1)
 		if l.svcCtx.Config.Draw.Enable {
-			host := l.svcCtx.Config.Draw.StableDiffusion.Host
-			url := host + "/sdapi/v1/txt2img"
-			reqPayload := map[string]interface{}{
-				"prompt": prompt,
-				"steps":  20,
-			}
-			tokenStr := l.svcCtx.Config.Draw.StableDiffusion.Auth.Username + ":" + l.svcCtx.Config.Draw.StableDiffusion.Auth.Password
-			encodedToken := base64.StdEncoding.EncodeToString([]byte(tokenStr))
-
-			client := &http.Client{}
-			body, _ := json.Marshal(reqPayload)
-			drawReq, err := http.NewRequest(http.MethodPost, url, strings.NewReader(string(body)))
-			if err != nil {
-				logx.Info("draw request client build fail", err)
-				sendToUser(req.AgentID, req.UserID, "构建绘画请求失败，请重新尝试~", l.svcCtx.Config)
-				return false
-			}
-			logx.Info("draw request client build success")
-			drawReq.Header.Add("Content-Type", "application/json")
-			drawReq.Header.Add("Authorization", "Basic "+encodedToken)
-
-			sendToUser(req.AgentID, req.UserID, "正在绘画中...", l.svcCtx.Config)
-
-			res, err := client.Do(drawReq)
-			if err != nil {
-				logx.Info("draw request fail", err)
-				sendToUser(req.AgentID, req.UserID, "绘画请求失败，请重新尝试~", l.svcCtx.Config)
-				return false
-			}
-			defer func(Body io.ReadCloser) {
-				_ = Body.Close()
-			}(res.Body)
-
-			resBody, err := io.ReadAll(res.Body)
-			if err != nil {
-				logx.Info("draw request fail", err)
-				sendToUser(req.AgentID, req.UserID, "绘画请求响应失败，请重新尝试~", l.svcCtx.Config)
-				return false
-			}
-
-			var resPayload map[string]interface{}
-			err = json.Unmarshal(resBody, &resPayload)
-			if err != nil {
-				logx.Info("draw request fail", err)
-				sendToUser(req.AgentID, req.UserID, "绘画请求响应解析失败，请重新尝试~", l.svcCtx.Config)
-				return false
-			}
-			images := resPayload["images"].([]interface{})
-			for _, image := range images {
-				s := image.(string)
-				if err != nil {
-					logx.Info("draw request fail", err)
-					sendToUser(req.AgentID, req.UserID, "绘画请求响应解析失败，请重新尝试~", l.svcCtx.Config)
-					return false
-				}
-				// 将解密后的信息写入到本地
-				imageBase64 := strings.Split(s, ",")[0]
-				decodeBytes, err := base64.StdEncoding.DecodeString(imageBase64)
-				if err != nil {
-					logx.Info("draw request fail", err)
-					sendToUser(req.AgentID, req.UserID, "绘画请求响应解析失败，请重新尝试~", l.svcCtx.Config)
-					return false
+			go func() {
+				var d draw.Draw
+				if l.svcCtx.Config.Draw.StableDiffusion.Host != "" {
+					d = draw.NewSdDraw(
+						l.svcCtx.Config.Draw.StableDiffusion.Host,
+						l.svcCtx.Config.Draw.StableDiffusion.Auth.Username,
+						l.svcCtx.Config.Draw.StableDiffusion.Auth.Password,
+					)
 				}
 
-				// 判断目录是否存在
-				_, err = os.Stat("/tmp/image")
-				if err != nil {
-					err := os.MkdirAll("/tmp/image", os.ModePerm)
-					if err != nil {
-						fmt.Println("mkdir err:", err)
-						sendToUser(req.AgentID, req.UserID, "绘画请求响应解析失败，请重新尝试~", l.svcCtx.Config)
-						return false
+				// 创建一个 channel 用于接收绘画结果
+				ch := make(chan string)
+
+				// 什么时候关闭 channel？ 当收到的结果为 "stop" ，或者15分钟超时
+				go func() {
+					for {
+						select {
+						case path := <-ch:
+							if path == "stop" {
+								close(ch)
+								return
+							} else if path == "start" {
+								sendToUser(req.AgentID, req.UserID, "正在绘画中...", l.svcCtx.Config)
+							} else {
+								sendToUser(req.AgentID, req.UserID, "", l.svcCtx.Config, path)
+							}
+						case <-time.After(15 * time.Minute):
+							sendToUser(req.AgentID, req.UserID, "绘画请求超时", l.svcCtx.Config)
+							close(ch)
+							return
+						}
 					}
-				}
+				}()
 
-				path := fmt.Sprintf("/tmp/image/%s.png", uuid.New().String())
-
-				err = os.WriteFile(path, decodeBytes, os.ModePerm)
-
+				err := d.Txt2Img(prompt, ch)
 				if err != nil {
-					logx.Info("draw save fail", err)
-					sendToUser(req.AgentID, req.UserID, "绘画请求响应解析失败，请重新尝试~", l.svcCtx.Config)
-					return false
+					sendToUser(req.AgentID, req.UserID, "构建绘画请求失败，请重新尝试~", l.svcCtx.Config)
+					ch <- "stop"
+					return
 				}
-
-				// 再将 image 信息发送到用户
-				sendToUser(req.AgentID, req.UserID, "", l.svcCtx.Config, path)
-				return false
-			}
+			}()
+			return false
 		}
 	}
 	sendToUser(req.AgentID, req.UserID, "未知的命令，您可以通过 \n#help \n查看帮助", l.svcCtx.Config)
