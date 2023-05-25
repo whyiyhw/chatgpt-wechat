@@ -37,77 +37,11 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 	url := sd.Host + "/sdapi/v1/txt2img"
 
 	// 对 prompt 比如 进行解析
-	//masterpiece, best quality, highres, 1girl, suzumiya haruhi, solo, kita high school uniform, blue sailor collar,  sailor collar, blue skirt, brown hair, short hair, brown eyes, armband, hairband, medium hair, ribbon, socks, medium breasts, <lora:suzumiya_haruhi_v10:0.7>, classroom, <lora:LookingDisgusted_V1:0.3>,show feet, look at viewer,image taken from below, full body, shy, sitting on the desk,((looking disgusted)), (very angry), disappointed
-	//Negative prompt: EasyNegative, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, (worst quality:1.2), low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, lowres graffiti, (low quality lowres simple background:1.1),
-	//ENSD: 31337, Size: 512x768, Seed: 1002205557, Model: OldFish_2348V12, Steps: 20, Sampler: DPM++ SDE Karras, CFG scale: 7, Clip skip: 2, Model hash: bd399ee451, Hires steps: 13, Hires upscale: 2, Hires upscaler: R-ESRGAN 4x+ Anime6B, Denoising strength: 0.45
-	reqPayload := getDefaultDataTXT2IMGReq()
-	// 先对"\n"进行分段
-	if !strings.Contains(prompt, "\n") {
-		reqPayload.Prompt += prompt
-	} else {
-		//通过 "\n"  分段
-		for k, val := range strings.Split(prompt, "\n") {
-			// 正面提示
-			if k == 0 {
-				reqPayload.Prompt = val
-				continue
-			}
-			// 负面提示配置
-			if strings.Contains(val, "Negative prompt:") {
-				reqPayload.NegativePrompt = strings.Replace(val, "Negative prompt:", "", -1)
-				continue
-			}
-			// 其它配置
-			if strings.Contains(val, "Steps:") {
-				for _, v := range strings.Split(prompt, ", ") {
-					if strings.Contains(v, "Steps:") {
-						s := strings.TrimSpace(strings.Replace(v, "Steps:", "", -1))
-						// 转 int
-						reqPayload.Steps, _ = strconv.Atoi(s)
-					}
-					if strings.Contains(v, "Sampler:") {
-						reqPayload.SamplerName = strings.TrimSpace(strings.Replace(v, "Sampler:", "", -1))
-					}
-					if strings.Contains(v, "CFG scale:") {
-						s := strings.TrimSpace(strings.Replace(v, "CFG scale:", "", -1))
-						// 转 int
-						reqPayload.CfgScale, _ = strconv.Atoi(s)
-					}
-					if strings.Contains(v, "Seed:") {
-						s := strings.TrimSpace(strings.Replace(v, "Seed:", "", -1))
-						// 转 int64
-						seed, err := strconv.ParseInt(s, 10, 64)
-						if err == nil {
-							fmt.Printf("%T, %v\n", s, s)
-							reqPayload.Seed = seed
-						}
-					}
-					if strings.Contains(v, "Size:") {
-						s := strings.TrimSpace(strings.Replace(v, "Size:", "", -1))
-						// 转 int
-						// Size: 512x768, => 512, 768
-						size := strings.Split(s, "x")
-						if len(size) == 2 {
-							reqPayload.Width, _ = strconv.Atoi(size[0])
-							reqPayload.Height, _ = strconv.Atoi(size[1])
-						}
-					}
-					//Denoising strength: 0.52,
-					if strings.Contains(v, "Denoising strength:") {
-						s := strings.TrimSpace(strings.Replace(v, "Denoising strength:", "", -1))
-						// 转 float64
-						strength, err := strconv.ParseFloat(s, 64)
-						if err == nil {
-							reqPayload.DenoisingStrength = strength
-						}
-					}
-				}
-			}
-		}
-	}
+	reqPayload := ParsePrompt(prompt)
 
 	client := &http.Client{}
 	body, _ := json.Marshal(reqPayload)
+	logx.Info("draw request body", string(body))
 	drawReq, err := http.NewRequest(http.MethodPost, url, strings.NewReader(string(body)))
 	if err != nil {
 		logx.Info("draw request client build fail", err)
@@ -115,8 +49,9 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 	}
 	logx.Info("draw request client build success")
 	drawReq.Header.Add("Content-Type", "application/json")
-	drawReq.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(sd.Username+":"+sd.Password)))
-
+	if sd.Username != "" && sd.Password != "" {
+		drawReq.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(sd.Username+":"+sd.Password)))
+	}
 	ch <- "start"
 
 	res, err := client.Do(drawReq)
@@ -134,14 +69,29 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 		return errors.New("绘画请求响应失败，请重新尝试~")
 	}
 
+	logx.Info("draw client request success body:", string(resBody))
+
 	var resPayload map[string]interface{}
 	err = json.Unmarshal(resBody, &resPayload)
+
+	// 加入异常处理
 	if err != nil {
-		logx.Info("resBody", string(resBody))
 		logx.Info("draw request fail", err)
+		if strings.Contains(string(resBody), "504 Gateway Time-out") {
+			return errors.New("绘画请求超时，请重新尝试~")
+		}
+		reqError := new(ReqError)
+		err = json.Unmarshal(resBody, reqError)
+		if err == nil {
+			return errors.New(reqError.Error + ":" + reqError.Detail)
+		}
 		return errors.New("绘画请求响应解析失败，请重新尝试~")
 	}
-	images := resPayload["images"].([]interface{})
+
+	images, ok := resPayload["images"].([]interface{})
+	if !ok {
+		return errors.New("绘画请求响应解析失败，请重新尝试~")
+	}
 	for _, image := range images {
 		s := image.(string)
 		if err != nil {
@@ -220,4 +170,84 @@ func getDefaultDataTXT2IMGReq() TXT2IMGReq {
 		EnableHr:          false,
 	}
 	return t
+}
+
+type ReqError struct {
+	Error  string `json:"error"`
+	Detail string `json:"detail"`
+	Body   string `json:"body"`
+	Errors string `json:"errors"`
+}
+
+func ParsePrompt(prompt string) TXT2IMGReq {
+	reqPayload := getDefaultDataTXT2IMGReq()
+	// 替换   为 空格
+	prompt = strings.Replace(prompt, " ", " ", -1)
+	// 先对"\n"进行分段
+	if !strings.Contains(prompt, "\n") {
+		reqPayload.Prompt += prompt
+		return reqPayload
+	}
+
+	//通过 "\n"  分段
+	for k, val := range strings.Split(prompt, "\n") {
+		// 正面提示
+		if k == 0 {
+			reqPayload.Prompt = val
+			continue
+		}
+		// 负面提示配置
+		if strings.Contains(val, "Negative prompt:") {
+			reqPayload.NegativePrompt = strings.TrimSpace(strings.Replace(val, "Negative prompt:", "", -1))
+			continue
+		}
+		// 其它配置
+		if strings.Contains(val, "Steps:") {
+			for _, v := range strings.Split(val, ", ") {
+				if strings.HasPrefix(v, "Steps:") {
+					s := strings.TrimSpace(strings.Replace(v, "Steps:", "", -1))
+					reqPayload.Steps, _ = strconv.Atoi(s)
+				}
+
+				if strings.Contains(v, "Sampler:") {
+					reqPayload.SamplerName = strings.TrimSpace(strings.Replace(v, "Sampler:", "", -1))
+				}
+				if strings.Contains(v, "CFG scale:") {
+					s := strings.TrimSpace(strings.Replace(v, "CFG scale:", "", -1))
+					// 转 int
+					reqPayload.CfgScale, _ = strconv.Atoi(s)
+				}
+				if strings.Contains(v, "Seed:") {
+					s := strings.TrimSpace(strings.Replace(v, "Seed:", "", -1))
+					// 转 int64
+					seed, err := strconv.ParseInt(s, 10, 64)
+					if err == nil {
+						fmt.Printf("%T, %v\n", s, s)
+						reqPayload.Seed = seed
+					}
+				}
+				if strings.Contains(v, "Size:") {
+					s := strings.TrimSpace(strings.Replace(v, "Size:", "", -1))
+					// 转 int
+					// Size: 512x768, => 512, 768
+					size := strings.Split(s, "x")
+					if len(size) == 2 {
+						reqPayload.Width, _ = strconv.Atoi(size[0])
+						reqPayload.Height, _ = strconv.Atoi(size[1])
+					}
+				}
+				//Denoising strength: 0.52,
+				if strings.Contains(v, "Denoising strength:") {
+					s := strings.TrimSpace(strings.Replace(v, "Denoising strength:", "", -1))
+					// 转 float64
+					strength, err := strconv.ParseFloat(s, 64)
+					if err == nil {
+						reqPayload.DenoisingStrength = strength
+					}
+				}
+			}
+		}
+	}
+
+	return reqPayload
 }

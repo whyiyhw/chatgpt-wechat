@@ -1,7 +1,6 @@
 package logic
 
 import (
-	"chat/common/draw"
 	"context"
 	"crypto/md5"
 	"encoding/json"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"chat/common/ali/ocr"
+	"chat/common/draw"
 	"chat/common/milvus"
 	"chat/common/openai"
 	"chat/common/plugin"
@@ -795,7 +795,7 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 
 				err := d.Txt2Img(prompt, ch)
 				if err != nil {
-					sendToUser(req.AgentID, req.UserID, "构建绘画请求失败，请重新尝试~", l.svcCtx.Config)
+					sendToUser(req.AgentID, req.UserID, "绘画失败:"+err.Error(), l.svcCtx.Config)
 					ch <- "stop"
 					return
 				}
