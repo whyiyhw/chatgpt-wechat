@@ -85,7 +85,7 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 		if err == nil {
 			return errors.New(reqError.Error + ":" + reqError.Detail)
 		}
-		return errors.New("绘画请求响应解析失败，请重新尝试~")
+		return errors.New("绘画请求响应解析失败，响应信息为\n" + string(resBody) + "\n请稍后重试~")
 	}
 
 	images, ok := resPayload["images"].([]interface{})
@@ -93,17 +93,16 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 		return errors.New("绘画请求响应解析失败，请重新尝试~")
 	}
 	for _, image := range images {
-		s := image.(string)
-		if err != nil {
-			logx.Info("draw request fail", err)
-			return errors.New("绘画请求响应解析失败，请重新尝试~")
+		s, ok := image.(string)
+		if !ok {
+			return errors.New("绘画请求响应解析失败 image 不为字符类型，请重新尝试~")
 		}
 		// 将解密后的信息写入到本地
 		imageBase64 := strings.Split(s, ",")[0]
 		decodeBytes, err := base64.StdEncoding.DecodeString(imageBase64)
 		if err != nil {
 			logx.Info("draw request fail", err)
-			return errors.New("绘画请求响应解析失败，请重新尝试~")
+			return errors.New("绘画请求响应Decode失败，请重新尝试~")
 		}
 
 		// 判断目录是否存在
@@ -112,7 +111,7 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 			err := os.MkdirAll("/tmp/image", os.ModePerm)
 			if err != nil {
 				fmt.Println("mkdir err:", err)
-				return errors.New("绘画请求响应解析失败，请重新尝试~")
+				return errors.New("绘画请求响应保存至目录失败，请重新尝试~")
 			}
 		}
 
@@ -122,7 +121,7 @@ func (sd *SdDraw) Txt2Img(prompt string, ch chan string) error {
 
 		if err != nil {
 			logx.Info("draw save fail", err)
-			return errors.New("绘画请求响应解析失败，请重新尝试~")
+			return errors.New("绘画请求响应保存失败，请重新尝试~")
 		}
 
 		// 再将 image 信息发送到用户

@@ -16,11 +16,26 @@ import (
 
 const TextModel = "text-davinci-003"
 const ChatModel = "gpt-3.5-turbo"
-const ChatModelNew = "gpt-3.5-turbo-0301"
+const ChatModel0301 = "gpt-3.5-turbo-0301"
 const ChatModel4 = "gpt-4"
+const ChatModel40314 = "gpt-4-0314"
+const ChatModel432K = "gpt-4-32k"
+const ChatModel432K0314 = "gpt-4-32k-0314"
 
-const MaxToken = 2000
-const Temperature = 0.8
+// Models 支持的模型
+var Models = map[string]bool{
+	TextModel:         true,
+	ChatModel:         true,
+	ChatModel0301:     true,
+	ChatModel4:        true,
+	ChatModel40314:    true,
+	ChatModel432K:     true,
+	ChatModel432K0314: true,
+}
+
+var TotalToken = 3900
+var MaxToken = 2000
+var Temperature = 0.8
 
 type ChatModelMessage struct {
 	Role    string `json:"role"`
@@ -43,7 +58,7 @@ func NewChatClient(apiKey string) *ChatClient {
 	return &ChatClient{
 		APIKey:      apiKey,
 		MaxToken:    MaxToken,
-		Temperature: Temperature,
+		Temperature: float32(Temperature),
 	}
 }
 
@@ -60,7 +75,7 @@ func (c *ChatClient) WithEngine(engine string) *ChatClient {
 }
 
 func (c *ChatClient) WithModel(model string) *ChatClient {
-	if model != "" {
+	if _, ok := Models[model]; ok {
 		c.Model = model
 	}
 	return c

@@ -243,8 +243,9 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 
 func (l *CustomerChatLogic) setModelName() (ls *CustomerChatLogic) {
 	m := l.svcCtx.Config.WeCom.Model
-	if m == "" || (m != openai.TextModel && m != openai.ChatModel && m != openai.ChatModelNew && m != openai.ChatModel4) {
-		m = openai.TextModel
+	m = strings.ToLower(m)
+	if _, ok := openai.Models[m]; !ok {
+		m = openai.ChatModel
 	}
 	l.svcCtx.Config.WeCom.Model = m
 	l.model = m

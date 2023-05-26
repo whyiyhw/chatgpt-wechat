@@ -19,7 +19,7 @@ WeCom:                                              # 企业微信配置
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
   BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型， 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"                                  # openai 基础设定（可选）
-  Model: "text-davinci-003"                                                                                                                     # openai 模型（可选）默认为 gpt-3.5-turbo-0301
+  Model: "gpt-3.5-turbo"                                                                                                                        # openai 模型（可选）默认为 gpt-3.5-turbo 可选[gpt-3.5-turbo-0301, gpt-4, text-davinci-003]
   Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语（可选）
   Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
   EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
@@ -87,6 +87,7 @@ Plugins:
 
 Draw:                                               # 绘画配置
   Enable: false                                     # 是否开启绘画功能（可选）
+  Company: "stable_diffusion"                       # 绘画公司，目前支持 stable_diffusion , openai（可选）
   StableDiffusion:                                  # 绘画配置
     Host: "http://xx.xxx.xxx.xxx:7860"              # 绘画服务地址
     Auth:                                           # 绘画服务认证

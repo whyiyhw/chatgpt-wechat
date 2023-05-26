@@ -308,8 +308,10 @@ func (l *ChatLogic) setModelName(agentID int64) (ls *ChatLogic) {
 			m = application.Model
 		}
 	}
-	if m == "" || (m != openai.TextModel && m != openai.ChatModel && m != openai.ChatModelNew && m != openai.ChatModel4) {
-		m = openai.TextModel
+	// 兼容大小写问题 #issues/66
+	m = strings.ToLower(m)
+	if _, ok := openai.Models[m]; !ok {
+		m = openai.ChatModel
 	}
 	l.model = m
 	return l
@@ -411,7 +413,7 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 		"#usage 查看额度使用情况\n#usage:sk-xxx 查看指定 key 的使用情况",
 		"#clear 清空当前会话的数据",
 		"\n会话设置🦄\n\n#config_prompt:xxx，如程序员的小助手",
-		"#config_model:xxx，如text-davinci-003",
+		"#config_model:xxx，如gpt-3.5-turbo",
 		"#config_clear 初始化对话设置",
 		"#prompt:list 查看所有支持的预定义角色",
 		"#prompt:set:xx 如 24(诗人)，角色应用",
@@ -481,16 +483,20 @@ func (p CommendConfigPrompt) exec(l *ChatLogic, req *types.ChatReq) bool {
 type CommendConfigModel struct{}
 
 func (p CommendConfigModel) exec(l *ChatLogic, req *types.ChatReq) bool {
-	// #config_model:您的设置 如 text-davinci-003\n
 	msg := strings.Trim(strings.Replace(req.MSG, "#config_model:", "", -1), " ")
 
 	if msg == "" {
-		sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：\n#config_model:text-davinci-003", l.svcCtx.Config)
+		sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：\n#config_model:gpt-3.5-turbo", l.svcCtx.Config)
 		return false
 	}
 
-	if msg != openai.TextModel && msg != openai.ChatModel && msg != openai.ChatModelNew && msg != openai.ChatModel4 {
-		tips := fmt.Sprintf("目前只支持以下四种模型：\n %s \n %s \n %s \n %s \n", openai.TextModel, openai.ChatModel, openai.ChatModelNew, openai.ChatModel4)
+	if _, ok := openai.Models[msg]; !ok {
+		tips := fmt.Sprintf("目前只支持以下%d种模型：\n", len(openai.Models))
+		for s, b := range openai.Models {
+			if b {
+				tips += s + "\n"
+			}
+		}
 		sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 		return false
 	}
@@ -846,7 +852,7 @@ func (p CommendPlugin) exec(l *ChatLogic, req *types.ChatReq) bool {
 						status = "启用"
 					}
 					pluginStr += fmt.Sprintf(
-						"插件名称：%s\n插件描述：%s\n插件状态：%s\n\n", plus.NameForHuman, plus.DescForHuman, status,
+						"插件名称：%s\n插件描述：%s\n插件状态：%s\n", plus.NameForHuman, plus.DescForHuman, status,
 					)
 				}
 			} else {
