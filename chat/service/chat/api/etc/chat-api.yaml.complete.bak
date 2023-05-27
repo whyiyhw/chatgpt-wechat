@@ -36,7 +36,7 @@ OpenAi:                                             # openai配置
   Origin: "open_ai"                                 # 默认为 调用 open_ai 也支持 azure , azure_ad (可选 默认为 open_ai)
   Engine: "deployment_name"                         # engine = "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
   MaxToken: 2000                                    # 一次会话能响应内容的最大 token
-  TotalToken 3900                                   # 一次对话话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
+  TotalToken: 3900                                  # 一次对话话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
 Proxy:                                              # 代理配置 （可选）
@@ -99,4 +99,4 @@ Draw:                                               # 绘画配置
   OpenAi:
     Key: "xxxxxx"                                   # openai key
     Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
-    Proxy: "http://127.0.0.1:1080"                  # http/socks5 代理（可选）
+    Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理（可选）

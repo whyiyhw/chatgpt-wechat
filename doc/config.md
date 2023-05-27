@@ -37,6 +37,9 @@ OpenAi:                                             # openai配置
   Host: "https://api.openai.com"                    # openai host （可选，使用cf进行反向代理时，修改可用）
   Origin: "open_ai"                                 # 默认为 调用 open_ai 也支持 azure , azure_ad (可选 默认为 open_ai)
   Engine: "deployment_name"                         # engine = "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
+  MaxToken: 2000                                    # 一次会话能响应内容的最大 token
+  TotalToken: 3900                                  # 一次对话话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
 Proxy:                                              # 代理配置 （可选）
   Enable: false                                     # 是否启用代理，默认为 false（可选）
@@ -62,7 +65,7 @@ Response:                                           # 回复配置
 Plugins:
   Enable: true
   List:
-    - NameForHuman: "date_shell"
+    - NameForHuman: "日期查询"
       NameForModel: "date_shell"
       DescForHuman: "这个插件可以提供日期相关的信息"
       DescModel: "This plugin can execute shell commands used to get the date."
@@ -70,12 +73,33 @@ Plugins:
         Type: "none"
       API:
         URL: "http://192.168.1.202:8886/api/webhook"
+    - NameForHuman: "互联网查询"
+      NameForModel: "search"
+      DescForHuman: "这个插件可以提供最近实事的相关信息"
+      DescModel: "This plugin can Useful for when you need to answer questions about current events. Input should be a search query."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8885/search"
+    - NameForHuman: "维基百科查询"
+      NameForModel: "wikipedia"
+      DescForHuman: "这个插件可以提供关于人、地点、公司、历史事件或其他主题的一般性问题。"
+      DescModel: "This plugin can Useful for when you need to answe  general questions about people, places, companies, historical events, or other subjects. Input should be a search query."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8885/wikipedia"
 
 Draw:                                               # 绘画配置
   Enable: false                                     # 是否开启绘画功能（可选）
+  Company: "stable_diffusion"                       # 绘画公司，目前支持 stable_diffusion , openai（可选）
   StableDiffusion:                                  # 绘画配置
     Host: "http://xx.xxx.xxx.xxx:7860"              # 绘画服务地址
     Auth:                                           # 绘画服务认证
       Username: "xxxxxxxx"                          # 绘画服务用户名
       Password: "xxxxxxxx"                          # 绘画服务密码
+  OpenAi:
+    Key: "xxxxxx"                                   # openai key
+    Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
+    Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理（可选）
 ```
