@@ -772,12 +772,20 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 		if l.svcCtx.Config.Draw.Enable {
 			go func() {
 				var d draw.Draw
-				if l.svcCtx.Config.Draw.StableDiffusion.Host != "" {
+				if l.svcCtx.Config.Draw.Company == draw.SD {
 					d = draw.NewSdDraw(
 						l.svcCtx.Config.Draw.StableDiffusion.Host,
 						l.svcCtx.Config.Draw.StableDiffusion.Auth.Username,
 						l.svcCtx.Config.Draw.StableDiffusion.Auth.Password,
 					)
+				} else if l.svcCtx.Config.Draw.Company == draw.OPENAI {
+					d = openai.NewOpenaiDraw(
+						l.svcCtx.Config.Draw.OpenAi.Key,
+						l.svcCtx.Config.Draw.OpenAi.Proxy,
+					)
+				} else {
+					sendToUser(req.AgentID, req.UserID, "系统错误:未知的绘画服务商", l.svcCtx.Config)
+					return
 				}
 
 				// 创建一个 channel 用于接收绘画结果

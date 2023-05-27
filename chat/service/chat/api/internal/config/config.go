@@ -14,7 +14,7 @@ type Config struct {
 
 	RedisCache cache.CacheConf
 
-	SystemVersion string `json:",optional,default=v0.6.2.3"`
+	SystemVersion string `json:",optional,default=v0.6.3"`
 
 	// jwt 配置
 	Auth struct {
@@ -115,15 +115,21 @@ type Config struct {
 		} `json:",optional"`
 	} `json:",optional"`
 
-	// 作图相关配置，目前只支持 StableDiffusion
+	// 作图相关配置，目前支持 StableDiffusion openai
 	Draw struct {
-		Enable          bool `json:",optional,default=false"`
+		Enable          bool   `json:",optional,default=false"`
+		Company         string `json:",optional,default=openai"`
 		StableDiffusion struct {
 			Host string `json:",optional,default="`
 			Auth struct {
 				Username string
 				Password string
 			}
+		}
+		OpenAi struct {
+			Key   string
+			Host  string `json:",optional,default=https://api.openai.com"`
+			Proxy string `json:",optional,default="`
 		}
 	} `json:",optional"`
 }

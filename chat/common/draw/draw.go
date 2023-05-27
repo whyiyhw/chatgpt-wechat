@@ -14,6 +14,9 @@ import (
 	"strings"
 )
 
+const SD = "stable_diffusion"
+const OPENAI = "openai"
+
 type Draw interface {
 	Txt2Img(prompt string, path chan string) error // 文字转图片
 }

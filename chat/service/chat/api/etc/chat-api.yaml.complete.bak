@@ -96,3 +96,7 @@ Draw:                                               # 绘画配置
     Auth:                                           # 绘画服务认证
       Username: "xxxxxxxx"                          # 绘画服务用户名
       Password: "xxxxxxxx"                          # 绘画服务密码
+  OpenAi:
+    Key: "xxxxxx"                                   # openai key
+    Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
+    Proxy: "http://127.0.0.1:1080"                  # http/socks5 代理（可选）
