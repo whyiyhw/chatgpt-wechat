@@ -78,7 +78,11 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			WithModel(l.model).
 			WithBaseHost(l.baseHost).
 			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
-			WithEngine(l.svcCtx.Config.OpenAi.Engine)
+			WithEngine(l.svcCtx.Config.OpenAi.Engine).
+			WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).
+			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
+			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
+
 		if l.svcCtx.Config.Proxy.Enable {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
 		}
@@ -185,7 +189,8 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						API:          i2.API,
 					})
 				}
-				pluginInfo, err := c.WithMaxToken(1000).WithTemperature(0).
+				pc := c
+				pluginInfo, err := pc.WithMaxToken(1000).WithTemperature(0).
 					Completion(plugin.GetPluginPromptInfo(req.MSG, p))
 				if err == nil {
 					msg, ok := plugin.RunPlugin(pluginInfo, p)

@@ -29,7 +29,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 			continue
 		}
 		//估算长度
-		if NumTokensFromMessages(req[len(req)-i-1:], ChatModel) < (TotalToken - c.MaxToken) {
+		if NumTokensFromMessages(req[len(req)-i-1:], ChatModel) < (c.TotalToken - c.MaxToken) {
 			first = len(req) - i - 1
 		} else {
 			break
@@ -51,6 +51,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 			Content: message.Content,
 		})
 	}
+	fmt.Println("current", c.Model)
 	if _, ok := Models[c.Model]; !ok {
 		c.Model = ChatModel
 	}
@@ -117,7 +118,7 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 			continue
 		}
 		//估算长度
-		if NumTokensFromMessages(req[len(req)-i-1:], ChatModel) < (TotalToken - c.MaxToken) {
+		if NumTokensFromMessages(req[len(req)-i-1:], ChatModel) < (c.TotalToken - c.MaxToken) {
 			first = len(req) - i - 1
 		} else {
 			break

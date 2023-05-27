@@ -197,7 +197,8 @@ func (c *UserContext) doSummary(summary []ChatModelMessage) ([]ChatModelMessage,
 	logx.Info("summary_req_length", ": ", len([]rune(newPrompt)))
 
 	// 调用 openai api 进行 summary 简化到 100 字以内
-	summaryStr, err := c.Client.WithModel(TextModel).WithMaxToken(1500).WithTemperature(0.1).
+	sc := c
+	summaryStr, err := sc.Client.WithModel(TextModel).WithMaxToken(1500).WithTemperature(0).
 		Completion(newPrompt)
 
 	logx.Info("summary_reps", ": "+summaryStr)

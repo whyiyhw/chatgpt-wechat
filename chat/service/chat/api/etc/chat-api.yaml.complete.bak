@@ -35,6 +35,9 @@ OpenAi:                                             # openai配置
   Host: "https://api.openai.com"                    # openai host （可选，使用cf进行反向代理时，修改可用）
   Origin: "open_ai"                                 # 默认为 调用 open_ai 也支持 azure , azure_ad (可选 默认为 open_ai)
   Engine: "deployment_name"                         # engine = "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
+  MaxToken: 2000                                    # 一次会话能响应内容的最大 token
+  TotalToken 3900                                   # 一次对话话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
 Proxy:                                              # 代理配置 （可选）
   Enable: false                                     # 是否启用代理，默认为 false（可选）
@@ -75,7 +78,7 @@ Plugins:
       Auth:
         Type: "none"
       API:
-        URL: "http://192.168.1.202:8885/chat"
+        URL: "http://192.168.1.202:8885/search"
     - NameForHuman: "维基百科查询"
       NameForModel: "wikipedia"
       DescForHuman: "这个插件可以提供关于人、地点、公司、历史事件或其他主题的一般性问题。"

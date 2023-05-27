@@ -51,6 +51,7 @@ type ChatClient struct {
 	Model       string  `json:"model"`
 	BaseHost    string  `json:"base_host"`
 	MaxToken    int     `json:"max_token"`
+	TotalToken  int     `json:"total_token"`
 	Temperature float32 `json:"temperature"`
 }
 
@@ -58,6 +59,7 @@ func NewChatClient(apiKey string) *ChatClient {
 	return &ChatClient{
 		APIKey:      apiKey,
 		MaxToken:    MaxToken,
+		TotalToken:  TotalToken,
 		Temperature: float32(Temperature),
 	}
 }
@@ -95,6 +97,12 @@ func (c *ChatClient) WithMaxToken(maxToken int) *ChatClient {
 // WithTemperature 设置响应灵活程度
 func (c *ChatClient) WithTemperature(temperature float32) *ChatClient {
 	c.Temperature = temperature
+	return c
+}
+
+// WithTotalToken 设置总token数
+func (c *ChatClient) WithTotalToken(totalToken int) *ChatClient {
+	c.TotalToken = totalToken
 	return c
 }
 
