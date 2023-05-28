@@ -60,9 +60,26 @@ Embeddings:
 Response:                                           # 回复配置
     Stream: true                                    # 是否开启流式回复,自动断句推荐（可选）
 
-Plugins:
-  Enable: true
+Plugins:                                            # 插件配置
+  Enable: true                                      # 是否开启插件功能
+  Debug: false                                      # 是否开启插件调试模式,暴露插件使用的所有信息
   List:
+    - NameForHuman: "互联网查询"                      # 插件名称（展示给用户）
+      NameForModel: "search"                        # 插件名称（展示给llm模型）
+      DescForHuman: "这个插件可以提供最近实事的相关信息"  # 插件描述（展示给用户）
+      DescModel: "This plugin can Useful for when you need to answer questions about current events. Input should be a search query." # 插件描述（展示给llm模型）
+      Auth:                                         # 插件鉴权（暂未实现）
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8885/search"     # 插件接口地址，默认 post 调用
+    - NameForHuman: "维基百科查询"
+      NameForModel: "wikipedia"
+      DescForHuman: "这个插件可以提供关于人、地点、公司、历史事件或其他主题的一般性问题。"
+      DescModel: "This plugin can Useful for when you need to answer general questions about people, places, companies, historical events, or other subjects. Input should be a search query."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8885/wikipedia"
     - NameForHuman: "日期_shell"
       NameForModel: "date_shell"
       DescForHuman: "这个插件可以提供日期相关的信息"
@@ -71,22 +88,6 @@ Plugins:
         Type: "none"
       API:
         URL: "http://192.168.1.202:8886/api/webhook"
-    - NameForHuman: "互联网查询"
-      NameForModel: "search"
-      DescForHuman: "这个插件可以提供最近实事的相关信息"
-      DescModel: "This plugin can Useful for when you need to answer questions about current events. Input should be a search query."
-      Auth:
-        Type: "none"
-      API:
-        URL: "http://192.168.1.202:8885/search"
-    - NameForHuman: "维基百科查询"
-      NameForModel: "wikipedia"
-      DescForHuman: "这个插件可以提供关于人、地点、公司、历史事件或其他主题的一般性问题。"
-      DescModel: "This plugin can Useful for when you need to answe  general questions about people, places, companies, historical events, or other subjects. Input should be a search query."
-      Auth:
-        Type: "none"
-      API:
-        URL: "http://192.168.1.202:8885/wikipedia"
 
 Draw:                                               # 绘画配置
   Enable: false                                     # 是否开启绘画功能（可选）
