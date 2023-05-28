@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,13 +36,38 @@ func DealRequestToExecShell(c *gin.Context) {
 		return
 	}
 
+	//判断系统
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("cmd", "/c", json.Input)
+		output, err := cmd.Output()
+		if err != nil {
+			c.JSON(500, gin.H{
+				"msg":     fmt.Sprintf("Execute Command:%s failed with error:%s", json.Input, err.Error()),
+				"wrapper": false,
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"msg":     fmt.Sprintf("%s ➡️ %s", json.Input, string(output)),
+			"wrapper": true,
+		})
+		return
+	}
+
 	cmd := exec.Command("/bin/bash", "-c", json.Input)
 
 	output, err := cmd.Output()
 	if err != nil {
-		c.JSON(500, gin.H{"msg": fmt.Sprintf("Execute Command:%s failed with error:%s", json.Input, err.Error())})
+		c.JSON(500, gin.H{
+			"msg":     fmt.Sprintf("Execute Command:%s failed with error:%s", json.Input, err.Error()),
+			"wrapper": false,
+		})
 		return
 	}
 
-	c.JSON(200, gin.H{"msg": fmt.Sprintf("%s ➡️ %s", json.Input, string(output))})
+	c.JSON(200, gin.H{
+		"msg":     fmt.Sprintf("%s ➡️ %s", json.Input, string(output)),
+		"wrapper": true,
+	})
 }

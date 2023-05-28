@@ -129,7 +129,7 @@ sudo docker-compose up -d
 
 
 ### 5. 配置企业可信IP
-- 可以在详情页看到 企业可信IP的配置，把你服务器的公网IP 填入就好，如果没有这个配置项，就说明是老应用，无需处理，这步跳过
+- 可以在详情页看到 企业可信IP的配置，把你服务器的 **公网IP**（不需要加端口） 填入就好，如果没有这个配置项，就说明是老应用，无需处理，这步跳过
   ![image21.png](./image21.png)
 
 - 🎉🎉 你的机器人就配置好了
@@ -154,7 +154,7 @@ sudo docker-compose up -d
 
 - [企业微信客服](./custom_support_service.md)
 - [图片生成-stable-diffusion](./draw.md)
-- [远程调用本地服务](./draw.md)
+- [远程调用本地服务](./frp.md)
 
 ---
 - [个人知识库-文档待补充](./embedding.md)

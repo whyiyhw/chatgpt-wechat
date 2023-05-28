@@ -21,6 +21,7 @@
   - 图片消息：支持图片消息（答题场景）
 - 绘画：
   - 支持`stable diffusion 1.5`作图
+  - 支持 `openai` 作图
 - 私有数据：`milvus` 私有化向量知识库支持
 - 插件机制：
   - 目前已支持 日期、`search`、`wikipedia`
@@ -54,6 +55,7 @@
 - [x] 支持 stable diffusion 1.5作图 [服务配置](https://help.aliyun.com/practice_detail/611227) 2023-04-25
 - [x] 加入搜索插件 2023-04-27
 - [x] 支持 openai key 余额查询 2023-05-15
+- [x] 支持 openai 作图 2023-05-27
 </details>
 
 ---

@@ -1,23 +1,12 @@
-# 作图
+# 本地与线上打通
 
-## [阿里云服务sd](https://help.aliyun.com/practice_detail/611227)
+> 我将通过开发一个关机小插件的方式，来演示如何将本地的电脑与服务器上的项目打通。
+> 项目 地址为 api.whyiyhw.com
 
-- 搭建好后去 修改 chat-api.yaml 配置文件
+## frps && frpc 相关的安装
 
-```yaml
-Draw:
-  Enable: true
-  StableDiffusion:
-    Host: "http://192.168.1.202:7511"
-    Auth:
-      Username: "xxx"
-      Password: "xxx"
-```
-- 再重启 `docker-compose restart web` 服务, 就可以了
-
-## 本地搭建 sd 并提供给远程服务使用
-
-> 云服务实在太贵了，而且版本不是最新的，本地装好的 Lora 跟插件也没法使用，所以就有了这个本地服务远程调用的方案
+<details>
+<summary>点击展开</summary>
 
 ### 服务端 转发
 - docker 安装 frp 服务端
@@ -51,7 +40,7 @@ log_max_days = 3
 
 
 - 在外网环境下，使用以下配置直接下载
-  - `vim /data/frp/Dockerfile`
+    - `vim /data/frp/Dockerfile`
 ```dockerfile
 FROM alpine:3.8
 
@@ -84,7 +73,7 @@ CMD /frp/frps -c /frp/frps.ini
 cd /data/frp
 curl -x socks5://127.0.0.1:1080 -o frp_0.48.0_linux_amd64.tar.gz -L https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz
 ```
-  - 再执行 `vim /data/frp/Dockerfile`  
+- 再执行 `vim /data/frp/Dockerfile`
 ```dockerfile
 FROM alpine:3.8
 
@@ -136,27 +125,26 @@ server_port = 7000
 # 请换成 frps 设置的 token
 token = xxxxxx
 
-[web01]
+[web02]
 type = http
 local_ip = 127.0.0.1
-local_port = 7860
-custom_domains = web01.sd.com
+local_port = 8886
+custom_domains = api.whyiyhw.com
 ```
 - 然后命令行启动 frpc.exe 就好
 
 ### 如何沟通服务端到本地，与接入企业微信
 
 - 我们确认了 frps 会将请求
-- http://{custom_domains}:{vhost_http_port}  也就是 `http://web01.sd.com:7000` 
+- http://{custom_domains}:{vhost_http_port}  也就是 `http://web01.sd.com:7000`
 - 转发到 frpc , 那么设置下 nginx 代理
 ```conf
 server {
-    listen 7511;
+    listen 7512;
     server_name localhost;
 
     location / {
-      proxy_read_timeout 300;
-      proxy_pass http://web01.sd.com:7000;
+      proxy_pass http://api.whyiyhw.com:7000;
     }
 }
 ```
@@ -165,21 +153,9 @@ server {
 vim /etc/hosts
 
 # 加入
-127.0.0.1       web01.sd.com
+127.0.0.1       api.whyiyhw.com
 ```
 
-- 最后去 修改 chat-api.yaml 配置文件
+<\details>
 
-```yaml
-Draw:
-  Enable: true
-  StableDiffusion:
-    Host: "http://192.168.1.202:7511"
-    Auth:
-      Username: ""
-      Password: ""
-```
-- 再重启 `docker-compose restart web` 服务, 就可以了
-- 整个网络正向流程就是
-    - 用户 -> 企业微信 -> 服务器 -> chat-api -> nginx -> frps -> frpc  -> 本地 sd 服务
-![image44.png](image44.png)
+## 关机插件的开发

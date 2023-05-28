@@ -12,6 +12,7 @@ class SearchQuery(BaseModel):
 
 class SearchResponse(BaseModel):
     msg: str
+    wrapper: bool
 
 
 @app.post("/search", response_model=SearchResponse)
@@ -20,7 +21,7 @@ async def root(item: SearchQuery):
     print("收到 info %s" % item.command)
     res = tools.run(item.command)
     print("返回 info %s" % res)
-    return {"msg": res}
+    return SearchResponse(msg=res, wrapper=True)
 
 
 @app.post("/wikipedia", response_model=SearchResponse)
@@ -29,4 +30,4 @@ async def root(item: SearchQuery):
     print("收到 info %s" % item.command)
     res = tools.run(item.command)
     print("返回 info %s" % res)
-    return {"msg": res}
+    return SearchResponse(msg=res, wrapper=True)

@@ -195,13 +195,25 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				pluginInfo, err := pc.WithMaxToken(1000).WithTemperature(0).
 					Completion(plugin.GetPluginPromptInfo(req.MSG, p))
 				if err == nil {
-					msg, ok := plugin.RunPlugin(pluginInfo, p)
-					if ok && msg != "" {
-						// 插件处理成功，存入上下文
-						collection.Set(req.MSG+"\n"+msg+
-							"\n 你已经确认以上信息，如果信息中存在与你目前信息不一致的地方，请以上方插件提供的信息为准，比如日期... 并将其作为后续回答的依据，确认请回复 ok",
-							"ok", false,
+					runPluginInfo, ok := plugin.RunPlugin(pluginInfo, p)
+					if ok {
+						if runPluginInfo.Wrapper == false {
+							// 插件处理成功，发送给用户
+							go sendToUser(req.AgentID, req.UserID, runPluginInfo.Output+"\n"+req.MSG, l.svcCtx.Config)
+							return
+						}
+						q := fmt.Sprintf(
+							"根据用户输入 %s\n， 你决定使用%s插件\n 通过插件获取到的响应信息为 %s\n 请确认以上信息，如果信息中存在与你目前信息不一致的地方，请以上方%s插件提供的信息为准，比如日期... 并将其作为后续回答的依据，确认请回复 ok ,不要解释",
+							req.MSG, runPluginInfo.PluginName, runPluginInfo.Output, runPluginInfo.PluginName,
 						)
+						// 插件处理成功，存入上下文
+						collection.Set(q, "ok", false)
+
+						// 通知用户正在使用插件并响应结果
+						go sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
+							"根据用户输入 %s\n， ai决定使用%s插件\n 通过插件获取到的响应信息为 %s",
+							req.MSG, runPluginInfo.PluginName, runPluginInfo.Output),
+							l.svcCtx.Config)
 					}
 				}
 			}

@@ -22,7 +22,7 @@ COPY ./requirements.txt /code/requirements.txt
 # 4、运行 pip 命令安装依赖项
 RUN ping -c 1 -W 1 google.com > /dev/null \
     &&  pip install --no-cache-dir --upgrade -r /code/requirements.txt \
-    || pip install --no-cache-dir --upgrade -r /code/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+    || pip install --no-cache-dir --upgrade -r /code/requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 # 5、复制 FastAPI 项目代码
 COPY ./app /code/app

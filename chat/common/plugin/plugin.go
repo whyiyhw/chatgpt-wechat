@@ -27,6 +27,18 @@ type ReqInfo struct {
 	Description string `json:"description"`
 }
 
+type ResponseInfo struct {
+	Msg     string `json:"msg"`     // 读取到的响应信息
+	Wrapper bool   `json:"wrapper"` // 是否嵌入到对话中，还是直接响应
+}
+
+type RunPluginResponseInfo struct {
+	PluginName string `json:"plugin_name"` // 插件名称
+	Input      string `json:"input"`       // 读取到的请求信息
+	Output     string `json:"msg"`         // 读取到的响应信息
+	Wrapper    bool   `json:"wrapper"`     // 是否嵌入到对话中，还是直接响应
+}
+
 type T struct {
 	Plugins   []ReqInfo `json:"plugins"`
 	UserInput string    `json:"user_input"`
@@ -59,18 +71,17 @@ type T2 struct {
 	} `json:"plugins"`
 }
 
-func RunPlugin(txt string, l []Plugin) (string, bool) {
+func RunPlugin(txt string, l []Plugin) (*RunPluginResponseInfo, bool) {
 	txt = strings.ReplaceAll(txt, "\n\n", "")
 	var t T2
 	err := json.Unmarshal([]byte(txt), &t)
 	if err != nil {
 		logx.Info("json parse exception:", err)
-		return "", false
+		return nil, false
 	}
 	if t.IsNeed == false {
-		return "", false
+		return nil, false
 	}
-	responseMsg := ""
 	for _, plugin := range t.Plugins {
 		for _, p := range l {
 			if plugin.Name == p.NameForModel {
@@ -110,16 +121,20 @@ func RunPlugin(txt string, l []Plugin) (string, bool) {
 					fmt.Println(err)
 					continue
 				}
-				type Response struct {
-					Msg string `json:"msg"`
-				}
-				var response Response
+
+				var response ResponseInfo
 				err = json.Unmarshal(body, &response)
 				if err == nil {
-					responseMsg += response.Msg
+					return &RunPluginResponseInfo{
+						PluginName: p.NameForModel,
+						Input:      plugin.Input.Command,
+						Output:     response.Msg,
+						Wrapper:    response.Wrapper,
+					}, true
 				}
 			}
 		}
 	}
-	return responseMsg, true
+
+	return nil, false
 }
