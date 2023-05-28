@@ -65,14 +65,6 @@ Response:                                           # 回复配置
 Plugins:
   Enable: true
   List:
-    - NameForHuman: "日期查询"
-      NameForModel: "date_shell"
-      DescForHuman: "这个插件可以提供日期相关的信息"
-      DescModel: "This plugin can execute shell commands used to get the date."
-      Auth:
-        Type: "none"
-      API:
-        URL: "http://192.168.1.202:8886/api/webhook"
     - NameForHuman: "互联网查询"
       NameForModel: "search"
       DescForHuman: "这个插件可以提供最近实事的相关信息"
@@ -89,6 +81,14 @@ Plugins:
         Type: "none"
       API:
         URL: "http://192.168.1.202:8885/wikipedia"
+    - NameForHuman: "日期查询"
+      NameForModel: "date_shell"
+      DescForHuman: "这个插件可以提供日期相关的信息"
+      DescModel: "This plugin can execute shell commands used to get the date."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8886/api/webhook"
 
 Draw:                                               # 绘画配置
   Enable: false                                     # 是否开启绘画功能（可选）

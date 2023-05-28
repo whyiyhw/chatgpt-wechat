@@ -158,4 +158,4 @@ vim /etc/hosts
 
 <\details>
 
-## 关机插件的开发
+## shell 命令行插件的开发 可见 `plugins/webhook`

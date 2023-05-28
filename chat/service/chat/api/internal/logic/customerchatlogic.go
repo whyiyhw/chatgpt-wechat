@@ -1,7 +1,6 @@
 package logic
 
 import (
-	"chat/common/plugin"
 	"context"
 	"crypto/md5"
 	"encoding/json"
@@ -12,6 +11,7 @@ import (
 
 	"chat/common/milvus"
 	"chat/common/openai"
+	"chat/common/plugin"
 	"chat/common/redis"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"

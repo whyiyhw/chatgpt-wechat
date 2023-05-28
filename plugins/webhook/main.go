@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,17 +33,30 @@ func DealRequestToExecShell(c *gin.Context) {
 	var json Command
 	// 将request的body中的数据，自动按照json格式解析到结构体
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"msg":     fmt.Sprintf("Execute Command:%s failed with error:%s", json.Input, err.Error()),
+			"wrapper": false,
+		})
 		return
 	}
 
 	//判断系统
 	if runtime.GOOS == "windows" {
-		cmd := exec.Command("cmd", "/c", json.Input)
-		output, err := cmd.Output()
+		cmd := exec.Command("cmd", "/C", json.Input)
+
+		output, err := cmd.CombinedOutput()
+
+		if strings.HasPrefix(json.Input, "date") && strings.Contains(string(output), "date is") {
+			c.JSON(200, gin.H{
+				"msg":     fmt.Sprintf("%s ➡️ %s", json.Input, string(output)),
+				"wrapper": true,
+			})
+			return
+		}
+
 		if err != nil {
 			c.JSON(500, gin.H{
-				"msg":     fmt.Sprintf("Execute Command:%s failed with error:%s", json.Input, err.Error()),
+				"msg":     fmt.Sprintf("`%s` ➡️ output:`%s` err:`%s`", json.Input, output, err.Error()),
 				"wrapper": false,
 			})
 			return
@@ -60,7 +74,7 @@ func DealRequestToExecShell(c *gin.Context) {
 	output, err := cmd.Output()
 	if err != nil {
 		c.JSON(500, gin.H{
-			"msg":     fmt.Sprintf("Execute Command:%s failed with error:%s", json.Input, err.Error()),
+			"msg":     fmt.Sprintf("`%s` ➡️ `%s`", json.Input, err.Error()),
 			"wrapper": false,
 		})
 		return

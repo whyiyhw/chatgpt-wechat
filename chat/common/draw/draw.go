@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"github.com/zeromicro/go-zero/core/logx"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 const SD = "stable_diffusion"
