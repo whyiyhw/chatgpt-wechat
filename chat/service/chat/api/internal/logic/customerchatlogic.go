@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"chat/common/plugin"
 	"context"
 	"crypto/md5"
 	"encoding/json"
@@ -163,6 +164,39 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			}
 		}
 
+		// 通过插件处理数据
+		if l.svcCtx.Config.Plugins.Enable && len(l.svcCtx.Config.Plugins.List) > 0 {
+			// 通过插件处理
+			var p []plugin.Plugin
+			for _, i2 := range l.svcCtx.Config.Plugins.List {
+				p = append(p, plugin.Plugin{
+					NameForModel: i2.NameForModel,
+					DescModel:    i2.DescModel,
+					API:          i2.API,
+				})
+			}
+			pc := c
+			pluginInfo, err := pc.WithMaxToken(1000).WithTemperature(0).
+				Completion(plugin.GetPluginPromptInfo(req.Msg, p))
+			if err == nil {
+				runPluginInfo, ok := plugin.RunPlugin(pluginInfo, p)
+				if ok {
+					if runPluginInfo.Wrapper == false {
+						// 插件处理成功，发送给用户
+						go sendToUser(req.OpenKfID, req.CustomerID, runPluginInfo.Output, l.svcCtx.Config)
+						return
+					}
+					q := fmt.Sprintf(
+						"根据用户输入\n%s\n\nai决定使用%s插件\nai请求插件的信息为: %s\n通过插件获取到的响应信息为: %s\n 。请确认以上信息，如果信息中存在与你目前信息不一致的地方，请以上方%s插件提供的信息为准，比如日期... 并将其作为后续回答的依据，确认请回复 ok ,不要解释",
+						req.Msg, runPluginInfo.PluginName, runPluginInfo.Input, runPluginInfo.Output, runPluginInfo.PluginName,
+					)
+					// 插件处理成功，存入上下文
+					collection.Set(q, "ok", false)
+					// 客服消息不开启 debug 模式，因为响应条数 5条的限制
+				}
+			}
+		}
+
 		// 基于 summary 进行补充
 		messageText := ""
 		for _, chat := range embeddingData {
@@ -292,6 +326,7 @@ func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed 
 	template["#system"] = CustomerCommendSystem{}
 	template["#clear"] = CustomerCommendClear{}
 	template["#about"] = CustomerCommendAbout{}
+	template["#plugin"] = CustomerPlugin{}
 
 	for s, data := range template {
 		if strings.HasPrefix(req.Msg, s) {
@@ -394,10 +429,12 @@ type CustomerCommendHelp struct{}
 
 func (p CustomerCommendHelp) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
 	tips := fmt.Sprintf(
-		"支持指令：\n\n%s\n%s\n%s\n",
+		"支持指令：\n\n%s\n%s\n%s\n%s\n%s\n",
 		"基础模块🕹️\n\n#help       查看所有指令",
 		"#system 查看会话系统信息",
 		"#clear 清空当前会话的数据",
+		"\n插件🛒\n",
+		"#plugin:list 查看所有插件",
 	)
 	sendToUser(req.OpenKfID, req.CustomerID, tips, l.svcCtx.Config)
 	return false
@@ -416,4 +453,35 @@ func (p CustomerCommendDirect) customerExec(l *CustomerChatLogic, req *types.Cus
 	msg := strings.Replace(req.Msg, "#direct:", "", -1)
 	sendToUser(req.OpenKfID, req.CustomerID, msg, l.svcCtx.Config)
 	return false
+}
+
+type CustomerPlugin struct{}
+
+func (p CustomerPlugin) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	if strings.HasPrefix(req.Msg, "#plugin") {
+		if strings.HasPrefix(req.Msg, "#plugin:list") {
+			var pluginStr string
+			if l.svcCtx.Config.Plugins.Debug {
+				pluginStr = "调试模式：开启 \n"
+			} else {
+				pluginStr = "调试模式：关闭 \n"
+			}
+			if l.svcCtx.Config.Plugins.Enable {
+				for _, plus := range l.svcCtx.Config.Plugins.List {
+					status := "禁用"
+					if plus.Enable {
+						status = "启用"
+					}
+					pluginStr += fmt.Sprintf(
+						"\n插件名称：%s\n插件描述：%s\n插件状态：%s\n", plus.NameForHuman, plus.DescForHuman, status,
+					)
+				}
+			} else {
+				pluginStr = "暂无"
+			}
+			sendToUser(req.OpenKfID, req.CustomerID, fmt.Sprintf("当前可用的插件列表：\n%s", pluginStr), l.svcCtx.Config)
+			return false
+		}
+	}
+	return true
 }

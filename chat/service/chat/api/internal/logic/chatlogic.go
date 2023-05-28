@@ -878,6 +878,11 @@ func (p CommendPlugin) exec(l *ChatLogic, req *types.ChatReq) bool {
 	if strings.HasPrefix(req.MSG, "#plugin") {
 		if strings.HasPrefix(req.MSG, "#plugin:list") {
 			var pluginStr string
+			if l.svcCtx.Config.Plugins.Debug {
+				pluginStr = "调试模式：开启 \n"
+			} else {
+				pluginStr = "调试模式：关闭 \n"
+			}
 			if l.svcCtx.Config.Plugins.Enable {
 				for _, plus := range l.svcCtx.Config.Plugins.List {
 					status := "禁用"
@@ -885,7 +890,7 @@ func (p CommendPlugin) exec(l *ChatLogic, req *types.ChatReq) bool {
 						status = "启用"
 					}
 					pluginStr += fmt.Sprintf(
-						"插件名称：%s\n插件描述：%s\n插件状态：%s\n", plus.NameForHuman, plus.DescForHuman, status,
+						"\n插件名称：%s\n插件描述：%s\n插件状态：%s\n", plus.NameForHuman, plus.DescForHuman, status,
 					)
 				}
 			} else {
