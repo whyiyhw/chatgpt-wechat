@@ -43,7 +43,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	l.setModelName().setBasePrompt().setBaseHost()
 
 	// 确认消息没有被处理过
-	_, err = l.svcCtx.ChatModel.FindOneByQuery(context.Background(),
+	_, err = l.svcCtx.ChatModel.FindOneByQuery(l.ctx,
 		l.svcCtx.ChatModel.RowBuilder().Where(squirrel.Eq{"message_id": req.MsgID}).Where(squirrel.Eq{"user": req.CustomerID}),
 	)
 	// 消息已处理
@@ -56,7 +56,9 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
 	proceed, _ := l.FactoryCommend(req)
 	if !proceed {
-		return
+		return &types.CustomerChatReply{
+			Message: "ok",
+		}, nil
 	}
 	if l.message != "" {
 		req.Msg = l.message
@@ -172,7 +174,11 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		if l.svcCtx.Config.Response.Stream {
 			channel := make(chan string, 100)
 			go func() {
-				messageText, err := c.ChatStream(prompts, channel)
+				if l.model == openai.TextModel {
+					messageText, err = c.CompletionStream(prompts, channel)
+				} else {
+					messageText, err = c.ChatStream(prompts, channel)
+				}
 				if err != nil {
 					logx.Error("读取 stream 失败：", err.Error())
 					sendToUser(req.OpenKfID, req.CustomerID, "系统拥挤，稍后再试~"+err.Error(), l.svcCtx.Config)
@@ -217,8 +223,12 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			}
 		}
 
-		messageText, err := c.Chat(prompts)
-
+		// 一次性响应
+		if l.model == openai.TextModel {
+			messageText, err = c.Completion(collection.GetCompletionSummary())
+		} else {
+			messageText, err = c.Chat(prompts)
+		}
 		if err != nil {
 			sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error(), l.svcCtx.Config)
 			return

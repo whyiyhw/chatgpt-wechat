@@ -2,15 +2,12 @@ package openai
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 
 	copenai "github.com/sashabaranov/go-openai"
-	"github.com/zeromicro/go-zero/core/logx"
-
 	"golang.org/x/net/proxy"
 )
 
@@ -113,32 +110,6 @@ func (c *ChatClient) WithHttpProxy(proxyUrl string) *ChatClient {
 func (c *ChatClient) WithSocks5Proxy(proxyUrl string) *ChatClient {
 	c.Socks5Proxy = proxyUrl
 	return c
-}
-
-func (c *ChatClient) Completion(req string) (string, error) {
-	config := c.buildConfig()
-	cli := copenai.NewClientWithConfig(config)
-
-	// 打印请求信息
-	logx.Info("Completion req: ", req)
-	request := copenai.CompletionRequest{
-		Model:       copenai.GPT3TextDavinci003,
-		Prompt:      req,
-		MaxTokens:   c.MaxToken,
-		Temperature: c.Temperature,
-		TopP:        1,
-	}
-	completion, err := cli.CreateCompletion(context.Background(), request)
-	if err != nil {
-		fmt.Println("req completion params:", config)
-		return "", err
-	}
-	txt := ""
-	for _, choice := range completion.Choices {
-		txt += choice.Text
-	}
-	logx.Info("Completion reps: ", txt)
-	return txt, nil
 }
 
 func (c *ChatClient) buildConfig() copenai.ClientConfig {

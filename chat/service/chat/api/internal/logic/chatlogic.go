@@ -67,7 +67,9 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
 		proceed, _ := l.FactoryCommend(req)
 		if !proceed {
-			return
+			return &types.ChatReply{
+				Message: "ok",
+			}, nil
 		}
 		if l.message != "" {
 			req.MSG = l.message
@@ -210,59 +212,64 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				collection.Set(chat.Q, chat.A, false)
 			}
 			collection.Set(req.MSG, "", false)
+			prompts := collection.GetChatSummary()
 
-			if l.model == openai.TextModel {
-				messageText, err = c.Completion(collection.GetCompletionSummary())
-				collection.Set("", messageText, true)
-			} else {
-				prompts := collection.GetChatSummary()
+			// 分段响应
+			if l.svcCtx.Config.Response.Stream {
+				channel := make(chan string, 100)
 
-				if l.svcCtx.Config.Response.Stream {
-					channel := make(chan string, 100)
-					go func() {
-						messageText, err := c.ChatStream(prompts, channel)
-						if err != nil {
-							errInfo := err.Error()
-							if strings.Contains(errInfo, "maximum context length") {
-								errInfo += "\n 请使用 #clear 清理所有上下文"
-							}
-							sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
-							return
+				go func() {
+					if l.model == openai.TextModel {
+						messageText, err = c.CompletionStream(prompts, channel)
+					} else {
+						messageText, err = c.ChatStream(prompts, channel)
+					}
+					if err != nil {
+						errInfo := err.Error()
+						if strings.Contains(errInfo, "maximum context length") {
+							errInfo += "\n 请使用 #clear 清理所有上下文"
 						}
-						collection.Set("", messageText, true)
-						// 再去插入数据
-						_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
-							AgentId:    req.AgentID,
-							User:       req.UserID,
-							ReqContent: req.MSG,
-							ResContent: messageText,
-						})
-					}()
+						sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
+						return
+					}
+					collection.Set("", messageText, true)
+					// 再去插入数据
+					_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
+						AgentId:    req.AgentID,
+						User:       req.UserID,
+						ReqContent: req.MSG,
+						ResContent: messageText,
+					})
+				}()
 
-					var rs []rune
-					first := true
-					for {
-						s, ok := <-channel
-						if !ok {
-							// 数据接受完成
-							if len(rs) > 0 {
-								go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
-							}
-							return
+				var rs []rune
+				first := true
+				for {
+					s, ok := <-channel
+					if !ok {
+						// 数据接受完成
+						if len(rs) > 0 {
+							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
 						}
-						rs = append(rs, []rune(s)...)
+						return
+					}
+					rs = append(rs, []rune(s)...)
 
-						if first && len(rs) > 50 && strings.Contains(s, "\n\n") {
-							go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n\n"), l.svcCtx.Config)
-							rs = []rune{}
-							first = false
-						} else if len(rs) > 100 && strings.Contains(s, "\n\n") {
-							go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n\n"), l.svcCtx.Config)
-							rs = []rune{}
-						}
+					if first && len(rs) > 50 && strings.Contains(s, "\n\n") {
+						go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n\n"), l.svcCtx.Config)
+						rs = []rune{}
+						first = false
+					} else if len(rs) > 100 && strings.Contains(s, "\n\n") {
+						go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n\n"), l.svcCtx.Config)
+						rs = []rune{}
 					}
 				}
+			}
 
+			// 一次性响应
+			if l.model == openai.TextModel {
+				messageText, err = c.Completion(collection.GetCompletionSummary())
+			} else {
 				messageText, err = c.Chat(prompts)
 			}
 
@@ -274,11 +281,11 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
 				return
 			}
-
 			// 把数据 发给微信用户
 			go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
 
 			collection.Set("", messageText, true)
+
 			// 再去插入数据
 			_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
 				AgentId:    req.AgentID,
@@ -774,7 +781,7 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 				var d draw.Draw
 				if l.svcCtx.Config.Draw.Company == draw.SD {
 					d = draw.NewSdDraw(
-						l.svcCtx.Config.Draw.StableDiffusion.Host,
+						strings.TrimRight(l.svcCtx.Config.Draw.StableDiffusion.Host, "/"),
 						l.svcCtx.Config.Draw.StableDiffusion.Auth.Username,
 						l.svcCtx.Config.Draw.StableDiffusion.Auth.Password,
 					)

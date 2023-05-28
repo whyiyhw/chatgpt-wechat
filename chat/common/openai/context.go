@@ -335,9 +335,9 @@ func NumTokensFromMessages(messages []ChatModelMessage, model string) (numTokens
 	}
 
 	var tokensPerMessage int
-	if model == "gpt-3.5-turbo-0301" || model == "gpt-3.5-turbo" {
+	if model == ChatModel0301 || model == ChatModel {
 		tokensPerMessage = 4
-	} else if model == "gpt-4-0314" || model == "gpt-4" {
+	} else if model == ChatModel40314 || model == ChatModel4 {
 		tokensPerMessage = 3
 	} else {
 		//fmt.Println("Warning: model not found. Using cl100k_base encoding.")
