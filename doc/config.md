@@ -64,6 +64,7 @@ Response:                                           # 回复配置
 
 Plugins:
   Enable: true
+  Debug: false
   List:
     - NameForHuman: "互联网查询"
       NameForModel: "search"

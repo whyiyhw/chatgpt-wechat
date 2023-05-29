@@ -61,9 +61,13 @@ func DealRequestToExecShell(c *gin.Context) {
 			})
 			return
 		}
-
+		// 对于 shutdown 之类的没有响应值的命令，手动给响应值
+		o := string(output)
+		if o == "" {
+			o = "success"
+		}
 		c.JSON(200, gin.H{
-			"msg":     fmt.Sprintf("%s ➡️ %s", json.Input, string(output)),
+			"msg":     fmt.Sprintf("%s ➡️ %s", json.Input, o),
 			"wrapper": true,
 		})
 		return

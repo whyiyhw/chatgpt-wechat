@@ -7,11 +7,16 @@
 
 <details>
 <summary>点击展开</summary>
+</details>
 
 ### 服务端 转发
 - docker 安装 frp 服务端
-- `mkdir -p /data/frp`
-- `vim /data/frp/frps.ini`
+```shell
+mkdir -p /data/frp
+
+vim /data/frp/frps.ini
+```
+
 ```ini
 [common]
 bind_addr = 0.0.0.0
@@ -38,9 +43,12 @@ log_level = info
 log_max_days = 3
 ```
 
-
 - 在外网环境下，使用以下配置直接下载
-    - `vim /data/frp/Dockerfile`
+
+```shell
+vim /data/frp/Dockerfile
+```
+
 ```dockerfile
 FROM alpine:3.8
 
@@ -136,7 +144,7 @@ custom_domains = api.whyiyhw.com
 ### 如何沟通服务端到本地，与接入企业微信
 
 - 我们确认了 frps 会将请求
-- http://{custom_domains}:{vhost_http_port}  也就是 `http://web01.sd.com:7000`
+- http://{custom_domains}:{vhost_http_port}  也就是 `http://api.whyiyhw.com:7000`
 - 转发到 frpc , 那么设置下 nginx 代理
 ```conf
 server {
@@ -156,6 +164,10 @@ vim /etc/hosts
 127.0.0.1       api.whyiyhw.com
 ```
 
-<\details>
-
 ## shell 命令行插件的开发 可见 `plugins/webhook`
+
+最终实现的效果
+![img_4.png](img_4.png)
+![img_3.png](img_3.png)
+- 此时你就可以通过 这个对话机器人，控制你本地电脑的关闭。对于一个躺下就不想爬起来的人来说。
+- 看起来很沙雕的操作，确实十分舒适

@@ -153,11 +153,11 @@ sudo docker-compose up -d
 ### 7. 进阶玩法
 
 - [企业微信客服](./custom_support_service.md)
+- [插件的使用](./plugin.md)
 - [图片生成-stable-diffusion](./draw.md)
 - [远程调用本地服务](./frp.md)
 
 ---
 - [个人知识库-文档待补充](./embedding.md)
-- [插件的使用-文档待补充](./plugin.md)
 - [图片识别-OCR-文档待补充](./ocr.md)
 

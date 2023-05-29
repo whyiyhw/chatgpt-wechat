@@ -23,13 +23,20 @@
   - 支持`stable diffusion 1.5`作图
   - 支持 `openai` 作图
 - 私有数据：`milvus` 私有化向量知识库支持
-- 插件机制：
-  - 目前已支持 日期、`search`、`wikipedia`
+- 插件机制：[支持插件，点击查看](./doc/plugin.md)
+  - 目前已支持 `shell`、`search`、`wikipedia`
   - 各位也可按照规则自行开发接入其他能力（summary, 天气 ...）
 
 ## 完整安装步骤（[点击查看详情](./doc/install.md)）
 
 ### 配置项详解（[点击查看详情](./doc/config.md)）
+
+### 进阶玩法
+
+- [企业微信客服](./doc/custom_support_service.md)
+- [插件的使用](./doc/plugin.md)
+- [图片生成-stable-diffusion](./doc/draw.md)
+- [远程调用本地服务](./doc/frp.md)
 
 ## 项目架构设计（点击查看）
 ![system.png](./doc/system.png)
