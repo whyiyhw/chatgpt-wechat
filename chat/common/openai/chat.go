@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	copenai "github.com/sashabaranov/go-openai"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -161,4 +162,23 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 	}
 
 	return txt, nil
+}
+
+func (c *ChatClient) HasGpt4() bool {
+
+	config := c.buildConfig()
+	cli := copenai.NewClientWithConfig(config)
+
+	var messages []copenai.ChatCompletionMessage
+
+	request := copenai.ChatCompletionRequest{
+		Model:       ChatModel4,
+		Messages:    messages,
+		MaxTokens:   c.MaxToken,
+		Temperature: c.Temperature,
+		TopP:        1,
+	}
+	chat, _ := cli.CreateChatCompletion(context.Background(), request)
+
+	return strings.Contains(chat.Model, "gpt4")
 }

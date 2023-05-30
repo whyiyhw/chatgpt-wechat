@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/net/proxy"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
+
+	"golang.org/x/net/proxy"
 )
 
 // UsageSubscription 订阅信息
@@ -59,6 +60,7 @@ type UsageInfo struct {
 	AccountName        string  `json:"account_name"`         // 账户名称
 	UsedAmountUsd      float64 `json:"used_amount_usd"`      // 已使用金额
 	RemainingAmountUsd float64 `json:"remaining_amount_usd"` // 剩余可用金额
+	HasPaymentMethod   string  `json:"has_payment_method"`   // 是否绑卡
 }
 
 // GetUsageByKey 获取key的使用情况
@@ -180,5 +182,9 @@ func GetUsageByKey(key string, proxyEnable bool, proxyHttp string, proxySocket5 
 	// parse UsageDailyList to UsageInfo
 	usageInfo.UsedAmountUsd, _ = strconv.ParseFloat(fmt.Sprintf("%.2f", usageDailyList.TotalUsage/100.00), 64)
 	usageInfo.RemainingAmountUsd = usageInfo.HardLimitUsd - usageInfo.UsedAmountUsd
+	usageInfo.HasPaymentMethod = "未绑卡"
+	if usage.HasPaymentMethod {
+		usageInfo.HasPaymentMethod = "已绑卡"
+	}
 	return &usageInfo, nil
 }

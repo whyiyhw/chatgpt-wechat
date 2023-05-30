@@ -863,9 +863,27 @@ func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			sendToUser(req.AgentID, req.UserID, "查询使用情况失败，请重新尝试~", l.svcCtx.Config)
 			return false
 		}
+		// openai client
+		c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+			WithModel(l.model).
+			WithBaseHost(l.baseHost).
+			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+			WithEngine(l.svcCtx.Config.OpenAi.Engine).
+			WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).
+			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
+			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
+
+		if l.svcCtx.Config.Proxy.Enable {
+			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+		}
+		hasGpt4Msg := "否"
+		if c.HasGpt4() {
+			hasGpt4Msg = "是"
+		}
 		sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
-			"当前key的使用情况：\n到期时间：%s\n总计可用金额：%f$\n账户名称：%s\n已使用金额：%f$\n剩余可用金额：%f$\n",
+			"当前key的使用情况：\n到期时间：%s\n总计可用金额：%f$\n账户名称：%s\n已使用金额：%f$\n剩余可用金额：%f$\n是否绑卡：%s\n是否有gpt4权限：%s\n",
 			usage.AccessUntil, usage.HardLimitUsd, usage.AccountName, usage.UsedAmountUsd, usage.RemainingAmountUsd,
+			usage.HasPaymentMethod, hasGpt4Msg,
 		), l.svcCtx.Config)
 		return false
 	}
