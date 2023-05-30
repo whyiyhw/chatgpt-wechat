@@ -40,8 +40,8 @@
 **（本项目不提供宝塔面板安装咨询，请各位大佬自行摸索）**
 
 - **前提条件，需要有一个自己的服务器，或者云服务器**
-- 执行 docker -v 是否有版本号？
-- 执行 docker-compose -v 是否有版本号？
+- 执行 `docker -v` 是否有版本号？[docker 安装官方文档](https://docs.docker.com/engine/install/)
+- 执行 `docker-compose -v` 是否有版本号？[docker-compose 安装官方文档](https://docs.docker.com/compose/install/standalone/)
 
   ![image29](./image29.png)
 

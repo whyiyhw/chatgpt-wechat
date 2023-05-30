@@ -70,8 +70,7 @@
 <details>
 <summary> feature 版本，考虑与执行中</summary>
 
-- [ ] bug
-  - [x] 消息长度超出时未对用户进行提示
+- [ ] 消息超长时如何处理？
 - [ ] 自适应上下文，需要加入省流模式
 - [ ] 作图支持 midjourney  api
 - [ ] web 管理端
