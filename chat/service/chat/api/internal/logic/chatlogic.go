@@ -864,7 +864,7 @@ func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			return false
 		}
 		// openai client
-		c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+		c := openai.NewChatClient(key).
 			WithModel(l.model).
 			WithBaseHost(l.baseHost).
 			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
