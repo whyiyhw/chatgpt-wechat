@@ -44,37 +44,75 @@ type Application struct {
 }
 
 // SendToWeComUser 发送应用消息给用户
-func SendToWeComUser(agentID int64, userID, msg, corpSecret string, images ...string) {
+func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...string) {
 
-	if len(images) > 0 {
+	if len(files) > 0 {
 		go func() {
 			app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
 			recipient := workwx.Recipient{
 				UserIDs: []string{userID},
 			}
-			for _, path := range images {
-				//生成唯一的文件名
-				fileName := uuid.New().String() + ".png"
+			for _, path := range files {
+				fileName := ""
+				prefix := ""
+				uuidStr := uuid.New().String()
+				//如果文件是图片
+
+				if strings.Contains(path, ".png") || strings.Contains(path, ".jpg") || strings.Contains(path, ".jpeg") {
+					fileName = uuidStr + ".png"
+					prefix = "图片"
+				}
+				//如果文件是json / txt
+				if strings.Contains(path, ".json") {
+					fileName = uuidStr + ".json"
+					prefix = "文件"
+				}
+				if strings.Contains(path, ".txt") {
+					fileName = uuidStr + ".txt"
+					prefix = "文件"
+				}
+
 				buf, _ := os.ReadFile(path) //读取文件
 				media, err := workwx.NewMediaFromBuffer(fileName, buf)
 				if err != nil {
-					logx.Error("应用图片消息-读取文件失败 err:", err)
+					logx.Error("应用"+prefix+"消息-读取文件失败 err:", err)
 					//发送给用户失败信息
-					err = app.SendTextMessage(&recipient, "发送图片失败", false)
+					err = app.SendTextMessage(&recipient, "发送"+prefix+"失败", false)
 					return
 				}
-				// 上传图片
-				mediaID, err := app.UploadTempImageMedia(media)
-				if err != nil {
-					logx.Error("应用图片消息-上传图片失败 err:", err)
-					//发送给用户失败信息
-					err = app.SendTextMessage(&recipient, "发送图片失败", false)
-					return
+
+				if prefix == "图片" {
+					// 上传图片
+					mediaID, err := app.UploadTempImageMedia(media)
+					if err != nil {
+						logx.Error("应用图片消息-上传图片失败 err:", err)
+						//发送给用户失败信息
+						err = app.SendTextMessage(&recipient, "发送图片失败", false)
+						return
+					}
+
+					err = app.SendImageMessage(&recipient, mediaID.MediaID, false)
+					if err != nil {
+						logx.Error("应用图片消息-发送失败 err:", err)
+					}
 				}
-				err = app.SendImageMessage(&recipient, mediaID.MediaID, false)
-				if err != nil {
-					logx.Error("应用图片消息-发送失败 err:", err)
+
+				if prefix == "文件" {
+					// 上传文件
+					mediaID, err := app.UploadTempFileMedia(media)
+					if err != nil {
+						logx.Error("应用文件消息-上传文件失败 err:", err)
+						//发送给用户失败信息
+						err = app.SendTextMessage(&recipient, "发送文件失败", false)
+						return
+					}
+
+					err = app.SendFileMessage(&recipient, mediaID.MediaID, false)
+					if err != nil {
+						logx.Error("应用文件消息-发送失败 err:", err)
+					}
 				}
+
 				// 删除本地图片
 				_ = os.Remove(path)
 			}

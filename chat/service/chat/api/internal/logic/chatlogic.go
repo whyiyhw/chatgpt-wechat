@@ -391,7 +391,7 @@ func (l *ChatLogic) FactoryCommend(req *types.ChatReq) (proceed bool, err error)
 }
 
 // 发送消息给用户
-func sendToUser(agentID any, userID, msg string, config config.Config, images ...string) {
+func sendToUser(agentID any, userID, msg string, config config.Config, file ...string) {
 	// 根据 agentID 的类型 执行不同的方法
 	switch agentID.(type) {
 	case int64:
@@ -406,7 +406,7 @@ func sendToUser(agentID any, userID, msg string, config config.Config, images ..
 				corpSecret = application.AgentSecret
 			}
 		}
-		wecom.SendToWeComUser(agentID.(int64), userID, msg, corpSecret, images...)
+		wecom.SendToWeComUser(agentID.(int64), userID, msg, corpSecret, file...)
 	case string:
 		wecom.SendCustomerChatMessage(agentID.(string), userID, msg)
 	}
@@ -444,8 +444,8 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 		"#prompt:set:xx 如 24(诗人)，角色应用",
 		"\n会话控制🚀\n",
 		"#session:start 开启新的会话",
-		"#session:list    查看所有会话",
-		"#session:clear 清空所有会话",
+		"#session:list    查看所有会话\n#session:clear 清空所有会话",
+		"#session:export:json 导出当前会话数据为json\n#session:export:txt 导出当前会话数据为txt",
 		"#session:exchange:xxx 切换指定会话",
 		"\n绘图🎨\n",
 		"#draw:xxx 按照指定 prompt 进行绘画",
@@ -777,6 +777,20 @@ func (p CommendSession) exec(l *ChatLogic, req *types.ChatReq) bool {
 			return false
 		}
 		sendToUser(req.AgentID, req.UserID, "已为您切换会话", l.svcCtx.Config)
+		return false
+	}
+
+	if strings.HasPrefix(req.MSG, "#session:export:") {
+		prefix := strings.Replace(req.MSG, "#session:export:", "", -1)
+		// context
+		path, err := openai.NewUserContext(
+			openai.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
+		).SaveAllChatMessage(prefix)
+		if err != nil {
+			sendToUser(req.AgentID, req.UserID, "导出失败 \nerr:"+err.Error(), l.svcCtx.Config)
+			return false
+		}
+		sendToUser(req.AgentID, req.UserID, "", l.svcCtx.Config, path)
 		return false
 	}
 

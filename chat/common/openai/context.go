@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
+	"os"
 
 	"chat/common/redis"
 	"chat/common/tiktoken"
@@ -280,6 +282,46 @@ func (c *UserContext) getCompletionSummary() string {
 		}
 	}
 	return basePrompt
+}
+
+// SaveAllChatMessage  保存所有的聊天记录到本地
+func (c *UserContext) SaveAllChatMessage(prefix string) (string, error) {
+	var summary []ChatModelMessage
+	summary = append(summary, ChatModelMessage{
+		Role:    "system",
+		Content: c.Prompt,
+	})
+	summary = append(summary, c.Messages...)
+	var str []byte
+	if prefix == "json" {
+		str, _ = json.Marshal(summary)
+	} else {
+		for _, val := range summary {
+			str = append(str, []byte(val.Role+":\n")...)
+			str = append(str, []byte(val.Content+"\n")...)
+		}
+	}
+
+	// 判断目录是否存在
+	_, err := os.Stat("/tmp/txt")
+	if err != nil {
+		err := os.MkdirAll("/tmp/txt", os.ModePerm)
+		if err != nil {
+			fmt.Println("mkdir err:", err)
+			return "", errors.New("聊天记录导出至目录失败，请重新尝试~")
+		}
+	}
+
+	path := fmt.Sprintf("/tmp/txt/%s.%s", uuid.New().String(), prefix)
+
+	err = os.WriteFile(path, str, os.ModePerm)
+
+	if err != nil {
+		logx.Info("session json save fail", err)
+		return "", errors.New("聊天记录导出保存失败，请重新尝试~")
+	}
+
+	return path, nil
 }
 
 func NewSession(userUniqueID string) {
