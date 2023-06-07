@@ -73,8 +73,9 @@ func GetUsageByKey(key string, proxyEnable bool, proxyHttp string, proxySocket5 
 	}
 	if proxyEnable {
 		if proxyHttp != "" {
+			proxyUrl, _ := url.Parse(proxyHttp)
 			client.Transport = &http.Transport{
-				Proxy: http.ProxyURL(&url.URL{Host: proxyHttp}),
+				Proxy: http.ProxyURL(proxyUrl),
 			}
 
 		} else if proxySocket5 != "" {
