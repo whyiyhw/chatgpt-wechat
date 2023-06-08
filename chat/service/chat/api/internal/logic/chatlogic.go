@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -820,6 +821,31 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 				} else {
 					sendToUser(req.AgentID, req.UserID, "系统错误:未知的绘画服务商", l.svcCtx.Config)
 					return
+				}
+				// 如果 prompt 中包含中文，将 中文 prompt 通过 openai 转换为英文
+				// 如何判断 prompt 中是否包含中文？
+				// 通过正则匹配，如果匹配到中文，则进行转换
+				if regexp.MustCompile("[\u4e00-\u9fa5]").MatchString(prompt) {
+					// openai client
+					c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
+						WithModel(l.model).
+						WithBaseHost(l.baseHost).
+						WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+						WithEngine(l.svcCtx.Config.OpenAi.Engine).
+						WithMaxToken(2000).
+						WithTemperature(0).
+						WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
+
+					if l.svcCtx.Config.Proxy.Enable {
+						c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+					}
+					changedPrompt, err := c.Completion(fmt.Sprintf(draw.TranslatePrompt, prompt))
+					if err != nil {
+						sendToUser(req.AgentID, req.UserID, "系统错误:关键词转为绘画 prompt 失败"+err.Error(), l.svcCtx.Config)
+						return
+					}
+					// 去掉\n\n
+					prompt = strings.Replace(changedPrompt, "\n\n", "", -1)
 				}
 
 				// 创建一个 channel 用于接收绘画结果
