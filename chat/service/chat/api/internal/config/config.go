@@ -14,7 +14,7 @@ type Config struct {
 
 	RedisCache cache.CacheConf
 
-	SystemVersion string `json:",optional,default=v0.6.3.5"`
+	SystemVersion string `json:",optional,default=v0.6.3.6"`
 
 	// jwt 配置
 	Auth struct {

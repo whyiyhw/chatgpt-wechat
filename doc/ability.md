@@ -49,9 +49,10 @@
 
 ## 绘图
 ### `#draw:xxx` 按照指定 prompt 进行绘画
-比如 `#draw:cat dress hanfu`，它就会会绘制一只穿着汉服的猫咪
+- 比如 `#draw:cat dress hanfu`，它就会会绘制一只穿着汉服的猫咪
+- 当然中文也是支持的哦 `#draw:一只穿着汉服的猫咪`
 
-当然如果你设置了 绘画服务为 stable_diffusion ，完全可以把从C站复制的参数直接粘贴进去，比如下面这样
+- 如果你设置了 绘画服务为 stable_diffusion ，完全可以把从C站复制的参数直接粘贴进去，比如下面这样
 ![img.png](img.png)
 
 ## 会话设置
