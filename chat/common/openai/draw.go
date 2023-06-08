@@ -39,8 +39,7 @@ func (od *Draw) WithProxy(proxy string) *Draw {
 }
 
 func (od *Draw) Txt2Img(prompt string, ch chan string) error {
-	c := od.buildConfig()
-	cli := copenai.NewClientWithConfig(c)
+	cli := copenai.NewClientWithConfig(od.buildConfig())
 
 	ch <- "start"
 
@@ -99,7 +98,10 @@ func (od *Draw) buildConfig() copenai.ClientConfig {
 	config := copenai.DefaultConfig(od.APIKey)
 	if od.Proxy != "" {
 		if strings.HasPrefix(od.Proxy, "http") {
-			proxyUrl, _ := url.Parse(od.Proxy)
+			proxyUrl, err := url.Parse(od.Proxy)
+			if err != nil {
+				logx.Error("proxy parse error", err)
+			}
 			transport := &http.Transport{
 				Proxy: http.ProxyURL(proxyUrl),
 			}
