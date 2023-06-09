@@ -573,7 +573,7 @@ func (p CommendWelcome) exec(l *ChatLogic, req *types.ChatReq) bool {
 		return false
 	}
 	sendToUser(req.AgentID, req.UserID, l.svcCtx.Config.WeCom.Welcome, l.svcCtx.Config)
-	_, err := redis.Rdb.SetEX(context.Background(), cacheKey, "1", 24*15*time.Hour).Result()
+	_, err := redis.Rdb.SetEx(context.Background(), cacheKey, "1", 24*15*time.Hour).Result()
 	if err != nil {
 		fmt.Println("welcome2:" + err.Error())
 	}
