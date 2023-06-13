@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"chat/common/openai"
+
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -39,14 +41,19 @@ type RunPluginResponseInfo struct {
 	Wrapper    bool   `json:"wrapper"`     // 是否嵌入到对话中，还是直接响应
 }
 
-type T struct {
+type StringTxt struct {
 	Plugins   []ReqInfo `json:"plugins"`
 	UserInput string    `json:"user_input"`
 	Prompt    string    `json:"prompt"`
 }
 
+type ChatTxt struct {
+	Plugins   []ReqInfo `json:"plugins"`
+	UserInput string    `json:"user_input"`
+}
+
 func GetPluginPromptInfo(req string, l []Plugin) string {
-	var t T
+	var t StringTxt
 	for _, plugin := range l {
 		t.Plugins = append(t.Plugins, ReqInfo{
 			Name:        plugin.NameForModel,
@@ -59,6 +66,30 @@ func GetPluginPromptInfo(req string, l []Plugin) string {
 	reqStr, _ := json.Marshal(t)
 
 	return string(reqStr)
+}
+
+func GetChatPluginPromptInfo(req string, l []Plugin) (res []openai.ChatModelMessage) {
+	var t ChatTxt
+	for _, plugin := range l {
+		t.Plugins = append(t.Plugins, ReqInfo{
+			Name:        plugin.NameForModel,
+			Description: plugin.DescModel,
+		})
+	}
+	t.UserInput = req
+	basePrompt := "Please make sure the user does not need to use the plugin, and only reply in the following json format, " +
+		"the result will help you answer the user's question. Do not explain. \\n {\"is_need\":true,\"plugins\":[{\"name\":\"\",\"input\":{\"command\":\"\"}}]}"
+	reqStr, _ := json.Marshal(t)
+
+	res = append(res, openai.ChatModelMessage{
+		Role:    "system",
+		Content: basePrompt,
+	})
+	res = append(res, openai.ChatModelMessage{
+		Role:    "user",
+		Content: string(reqStr),
+	})
+	return res
 }
 
 type T2 struct {

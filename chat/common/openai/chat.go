@@ -19,7 +19,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 	cli := copenai.NewClientWithConfig(config)
 
 	// 打印请求信息
-	logx.Info("req: ", req)
+	logx.Info("Chat stream req: ", req)
 	first := 0
 	var system ChatModelMessage
 	for i, msg := range req {
@@ -97,7 +97,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 			}
 		}
 
-		logx.Info("Stream response:", response)
+		logx.Info("Chat Stream response:", response)
 	}
 }
 
@@ -107,7 +107,7 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 	cli := copenai.NewClientWithConfig(config)
 
 	// 打印请求信息
-	logx.Info("req: ", req)
+	logx.Info("Chat req: ", req)
 
 	first := 0
 	var system ChatModelMessage
@@ -160,6 +160,8 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 	for _, choice := range chat.Choices {
 		txt += choice.Message.Content
 	}
+
+	logx.Info("Chat resp: ", txt)
 
 	return txt, nil
 }

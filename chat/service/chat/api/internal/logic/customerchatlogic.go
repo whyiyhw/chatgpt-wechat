@@ -177,7 +177,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			}
 			pc := c
 			pluginInfo, err := pc.WithMaxToken(1000).WithTemperature(0).
-				Completion(plugin.GetPluginPromptInfo(req.Msg, p))
+				Chat(plugin.GetChatPluginPromptInfo(req.Msg, p))
 			if err == nil {
 				runPluginInfo, ok := plugin.RunPlugin(pluginInfo, p)
 				if ok {

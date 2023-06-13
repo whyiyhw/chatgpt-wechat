@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 
 	"chat/common/redis"
 	"chat/common/tiktoken"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -42,7 +42,6 @@ func getSessionKey(sessionKey string) string {
 func NewUserContext(userUniqueID string) *UserContext {
 	// 去 redis 中 获取 userUniqueID 对应的会话ID
 	sessionKey, _ := redis.Rdb.Get(context.Background(), userUniqueID).Result()
-	fmt.Println("sessionKey", sessionKey)
 	if sessionKey == "" {
 		// 创建新的会话
 		sessionKey = uuid.New().String()
@@ -54,7 +53,6 @@ func NewUserContext(userUniqueID string) *UserContext {
 
 	// 再通过 会话ID 从 redis 中 获取 会话上下文
 	data, _ := redis.Rdb.Get(context.Background(), getSessionKey(sessionKey)).Result()
-	fmt.Println("data", data)
 	if data == "" {
 		res := UserContext{
 			SessionKey:   sessionKey,
@@ -164,7 +162,7 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 
 func (c *UserContext) doSummary(summary []ChatModelMessage) ([]ChatModelMessage, error) {
 
-	prompt := "请总结以下信息至100字内,并以json形式进行响应，如：{\"summary\":[{\"q\":\"问题\",\"a\":\"回答\"}]}\n"
+	prompt := "请总结以下信息至150字以内,并以json形式进行响应，不要解释。 如：{\"summary\":[{\"q\":\"问题\",\"a\":\"回答\"}]}"
 
 	// 响应 1500 请求最多 2500 token ，不搞极限 2000 token
 	var currSummary string
@@ -193,15 +191,13 @@ func (c *UserContext) doSummary(summary []ChatModelMessage) ([]ChatModelMessage,
 
 	var newSummary []ChatModelMessage
 
-	newPrompt := prompt + "\n" + currSummary
-
-	logx.Info("summary_req", ": "+newPrompt)
-	logx.Info("summary_req_length", ": ", len([]rune(newPrompt)))
+	logx.Info("summary_req", ": "+currSummary)
+	logx.Info("summary_req_length", ": ", len([]rune(currSummary)))
 
 	// 调用 openai api 进行 summary 简化到 100 字以内
 	sc := c
-	summaryStr, err := sc.Client.WithModel(TextModel).WithMaxToken(1500).WithTemperature(0).
-		Completion(newPrompt)
+	summaryStr, err := sc.Client.WithModel(ChatModel).WithMaxToken(1500).WithTemperature(0).
+		Chat([]ChatModelMessage{{Role: "system", Content: prompt}, {Role: "user", Content: currSummary}})
 
 	logx.Info("summary_reps", ": "+summaryStr)
 	logx.Info("summary_reps_length", ": ", len([]rune(summaryStr)))

@@ -194,7 +194,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				}
 				pc := c
 				pluginInfo, err := pc.WithMaxToken(1000).WithTemperature(0).
-					Completion(plugin.GetPluginPromptInfo(req.MSG, p))
+					Chat(plugin.GetChatPluginPromptInfo(req.MSG, p))
 				if err == nil {
 					runPluginInfo, ok := plugin.RunPlugin(pluginInfo, p)
 					if ok {

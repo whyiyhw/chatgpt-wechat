@@ -4,10 +4,10 @@ FROM python:3.11
 # 导入环境变量 http_proxy
 ARG http_proxy
 
-ENV HTTP_PROXY=$http_proxy
-ENV http_proxy=$http_proxy
-ENV HTTPS_PROXY=$http_proxy
-ENV https_proxy=$http_proxy
+#ENV HTTP_PROXY=$http_proxy
+#ENV http_proxy=$http_proxy
+#ENV HTTPS_PROXY=$http_proxy
+#ENV https_proxy=$http_proxy
 
 RUN apt-get update -y && apt-get install iputils-ping -y
 
@@ -23,6 +23,8 @@ COPY ./requirements.txt /code/requirements.txt
 RUN ping -c 1 -W 1 google.com > /dev/null \
     &&  pip install --no-cache-dir --upgrade -r /code/requirements.txt \
     || pip install --no-cache-dir --upgrade -r /code/requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+
+#RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt --proxy=$https_proxy
 
 # 5、复制 FastAPI 项目代码
 COPY ./app /code/app
