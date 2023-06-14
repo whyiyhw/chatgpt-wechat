@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"chat/common/redis"
 	"chat/common/tiktoken"
@@ -24,6 +25,7 @@ type UserContext struct {
 	Summary      []ChatModelMessage `json:"summary"`        // 存储此会话的实际上下文
 	MaxTokens    int                `json:"max_tokens"`     // 需要控制的最大token数
 	Client       *ChatClient        `json:"chat_client"`    // openai 客户端
+	TimeOut      int64              `json:"time_out"`       // 超时时间 默认为 -1 永不超时
 }
 
 func GetUserUniqueID(userId string, agentID string) string {
@@ -90,6 +92,12 @@ func (c *UserContext) WithClient(client *ChatClient) *UserContext {
 	return c
 }
 
+// WithTimeOut 设置会话超时时间
+func (c *UserContext) WithTimeOut(timeOut int64) *UserContext {
+	c.TimeOut = timeOut
+	return c
+}
+
 func (c *UserContext) Set(q, a string, save bool) *UserContext {
 
 	if q != "" {
@@ -123,7 +131,7 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 	if save {
 		// 去保存数据
 		byteData, _ := json.Marshal(c)
-		redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), 0)
+		redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), time.Duration(c.TimeOut)*time.Minute)
 
 		// 因为响应已经用了 2000 token，所以请求必须在 2000 token 以下
 		// 窗口给 500 token 其他的都需要摘要到 summary 中
@@ -151,7 +159,7 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 					c.Summary = append(newSummary, c.Summary[len(c.Summary)-i-1:]...)
 					// 重新保存数据
 					byteData, _ := json.Marshal(c)
-					redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), 0)
+					redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), time.Duration(c.TimeOut)*time.Minute)
 				}()
 				break
 			}

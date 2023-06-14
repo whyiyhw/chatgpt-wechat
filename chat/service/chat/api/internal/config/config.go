@@ -133,4 +133,9 @@ type Config struct {
 			Proxy string `json:",optional,default="`
 		}
 	} `json:",optional"`
+
+	// 会话相关控制
+	Session struct {
+		TimeOut int64 `json:",optional,default=-1"`
+	} `json:",optional"`
 }

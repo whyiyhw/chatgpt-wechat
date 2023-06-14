@@ -78,7 +78,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	// context
 	collection := openai.NewUserContext(
 		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
-	).WithModel(l.model).WithPrompt(l.basePrompt).WithClient(c)
+	).WithModel(l.model).WithPrompt(l.basePrompt).WithClient(c).WithTimeOut(l.svcCtx.Config.Session.TimeOut)
 
 	// 然后 把 消息 发给 openai
 	go func() {
