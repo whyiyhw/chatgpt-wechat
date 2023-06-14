@@ -14,7 +14,7 @@ type Config struct {
 
 	RedisCache cache.CacheConf
 
-	SystemVersion string `json:",optional,default=v0.6.4.0"`
+	SystemVersion string `json:",optional,default=v0.6.4.1"`
 
 	// jwt 配置
 	Auth struct {
@@ -120,6 +120,7 @@ type Config struct {
 	Draw struct {
 		Enable          bool   `json:",optional,default=false"`
 		Company         string `json:",optional,default=openai"`
+		ZhCn2Prompt     string `json:",optional,default="`
 		StableDiffusion struct {
 			Host string `json:",optional,default="`
 			Auth struct {

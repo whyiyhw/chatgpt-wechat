@@ -92,6 +92,7 @@ Plugins:                                            # 插件配置
 Draw:                                               # 绘画配置
   Enable: false                                     # 是否开启绘画功能（可选）
   Company: "stable_diffusion"                       # 绘画公司，目前支持 stable_diffusion , openai（可选）
+  ZhCn2Prompt: ""                                   # 将中文转成图像prompt的 openai prompt（可选）不写默认使用系统常量 draw.TranslatePrompt
   StableDiffusion:                                  # 绘画配置
     Host: "http://xx.xxx.xxx.xxx:7860"              # 绘画服务地址
     Auth:                                           # 绘画服务认证

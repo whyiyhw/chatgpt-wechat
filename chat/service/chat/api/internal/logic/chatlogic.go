@@ -839,7 +839,14 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 					if l.svcCtx.Config.Proxy.Enable {
 						c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
 					}
-					changedPrompt, err := c.Completion(fmt.Sprintf(draw.TranslatePrompt, prompt))
+					// 支持自定义 翻译 prompt
+					translatePrompt := ""
+					if l.svcCtx.Config.Draw.ZhCn2Prompt != "" {
+						translatePrompt = l.svcCtx.Config.Draw.ZhCn2Prompt + "\n" + prompt
+					} else {
+						translatePrompt = fmt.Sprintf(draw.TranslatePrompt, prompt)
+					}
+					changedPrompt, err := c.Completion(translatePrompt)
 					if err != nil {
 						sendToUser(req.AgentID, req.UserID, "系统错误:关键词转为绘画 prompt 失败"+err.Error(), l.svcCtx.Config)
 						return
