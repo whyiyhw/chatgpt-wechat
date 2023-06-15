@@ -14,9 +14,13 @@ WeCom:
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxxU"    # 企业微信应用 Secret
   Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
   EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
+  Model: "gpt-3.5-turbo-16k"                        # openai 模型（可选）默认为 gpt-3.5-turbo 可选[gpt-3.5-turbo-16k, gpt-4,gpt-4-32k, text-davinci-003]
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key
+  MaxToken: 7500                                    # 一次会话能响应内容的最大 token
+  TotalToken: 15800                                 # 一次对话 openai 能处理的最大 token 数量 gpt3-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
 Response:                                           # 回复配置
     Stream: true                                    # 是否开启流式回复,自动断句（可选）

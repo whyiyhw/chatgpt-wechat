@@ -14,20 +14,30 @@ import (
 const TextModel = "text-davinci-003"
 const ChatModel = "gpt-3.5-turbo"
 const ChatModel0301 = "gpt-3.5-turbo-0301"
+const ChatModel0613 = "gpt-3.5-turbo-0613"
+const ChatModel16K = "gpt-3.5-turbo-16k"
+const ChatModel16K0613 = "gpt-3.5-turbo-16k-0613"
 const ChatModel4 = "gpt-4"
 const ChatModel40314 = "gpt-4-0314"
+const ChatModel40613 = "gpt-4-0613"
 const ChatModel432K = "gpt-4-32k"
 const ChatModel432K0314 = "gpt-4-32k-0314"
+const ChatModel432K0613 = "gpt-4-32k-0613"
 
 // Models 支持的模型
 var Models = map[string]bool{
 	TextModel:         true,
 	ChatModel:         true,
 	ChatModel0301:     true,
+	ChatModel0613:     true,
+	ChatModel16K:      true,
+	ChatModel16K0613:  true,
 	ChatModel4:        true,
 	ChatModel40314:    true,
+	ChatModel40613:    true,
 	ChatModel432K:     true,
 	ChatModel432K0314: true,
+	ChatModel432K0613: true,
 }
 
 var TotalToken = 3900

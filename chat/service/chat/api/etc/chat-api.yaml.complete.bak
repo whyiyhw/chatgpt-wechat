@@ -19,7 +19,7 @@ WeCom:                                              # 企业微信配置
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
   DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
   BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型， 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"                                  # openai 基础设定（可选）
-  Model: "gpt-3.5-turbo"                                                                                                                        # openai 模型（可选）默认为 gpt-3.5-turbo 可选[gpt-3.5-turbo-0301, gpt-4, text-davinci-003]
+  Model: "gpt-3.5-turbo"                                                                                                                        # openai 模型（可选）默认为 gpt-3.5-turbo 可选[gpt-3.5-turbo-16k, gpt-4, text-davinci-003]
   Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语（可选）
   Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
   EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
@@ -36,7 +36,7 @@ OpenAi:                                             # openai配置
   Origin: "open_ai"                                 # 默认为 调用 open_ai 也支持 azure , azure_ad (可选 默认为 open_ai)
   Engine: "deployment_name"                         # engine = "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
   MaxToken: 2000                                    # 一次会话能响应内容的最大 token
-  TotalToken: 3900                                  # 一次对话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
+  TotalToken: 3900                                  # 一次对话 openai 能处理的最大 token 数量 gpt3-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
 Proxy:                                              # （可选）代理配置

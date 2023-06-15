@@ -133,10 +133,12 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 		byteData, _ := json.Marshal(c)
 		redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), time.Duration(c.TimeOut)*time.Minute)
 
-		// 因为响应已经用了 2000 token，所以请求必须在 2000 token 以下
-		// 窗口给 500 token 其他的都需要摘要到 summary 中
+		// 因为响应已经用了 c.Client.MaxToken ，所以请求必须在 c.Client.TotalToken -  c.Client.MaxToken 以下
 
-		maxWindowToken := 500
+		// 窗口给 1/8 的 MaxToken 其他的都需要摘要到 summary 中
+
+		maxWindowToken := c.Client.MaxToken / 8
+		maxWord := maxWindowToken / 5
 		var currChatModelMessage []ChatModelMessage
 		//当录入最新的对话信息时，从新到旧，一轮轮累加评估，是否大于设置的 maxWindowToken
 		//如果大于，就会对那一轮之前的对话进行 summery + 窗口内的会话，得到实际的上下文环境
@@ -150,7 +152,7 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 				NumTokensFromMessages(c.Summary[:len(c.Summary)-i-1], c.Model) > maxWindowToken {
 				// 去总结 这个数据之前的数据
 				go func() {
-					newSummary, err := c.doSummary(c.Summary[:len(c.Summary)-i-1])
+					newSummary, err := c.doSummary(c.Summary[:len(c.Summary)-i-1], maxWord)
 					if err != nil {
 						fmt.Println("summary error", err)
 						return
@@ -168,9 +170,9 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 	return c
 }
 
-func (c *UserContext) doSummary(summary []ChatModelMessage) ([]ChatModelMessage, error) {
+func (c *UserContext) doSummary(summary []ChatModelMessage, maxWord int) ([]ChatModelMessage, error) {
 
-	prompt := "请总结以下信息至150字以内,并以json形式进行响应，不要解释。 如：{\"summary\":[{\"q\":\"问题\",\"a\":\"回答\"}]}"
+	prompt := fmt.Sprintf("请总结以下信息至%d字以内,并以json形式进行响应，不要解释。 如：{\"summary\":[{\"q\":\"问题\",\"a\":\"回答\"}]}", maxWord)
 
 	// 响应 1500 请求最多 2500 token ，不搞极限 2000 token
 	var currSummary string

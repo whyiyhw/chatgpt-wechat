@@ -441,7 +441,7 @@ func (p CommendHelp) exec(l *ChatLogic, req *types.ChatReq) bool {
 		"#usage 查看额度使用情况\n#usage:sk-xxx 查看指定 key 的使用情况",
 		"#clear 清空当前会话的数据",
 		"\n会话设置🦄\n\n#config_prompt:xxx，如程序员的小助手",
-		"#config_model:xxx，如gpt-3.5-turbo",
+		"#config_model:xxx，如gpt-3.5-turbo-16k",
 		"#config_clear 初始化对话设置",
 		"#prompt:list 查看所有支持的预定义角色",
 		"#prompt:set:xx 如 24(诗人)，角色应用",
