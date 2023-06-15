@@ -52,7 +52,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 			Content: message.Content,
 		})
 	}
-	fmt.Println("current", c.Model)
+	fmt.Println("before model:", c.Model)
 	if _, ok := Models[c.Model]; !ok {
 		c.Model = ChatModel
 	}
@@ -63,6 +63,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 		Temperature: c.Temperature,
 		TopP:        1,
 	}
+	fmt.Println("current request:", request)
 	stream, err := cli.CreateChatCompletionStream(context.Background(), request)
 
 	if err != nil {

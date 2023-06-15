@@ -194,9 +194,10 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						API:          i2.API,
 					})
 				}
-				pc := c
-				pluginInfo, err := pc.WithMaxToken(1000).WithTemperature(0).
+				pluginInfo, err := c.WithMaxToken(1000).WithTemperature(0).
 					Chat(plugin.GetChatPluginPromptInfo(req.MSG, p))
+				// 还原参数
+				c.WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).WithTemperature(l.svcCtx.Config.OpenAi.Temperature)
 				if err == nil {
 					runPluginInfo, ok := plugin.RunPlugin(pluginInfo, p)
 					if ok {

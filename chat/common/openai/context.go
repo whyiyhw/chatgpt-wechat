@@ -137,8 +137,10 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 
 		// 窗口给 1/8 的 MaxToken 其他的都需要摘要到 summary 中
 
-		maxWindowToken := c.Client.MaxToken / 8
+		maxWindowToken := c.Client.MaxToken / 6
+		fmt.Println("maxWindowToken", maxWindowToken)
 		maxWord := maxWindowToken / 5
+		fmt.Println("maxWord", maxWord)
 		var currChatModelMessage []ChatModelMessage
 		//当录入最新的对话信息时，从新到旧，一轮轮累加评估，是否大于设置的 maxWindowToken
 		//如果大于，就会对那一轮之前的对话进行 summery + 窗口内的会话，得到实际的上下文环境
