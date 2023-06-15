@@ -64,8 +64,8 @@ type UsageInfo struct {
 }
 
 // GetUsageByKey 获取key的使用情况
-func GetUsageByKey(key string, proxyEnable bool, proxyHttp, proxySocket5, proxyUsername, proxyPassword string) (*UsageInfo, error) {
-	reqUrl := "https://api.openai.com/v1/dashboard/billing/subscription"
+func GetUsageByKey(key, baseHost string, proxyEnable bool, proxyHttp, proxySocket5, proxyUsername, proxyPassword string) (*UsageInfo, error) {
+	reqUrl := fmt.Sprintf("%s/v1/dashboard/billing/subscription", baseHost)
 	method := "GET"
 
 	client := &http.Client{
@@ -154,7 +154,7 @@ func GetUsageByKey(key string, proxyEnable bool, proxyHttp, proxySocket5, proxyU
 	}
 
 	//2023-04-01
-	reqUrl = fmt.Sprintf("https://api.openai.com/v1/dashboard/billing/usage?start_date=%s&end_date=%s", startTime, endTime)
+	reqUrl = fmt.Sprintf("%s/v1/dashboard/billing/usage?start_date=%s&end_date=%s", baseHost, startTime, endTime)
 	req, err = http.NewRequest(method, reqUrl, nil)
 
 	if err != nil {
