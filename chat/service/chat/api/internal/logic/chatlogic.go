@@ -909,8 +909,9 @@ func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			key = strings.Replace(req.MSG, "#usage:", "", -1)
 		}
 		// 查询使用情况
+
 		usage, err := openai.GetUsageByKey(
-			key, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5,
+			key, l.baseHost, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5,
 			l.svcCtx.Config.Proxy.Auth.Username, l.svcCtx.Config.Proxy.Auth.Password,
 		)
 
