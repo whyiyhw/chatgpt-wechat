@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	copenai "github.com/sashabaranov/go-openai"
 	"golang.org/x/net/proxy"
@@ -165,6 +166,7 @@ func (c *ChatClient) buildConfig() copenai.ClientConfig {
 		}
 		config.HTTPClient = &http.Client{
 			Transport: transport,
+			Timeout:   300 * time.Second,
 		}
 	} else if c.Socks5Proxy != "" {
 		socks5Transport := &http.Transport{}
@@ -179,6 +181,7 @@ func (c *ChatClient) buildConfig() copenai.ClientConfig {
 		}
 		config.HTTPClient = &http.Client{
 			Transport: socks5Transport,
+			Timeout:   300 * time.Second,
 		}
 	}
 

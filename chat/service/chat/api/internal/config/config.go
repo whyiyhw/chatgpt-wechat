@@ -49,12 +49,12 @@ type Config struct {
 	// openai 配置
 	OpenAi struct {
 		Key         string
-		Host        string  `json:"host,optional,default=https://api.openai.com"`
-		Origin      string  `json:"origin,optional,default=open_ai"`
-		Engine      string  `json:"engine,optional,default="`
-		MaxToken    int     `json:"max_token,optional,default=2000"`
-		TotalToken  int     `json:"total_token,optional,default=3900"`
-		Temperature float32 `json:"temperature,optional,default=0.8"`
+		Host        string  `json:",optional,default=https://api.openai.com"`
+		Origin      string  `json:",optional,default=open_ai"`
+		Engine      string  `json:",optional,default="`
+		MaxToken    int     `json:",optional,default=2000"`
+		TotalToken  int     `json:",optional,default=3900"`
+		Temperature float32 `json:",optional,default=0.8"`
 	}
 
 	// http proxy 设置
