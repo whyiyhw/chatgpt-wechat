@@ -2,13 +2,12 @@ package openai
 
 import (
 	"context"
+	copenai "github.com/sashabaranov/go-openai"
+	"golang.org/x/net/proxy"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
-
-	copenai "github.com/sashabaranov/go-openai"
-	"golang.org/x/net/proxy"
 )
 
 const TextModel = "text-davinci-003"
