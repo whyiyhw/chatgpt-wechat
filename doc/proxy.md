@@ -7,7 +7,7 @@
 
 ## docker 安装 v2ray
 ```shell
-docker pull v2fly/v2fly-core:v5.2.1
+docker pull v2fly/v2fly-core:v5.4.1
 ```
 ![image30](./image30.png)
 
@@ -53,7 +53,7 @@ vim /data/v2ray/config.json
             "method": "xxx-xxx-xxx",
             "ota": true,
             "password": "xxxxxxxxxxxxxxxxx",
-            "port": xxxxx
+            "port": 0
           }
         ]
       }
@@ -139,6 +139,7 @@ vim /data/v2ray/config.json
 可以自行修改 对应参数
 ### ss 协议需要修改的点 都用 `xxx` 标明了
 ```json
+{  
   "outbounds": [
     {
       "protocol": "shadowsocks",
@@ -149,15 +150,16 @@ vim /data/v2ray/config.json
             "method": "xxxxx",
             "ota": true,
             "password": "xxxxx",
-            "port": xxxxx
+            "port": 0
           }
         ]
       }
-    },
+    }
   ],
   "dns": {
     "clientIp": "xx.xx.xx.xx"
-  },
+  }
+}
 ```
 ![image31](./image31.png)
 
@@ -166,7 +168,7 @@ vim /data/v2ray/config.json
 ### 配置后运行 
 
 ```shell
-sudo docker run -d --name v2ray --restart=always --network host -v /data/v2ray/config.json:/etc/v2ray/config.json v2fly/v2fly-core:v5.2.1 run -c /etc/v2ray/config.json
+sudo docker run -d --name v2ray --restart=always --network host -v /data/v2ray/config.json:/etc/v2ray/config.json v2fly/v2fly-core:v5.4.1 run -c /etc/v2ray/config.json
 ```
 
 ### 测试是否成功

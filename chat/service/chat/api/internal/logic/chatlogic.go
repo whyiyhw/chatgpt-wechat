@@ -87,7 +87,9 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
 		if l.svcCtx.Config.Proxy.Enable {
-			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 		}
 
 		// context
@@ -696,7 +698,9 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 
 	if l.svcCtx.Config.Proxy.Enable {
-		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 	}
 
 	var cli openai.Speaker
@@ -837,7 +841,9 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 						WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
 					if l.svcCtx.Config.Proxy.Enable {
-						c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+						c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+							WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+							WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 					}
 					// 支持自定义 翻译 prompt
 					translatePrompt := ""
@@ -903,7 +909,10 @@ func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			key = strings.Replace(req.MSG, "#usage:", "", -1)
 		}
 		// 查询使用情况
-		usage, err := openai.GetUsageByKey(key, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5)
+		usage, err := openai.GetUsageByKey(
+			key, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5,
+			l.svcCtx.Config.Proxy.Auth.Username, l.svcCtx.Config.Proxy.Auth.Password,
+		)
 
 		if err != nil {
 			logx.Info("get usage fail", err)
@@ -921,7 +930,9 @@ func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
 		if l.svcCtx.Config.Proxy.Enable {
-			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 		}
 		hasGpt4Msg := "否"
 		if c.HasGpt4() {

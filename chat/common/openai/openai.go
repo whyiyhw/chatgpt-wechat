@@ -40,16 +40,18 @@ type ChatModelMessage struct {
 }
 
 type ChatClient struct {
-	APIKey      string  `json:"api_key"`
-	Origin      string  `json:"origin"`
-	Engine      string  `json:"engine"`
-	HttpProxy   string  `json:"http_proxy"`
-	Socks5Proxy string  `json:"socks5_proxy"`
-	Model       string  `json:"model"`
-	BaseHost    string  `json:"base_host"`
-	MaxToken    int     `json:"max_token"`
-	TotalToken  int     `json:"total_token"`
-	Temperature float32 `json:"temperature"`
+	APIKey        string  `json:"api_key"`
+	Origin        string  `json:"origin"`
+	Engine        string  `json:"engine"`
+	HttpProxy     string  `json:"http_proxy"`
+	Socks5Proxy   string  `json:"socks5_proxy"`
+	ProxyUserName string  `json:"proxy_user_name"`
+	ProxyPassword string  `json:"proxy_password"`
+	Model         string  `json:"model"`
+	BaseHost      string  `json:"base_host"`
+	MaxToken      int     `json:"max_token"`
+	TotalToken    int     `json:"total_token"`
+	Temperature   float32 `json:"temperature"`
 }
 
 func NewChatClient(apiKey string) *ChatClient {
@@ -73,6 +75,7 @@ func (c *ChatClient) WithEngine(engine string) *ChatClient {
 	return c
 }
 
+// WithModel 设置模型
 func (c *ChatClient) WithModel(model string) *ChatClient {
 	if _, ok := Models[model]; ok {
 		c.Model = model
@@ -80,6 +83,7 @@ func (c *ChatClient) WithModel(model string) *ChatClient {
 	return c
 }
 
+// WithBaseHost 设置baseHost
 func (c *ChatClient) WithBaseHost(baseHost string) *ChatClient {
 	c.BaseHost = baseHost
 	return c
@@ -103,12 +107,27 @@ func (c *ChatClient) WithTotalToken(totalToken int) *ChatClient {
 	return c
 }
 
+// WithHttpProxy 设置http代理
 func (c *ChatClient) WithHttpProxy(proxyUrl string) *ChatClient {
 	c.HttpProxy = proxyUrl
 	return c
 }
+
+// WithSocks5Proxy 设置socks5代理
 func (c *ChatClient) WithSocks5Proxy(proxyUrl string) *ChatClient {
 	c.Socks5Proxy = proxyUrl
+	return c
+}
+
+// WithProxyUserName 设置代理用户名
+func (c *ChatClient) WithProxyUserName(userName string) *ChatClient {
+	c.ProxyUserName = userName
+	return c
+}
+
+// WithProxyPassword 设置代理密码
+func (c *ChatClient) WithProxyPassword(password string) *ChatClient {
+	c.ProxyPassword = password
 	return c
 }
 
@@ -128,6 +147,9 @@ func (c *ChatClient) buildConfig() copenai.ClientConfig {
 	}
 	if c.HttpProxy != "" {
 		proxyUrl, _ := url.Parse(c.HttpProxy)
+		if c.ProxyUserName != "" && c.ProxyPassword != "" {
+			proxyUrl.User = url.UserPassword(c.ProxyUserName, c.ProxyPassword)
+		}
 		transport := &http.Transport{
 			Proxy: http.ProxyURL(proxyUrl),
 		}
@@ -136,7 +158,12 @@ func (c *ChatClient) buildConfig() copenai.ClientConfig {
 		}
 	} else if c.Socks5Proxy != "" {
 		socks5Transport := &http.Transport{}
-		dialer, _ := proxy.SOCKS5("tcp", c.Socks5Proxy, nil, proxy.Direct)
+		auth := proxy.Auth{}
+		if c.ProxyUserName != "" && c.ProxyPassword != "" {
+			auth.Password = c.ProxyPassword
+			auth.User = c.ProxyUserName
+		}
+		dialer, _ := proxy.SOCKS5("tcp", c.Socks5Proxy, &auth, proxy.Direct)
 		socks5Transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return dialer.Dial(network, addr)
 		}

@@ -17,7 +17,7 @@ require (
 	github.com/milvus-io/milvus-sdk-go/v2 v2.2.2
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.0.5
-	github.com/sashabaranov/go-openai v1.10.1
+	github.com/sashabaranov/go-openai v1.11.1
 	github.com/whyiyhw/go-workwx v0.0.9
 	github.com/zeromicro/go-zero v1.5.3
 	golang.org/x/crypto v0.7.0
