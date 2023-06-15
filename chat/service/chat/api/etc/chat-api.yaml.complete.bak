@@ -106,8 +106,8 @@ Draw:                                               # 绘画配置
     Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
     Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理
     Auth:                                           # （可选）代理认证
-      Username: "xxxxxx"                            # （可选）代理用户名
-      Password: "xxxxxx"                            # （可选）代理密码
+      Username: ""                                  # （可选）代理用户名 默认为空
+      Password: ""                                  # （可选）代理密码 默认为空
 
 Session:                                            # 会话相关配置
   Timeout: -1                                       # 会话超时时间（m）分钟，如果在（x）分钟内，未进行对话，本次会话内容会被销毁，-1为永不超时（可选）
