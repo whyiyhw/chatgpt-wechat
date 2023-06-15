@@ -64,7 +64,7 @@ type UsageInfo struct {
 }
 
 // GetUsageByKey 获取key的使用情况
-func GetUsageByKey(key string, proxyEnable bool, proxyHttp string, proxySocket5 string) (*UsageInfo, error) {
+func GetUsageByKey(key string, proxyEnable bool, proxyHttp, proxySocket5, proxyUsername, proxyPassword string) (*UsageInfo, error) {
 	reqUrl := "https://api.openai.com/v1/dashboard/billing/subscription"
 	method := "GET"
 
@@ -74,12 +74,21 @@ func GetUsageByKey(key string, proxyEnable bool, proxyHttp string, proxySocket5 
 	if proxyEnable {
 		if proxyHttp != "" {
 			proxyUrl, _ := url.Parse(proxyHttp)
+			if proxyUsername != "" && proxyPassword != "" {
+				proxyUrl.User = url.UserPassword(proxyUsername, proxyPassword)
+			}
 			client.Transport = &http.Transport{
 				Proxy: http.ProxyURL(proxyUrl),
 			}
-
 		} else if proxySocket5 != "" {
-			dialer, err := proxy.SOCKS5("tcp", proxySocket5, nil, proxy.Direct)
+			auth := proxy.Auth{}
+			if proxyUsername != "" && proxyPassword != "" {
+				auth = proxy.Auth{
+					User:     proxyUsername,
+					Password: proxyPassword,
+				}
+			}
+			dialer, err := proxy.SOCKS5("tcp", proxySocket5, &auth, proxy.Direct)
 			if err != nil {
 				fmt.Println(err)
 				return nil, err

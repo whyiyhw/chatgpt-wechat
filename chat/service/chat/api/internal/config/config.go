@@ -14,7 +14,7 @@ type Config struct {
 
 	RedisCache cache.CacheConf
 
-	SystemVersion string `json:",optional,default=v0.6.4.1"`
+	SystemVersion string `json:",optional,default=v0.6.4.2"`
 
 	// jwt 配置
 	Auth struct {
@@ -60,8 +60,12 @@ type Config struct {
 	// http proxy 设置
 	Proxy struct {
 		Enable  bool   `json:",optional,default=false"`
-		Socket5 string `json:",optional,default=127.0.0.1:1080"`
+		Socket5 string `json:",optional,default="`
 		Http    string `json:",optional,default="`
+		Auth    struct {
+			Username string `json:",optional,default="`
+			Password string `json:",optional,default="`
+		} `json:",optional"`
 	} `json:",optional"`
 
 	// ocr 配置
@@ -132,6 +136,10 @@ type Config struct {
 			Key   string `json:",optional"`
 			Host  string `json:",optional,default=https://api.openai.com"`
 			Proxy string `json:",optional,default="`
+			Auth  struct {
+				Username string `json:",optional,default="`
+				Password string `json:",optional,default="`
+			} `json:",optional"`
 		}
 	} `json:",optional"`
 

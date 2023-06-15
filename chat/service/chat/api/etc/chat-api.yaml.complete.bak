@@ -39,16 +39,19 @@ OpenAi:                                             # openai配置
   TotalToken: 3900                                  # 一次对话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
-Proxy:                                              # 代理配置 （可选）
-  Enable: false                                     # 是否启用代理，默认为 false（可选）
-  Socket5: "127.0.0.1:1080"                         # 代理地址 默认为 127.0.0.1:1080（可选）
-  Http: "http://127.0.0.1:1080"                     # 代理地址 默认为空（可选）
+Proxy:                                              # （可选）代理配置
+  Enable: false                                     # （可选）是否启用代理，默认为 false
+  Socket5: "127.0.0.1:1080"                         # （可选）代理地址 默认为空 如 127.0.0.1:1080
+  Http: "http://127.0.0.1:1080"                     # （可选）代理地址 默认为空 如 http://127.0.0.1:1080
+  Auth:                                             # （可选）代理认证
+    Username: ""                                    # （可选）代理用户名
+    Password: ""                                    # （可选）代理密码
 
-OCR:                                                # OCR配置 ,开启图片识别（可选）
-  Company: "ali"                                    # 识别公司，目前支持阿里云（可选）
-  AliYun:                                           # 阿里云配置
-    AccessKeyId: ""                                 # 阿里云 key
-    AccessKeySecret: ""                             # 阿里云 secret
+OCR:                                                # （可选）OCR配置 ,开启图片识别
+  Company: "ali"                                    # （可选）识别公司，目前支持阿里云
+  AliYun:                                           # （可选）阿里云配置
+    AccessKeyId: ""                                 # （可选）阿里云 key
+    AccessKeySecret: ""                             # （可选）阿里云 secret
 
 Embeddings:
   Enable: true
@@ -101,7 +104,10 @@ Draw:                                               # 绘画配置
   OpenAi:
     Key: "xxxxxx"                                   # openai key
     Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
-    Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理（可选）
+    Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理
+    Auth:                                           # （可选）代理认证
+      Username: "xxxxxx"                            # （可选）代理用户名
+      Password: "xxxxxx"                            # （可选）代理密码
 
 Session:                                            # 会话相关配置
   Timeout: -1                                       # 会话超时时间（m）分钟，如果在（x）分钟内，未进行对话，本次会话内容会被销毁，-1为永不超时（可选）

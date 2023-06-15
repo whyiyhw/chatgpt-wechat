@@ -72,7 +72,9 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 	if l.svcCtx.Config.Proxy.Enable {
-		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 	}
 
 	// context
@@ -358,7 +360,9 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 
 	if l.svcCtx.Config.Proxy.Enable {
-		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5)
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 	}
 
 	var cli openai.Speaker
