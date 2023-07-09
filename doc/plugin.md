@@ -57,8 +57,8 @@ cd plugins
 #      args:
 #        http_proxy: "http://192.168.1.202:1081"
 
-# 如果你服务器在国内
-# 请 把 docker-compose.yml 移除掉这个参数
+# 而如果你服务器在已经在国外，可自由访问 google
+# 请在 docker-compose.yml 中移除掉这个参数
 
 # 最后还是编译与运行
 docker-compose build && docker-compose up -d
