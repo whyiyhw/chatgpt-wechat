@@ -1,11 +1,13 @@
 package logic
 
 import (
+	"context"
+
 	"chat/common/xerr"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
-	"context"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -30,7 +32,7 @@ func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *type
 	// 判断用户是否已经注册
 	builder := l.svcCtx.UserModel.RowBuilder().Where(squirrel.Eq{"email": req.Email})
 
-	if exist, err := l.svcCtx.UserModel.FindOneByQuery(l.ctx, builder); err != nil && err != model.ErrNotFound {
+	if exist, err := l.svcCtx.UserModel.FindOneByQuery(l.ctx, builder); err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, errors.Wrapf(xerr.NewErrCodeMsg(xerr.DBError, "查询用户失败"), "查询用户失败 %v", err)
 	} else {
 		if exist != nil {
