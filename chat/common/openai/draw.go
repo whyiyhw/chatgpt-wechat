@@ -24,9 +24,9 @@ type Draw struct {
 	Proxy  string
 }
 
-func NewOpenaiDraw(key, proxy string) *Draw {
+func NewOpenaiDraw(host, key, proxy string) *Draw {
 	return &Draw{
-		Host:   "https://api.openai.com",
+		Host:   host,
 		APIKey: key,
 		Proxy:  proxy,
 	}
