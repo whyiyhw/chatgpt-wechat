@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -659,10 +660,10 @@ func (p CommendPromptSet) exec(l *ChatLogic, req *types.ChatReq) bool {
 	}
 	//去根据用户输入的prompt去数据库查询是否存在
 	prompt, _err := l.svcCtx.PromptConfigModel.FindOne(context.Background(), mId)
-	switch _err {
-	case model.ErrNotFound:
+	switch {
+	case errors.Is(_err, model.ErrNotFound):
 		sendToUser(req.AgentID, req.UserID, "此 prompt 不存在，请确认后再试", l.svcCtx.Config)
-	case nil:
+	case _err == nil:
 		// 去数据库新增用户的对话配置
 		chatConfig := model.ChatConfig{
 			AgentId: req.AgentID,

@@ -17,7 +17,7 @@ func (c *ChatClient) Completion(req string) (string, error) {
 	// 打印请求信息
 	logx.Info("Completion req: ", req)
 	request := copenai.CompletionRequest{
-		Model:       copenai.GPT3TextDavinci003,
+		Model:       copenai.GPT3Dot5TurboInstruct,
 		Prompt:      req,
 		MaxTokens:   c.MaxToken,
 		Temperature: c.Temperature,

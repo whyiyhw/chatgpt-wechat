@@ -41,7 +41,7 @@
 
 - **前提条件，需要有一个自己的服务器，或者云服务器**
 - 执行 `docker -v` 是否有版本号？[docker 安装官方文档](https://docs.docker.com/engine/install/)
-- 执行 `docker-compose -v` 是否有版本号？[docker-compose 安装官方文档](https://docs.docker.com/compose/install/standalone/)
+- 执行 `docker-compose -v` 或 `docker compose version` 二选一，是否有版本号？[docker-compose 安装官方文档](https://docs.docker.com/compose/install/standalone/)
 
   ![image29](./image29.png)
 
@@ -102,9 +102,14 @@ OpenAi:                                             # openai配置
 
 # 去 build 项目（第一次需要下载依赖，可能会比较慢）
 sudo docker-compose build
+# 或者
+sudo docker compose build
+
 
 # 启动集成应用
 sudo docker-compose up -d
+# 或者
+sudo docker compose up -d
 
 # 后续如果进行了版本升级，需要重新 build 再 up ，一般配置文件(chat-api.yaml)改动，只需要 docker-compose restart  web 就好
 ```

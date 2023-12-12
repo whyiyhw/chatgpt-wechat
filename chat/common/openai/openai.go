@@ -14,8 +14,10 @@ import (
 
 const TextModel = "text-davinci-003"
 const ChatModel = "gpt-3.5-turbo"
+const ChatModelTurboInstruct = "gpt-3.5-turbo-instruct"
 const ChatModel0301 = "gpt-3.5-turbo-0301"
 const ChatModel0613 = "gpt-3.5-turbo-0613"
+const ChatModel1106 = "gpt-3.5-turbo-1106"
 const ChatModel16K = "gpt-3.5-turbo-16k"
 const ChatModel16K0613 = "gpt-3.5-turbo-16k-0613"
 const ChatModel4 = "gpt-4"
@@ -24,21 +26,27 @@ const ChatModel40613 = "gpt-4-0613"
 const ChatModel432K = "gpt-4-32k"
 const ChatModel432K0314 = "gpt-4-32k-0314"
 const ChatModel432K0613 = "gpt-4-32k-0613"
+const ChatModel4TurboPreview = "gpt-4-1106-preview"
+const ChatModel4VisionPreview = "gpt-4-vision-preview"
 
 // Models 支持的模型
 var Models = map[string]bool{
-	TextModel:         true,
-	ChatModel:         true,
-	ChatModel0301:     true,
-	ChatModel0613:     true,
-	ChatModel16K:      true,
-	ChatModel16K0613:  true,
-	ChatModel4:        true,
-	ChatModel40314:    true,
-	ChatModel40613:    true,
-	ChatModel432K:     true,
-	ChatModel432K0314: true,
-	ChatModel432K0613: true,
+	TextModel:               true,
+	ChatModel:               true,
+	ChatModelTurboInstruct:  true,
+	ChatModel0301:           true,
+	ChatModel0613:           true,
+	ChatModel1106:           true,
+	ChatModel16K:            true,
+	ChatModel16K0613:        true,
+	ChatModel4:              true,
+	ChatModel40314:          true,
+	ChatModel40613:          true,
+	ChatModel432K:           true,
+	ChatModel432K0314:       true,
+	ChatModel432K0613:       true,
+	ChatModel4TurboPreview:  true,
+	ChatModel4VisionPreview: true,
 }
 
 var TotalToken = 3900

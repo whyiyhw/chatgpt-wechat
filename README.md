@@ -134,6 +134,18 @@ requirepass "xxxxx"
 - 最后 `docker-compose down && docker-compose up -d` 重启整个服务
 </details>
 
+### 更新后 redis 服务启动失败或者连不上redid？
+<details>
+<summary></summary>
+
+> 请考虑删除 `chat/build/redis/data/` 下的文件，可能是因为旧版本的 redis 存在残留文件导致的
+
+- 请先 `docker-compose down` 停止服务
+- 然后 删除redis 本地文件 `chat/build/redis/data/` 下的文件
+- 最后 `docker-compose up -d` 重启服务
+
+</details>
+
 ## 感谢以下朋友对于本项目的大力支持~
   <p align="center">
     <a href="https://github.com/whyiyhw/chatgpt-wechat" target="_blank" rel="noopener noreferrer">
