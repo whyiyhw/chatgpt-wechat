@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -17,8 +18,8 @@ import (
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm"
 )
 
 type CustomerChatLogic struct {
@@ -44,11 +45,11 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	l.setModelName().setBasePrompt().setBaseHost()
 
 	// 确认消息没有被处理过
-	_, err = l.svcCtx.ChatModel.FindOneByQuery(l.ctx,
-		l.svcCtx.ChatModel.RowBuilder().Where(squirrel.Eq{"message_id": req.MsgID}).Where(squirrel.Eq{"user": req.CustomerID}),
-	)
-	// 消息已处理
-	if err == nil {
+	table := l.svcCtx.ChatModel.Chat
+	_, err = table.WithContext(l.ctx).
+		Where(table.MessageID.Eq(req.MsgID)).Where(table.User.Eq(req.CustomerID)).First()
+	// 消息已处理 或者 查询有问题
+	if err == nil || !errors.Is(err, gorm.ErrRecordNotFound) {
 		return &types.CustomerChatReply{
 			Message: "ok",
 		}, nil
@@ -222,10 +223,11 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				}
 				collection.Set("", messageText, true)
 				// 再去插入数据
-				_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
 					User:       req.CustomerID,
-					OpenKfId:   req.OpenKfID,
-					MessageId:  req.MsgID,
+					OpenKfID:   req.OpenKfID,
+					MessageID:  req.MsgID,
 					ReqContent: req.Msg,
 					ResContent: messageText,
 				})
@@ -273,10 +275,11 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// 然后把数据 发给对应的客户
 		go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
 		collection.Set("", messageText, true)
-		_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
+		table := l.svcCtx.ChatModel.Chat
+		_ = table.WithContext(context.Background()).Create(&model.Chat{
 			User:       req.CustomerID,
-			OpenKfId:   req.OpenKfID,
-			MessageId:  req.MsgID,
+			OpenKfID:   req.OpenKfID,
+			MessageID:  req.MsgID,
 			ReqContent: req.Msg,
 			ResContent: messageText,
 		})

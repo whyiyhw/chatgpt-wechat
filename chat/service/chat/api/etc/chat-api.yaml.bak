@@ -3,11 +3,11 @@ Host: 0.0.0.0                                       # 项目监听地址
 Port: 8888                                          # 项目监听端口
 
 Mysql:
-  DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
+    DataSource: chat:Chat-gpt~wechat@tcp(mysql81:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
 
 RedisCache:
   - Host: redis7:6379                               # redis缓存地址
-    Pass: "123456"                                  # redis缓存密码
+    Pass: "Chat-gpt~wechat"                        # redis缓存密码
 
 WeCom:
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID

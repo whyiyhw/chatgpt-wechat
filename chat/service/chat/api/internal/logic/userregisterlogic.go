@@ -8,10 +8,10 @@ import (
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserRegisterLogic struct {
@@ -30,13 +30,13 @@ func NewUserRegisterLogic(ctx context.Context, svcCtx *svc.ServiceContext) *User
 
 func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *types.UserRegisterReply, err error) {
 	// 判断用户是否已经注册
-	builder := l.svcCtx.UserModel.RowBuilder().Where(squirrel.Eq{"email": req.Email})
-
-	if exist, err := l.svcCtx.UserModel.FindOneByQuery(l.ctx, builder); err != nil && !errors.Is(err, model.ErrNotFound) {
+	userModel := l.svcCtx.UserModel.User
+	exist, selectErr := userModel.WithContext(l.ctx).Where(userModel.Email.Eq(req.Email)).First()
+	if err != nil && !errors.Is(selectErr, gorm.ErrRecordNotFound) {
 		return nil, errors.Wrapf(xerr.NewErrCodeMsg(xerr.DBError, "查询用户失败"), "查询用户失败 %v", err)
 	} else {
-		if exist != nil {
-			return nil, errors.Wrapf(xerr.NewErrMsg("用户已经注册"), "用户已经注册 %d", exist.Id)
+		if exist.ID != 0 {
+			return nil, errors.Wrapf(xerr.NewErrMsg("用户已经注册"), "用户已经注册 %d", exist.ID)
 		}
 	}
 
@@ -48,7 +48,7 @@ func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *type
 	}
 
 	// 未注册的用户进行注册操作
-	if _, err := l.svcCtx.UserModel.Insert(l.ctx, &model.User{
+	if err := userModel.WithContext(l.ctx).Create(&model.User{
 		Email:    req.Email,
 		Name:     req.Name,
 		Password: string(hashedPassword),

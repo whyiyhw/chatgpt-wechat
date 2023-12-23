@@ -1,32 +1,40 @@
 package svc
 
 import (
-	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/rest"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/middleware"
-	"chat/service/chat/model"
+	"chat/service/chat/dao"
 )
 
 type ServiceContext struct {
 	Config            config.Config
-	UserModel         model.UserModel
-	ChatModel         model.ChatModel
-	ChatConfigModel   model.ChatConfigModel
-	PromptConfigModel model.PromptConfigModel
+	DbEngin           *gorm.DB
+	UserModel         *dao.Query
+	ChatModel         *dao.Query
+	ChatConfigModel   *dao.Query
+	PromptConfigModel *dao.Query
 	AccessLog         rest.Middleware
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	conn := sqlx.NewMysql(c.Mysql.DataSource)
+	//启动Gorm支持
+	db, err := gorm.Open(mysql.Open(c.Mysql.DataSource), &gorm.Config{})
+
+	if err != nil {
+		panic(err)
+	}
 
 	return &ServiceContext{
 		Config:            c,
-		UserModel:         model.NewUserModel(conn, c.RedisCache),
-		ChatModel:         model.NewChatModel(conn, c.RedisCache),
-		ChatConfigModel:   model.NewChatConfigModel(conn, c.RedisCache),
-		PromptConfigModel: model.NewPromptConfigModel(conn, c.RedisCache),
+		DbEngin:           db,
+		UserModel:         dao.Use(db),
+		ChatModel:         dao.Use(db),
+		ChatConfigModel:   dao.Use(db),
+		PromptConfigModel: dao.Use(db),
 		AccessLog:         middleware.NewAccessLogMiddleware().Handle,
 	}
 }

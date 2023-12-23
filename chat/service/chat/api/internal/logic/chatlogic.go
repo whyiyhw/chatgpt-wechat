@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"io"
 	"reflect"
 	"regexp"
@@ -25,7 +26,6 @@ import (
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -54,14 +54,11 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		l.setModelName(req.AgentID).setBasePrompt(req.AgentID).setBaseHost()
 
 		// 如果用户有自定义的配置，就使用用户的配置
-		configCollection, configErr := l.svcCtx.ChatConfigModel.FindOneByQuery(
-			context.Background(),
-			l.svcCtx.ChatConfigModel.RowBuilder().
-				Where(squirrel.Eq{"user": req.UserID}).
-				Where(squirrel.Eq{"agent_id": req.AgentID}).
-				OrderBy("id desc"),
-		)
-		if configErr == nil && configCollection.Id > 0 {
+		table := l.svcCtx.ChatConfigModel.ChatConfig
+		configCollection, configErr := table.WithContext(context.Background()).
+			Where(table.User.Eq(req.UserID)).Where(table.AgentID.Eq(req.AgentID)).
+			Order(table.ID.Desc()).First()
+		if configErr == nil && configCollection.ID > 0 {
 			l.basePrompt = configCollection.Prompt
 			l.model = configCollection.Model
 		}
@@ -252,8 +249,9 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					}
 					collection.Set("", messageText, true)
 					// 再去插入数据
-					_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
-						AgentId:    req.AgentID,
+					table := l.svcCtx.ChatModel.Chat
+					_ = table.WithContext(context.Background()).Create(&model.Chat{
+						AgentID:    req.AgentID,
 						User:       req.UserID,
 						ReqContent: req.MSG,
 						ResContent: messageText,
@@ -305,8 +303,9 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			collection.Set("", messageText, true)
 
 			// 再去插入数据
-			_, _ = l.svcCtx.ChatModel.Insert(context.Background(), &model.Chat{
-				AgentId:    req.AgentID,
+			table := l.svcCtx.ChatModel.Chat
+			_ = table.WithContext(context.Background()).Create(&model.Chat{
+				AgentID:    req.AgentID,
 				User:       req.UserID,
 				ReqContent: req.MSG,
 				ResContent: messageText,
@@ -494,12 +493,13 @@ func (p CommendConfigPrompt) exec(l *ChatLogic, req *types.ChatReq) bool {
 	}
 	// 去数据库新增用户的对话配置
 	chatConfig := model.ChatConfig{
-		AgentId: req.AgentID,
+		AgentID: req.AgentID,
 		User:    req.UserID,
 		Prompt:  msg,
 		Model:   l.model,
 	}
-	_, configErr := l.svcCtx.ChatConfigModel.Insert(context.Background(), &chatConfig)
+	table := l.svcCtx.ChatConfigModel.ChatConfig
+	configErr := table.WithContext(context.Background()).Create(&chatConfig)
 
 	if configErr != nil {
 		sendToUser(req.AgentID, req.UserID, "设置失败,请稍后再试~", l.svcCtx.Config)
@@ -533,12 +533,13 @@ func (p CommendConfigModel) exec(l *ChatLogic, req *types.ChatReq) bool {
 
 	// 去数据库新增用户的对话配置
 	chatConfig := model.ChatConfig{
-		AgentId: req.AgentID,
+		AgentID: req.AgentID,
 		User:    req.UserID,
 		Prompt:  l.basePrompt,
 		Model:   msg,
 	}
-	_, configErr := l.svcCtx.ChatConfigModel.Insert(context.Background(), &chatConfig)
+	table := l.svcCtx.ChatConfigModel.ChatConfig
+	configErr := table.WithContext(context.Background()).Create(&chatConfig)
 
 	if configErr != nil {
 		sendToUser(req.AgentID, req.UserID, "设置失败,请稍后再试~", l.svcCtx.Config)
@@ -553,10 +554,11 @@ type CommendConfigClear struct{}
 
 func (p CommendConfigClear) exec(l *ChatLogic, req *types.ChatReq) bool {
 	// 去数据库删除 用户的所有对话配置
-	builder := l.svcCtx.ChatConfigModel.RowBuilder().Where(squirrel.Eq{"user": req.UserID}).Where(squirrel.Eq{"agent_id": req.AgentID})
-	collection, _ := l.svcCtx.ChatConfigModel.FindAll(context.Background(), builder)
+	table := l.svcCtx.ChatConfigModel.ChatConfig
+	collection, _ := table.WithContext(context.Background()).Where(table.User.Eq(req.UserID)).
+		Where(table.AgentID.Eq(req.AgentID)).Find()
 	for _, val := range collection {
-		_ = l.svcCtx.ChatConfigModel.Delete(context.Background(), val.Id)
+		_, _ = table.WithContext(context.Background()).Where(table.ID.Eq(val.ID)).Delete()
 	}
 	sendToUser(req.AgentID, req.UserID, "对话设置已恢复初始化", l.svcCtx.Config)
 	return false
@@ -631,12 +633,11 @@ type CommendPromptList struct{}
 func (p CommendPromptList) exec(l *ChatLogic, req *types.ChatReq) bool {
 	// #prompt:list
 	// 去数据库获取用户的所有prompt
-	collection, _ := l.svcCtx.PromptConfigModel.FindAll(context.Background(),
-		l.svcCtx.PromptConfigModel.RowBuilder().Where(squirrel.Gt{"id": 1}),
-	)
+	e := l.svcCtx.PromptConfigModel.PromptConfig
+	collection, _ := e.WithContext(context.Background()).Where(e.ID.Gt(1)).Find()
 	var prompts []string
 	for _, val := range collection {
-		prompts = append(prompts, fmt.Sprintf("%s:%d", val.Key, val.Id))
+		prompts = append(prompts, fmt.Sprintf("%s:%d", val.Key, val.ID))
 	}
 	sendToUser(req.AgentID, req.UserID, "您的prompt如下：\n"+strings.Join(prompts, "\n"), l.svcCtx.Config)
 	return false
@@ -659,19 +660,21 @@ func (p CommendPromptSet) exec(l *ChatLogic, req *types.ChatReq) bool {
 		return false
 	}
 	//去根据用户输入的prompt去数据库查询是否存在
-	prompt, _err := l.svcCtx.PromptConfigModel.FindOne(context.Background(), mId)
+	e := l.svcCtx.PromptConfigModel.PromptConfig
+	prompt, _err := e.WithContext(context.Background()).Where(e.ID.Eq(mId)).First()
 	switch {
-	case errors.Is(_err, model.ErrNotFound):
+	case errors.Is(_err, gorm.ErrRecordNotFound):
 		sendToUser(req.AgentID, req.UserID, "此 prompt 不存在，请确认后再试", l.svcCtx.Config)
 	case _err == nil:
 		// 去数据库新增用户的对话配置
 		chatConfig := model.ChatConfig{
-			AgentId: req.AgentID,
+			AgentID: req.AgentID,
 			User:    req.UserID,
 			Prompt:  prompt.Value,
 			Model:   l.model,
 		}
-		_, configErr := l.svcCtx.ChatConfigModel.Insert(context.Background(), &chatConfig)
+		table := l.svcCtx.ChatConfigModel.ChatConfig
+		configErr := table.WithContext(context.Background()).Create(&chatConfig)
 
 		if configErr != nil {
 			sendToUser(req.AgentID, req.UserID, msg+"设置失败:"+configErr.Error(), l.svcCtx.Config)
