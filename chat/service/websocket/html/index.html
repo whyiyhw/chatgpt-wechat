@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh_cn">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>WebSocket Push Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+<div class="content"></div>
+
+<script>
+    let wsUri = "ws://192.168.0.102:8889/ws";
+
+    let insert = "<p>Start connecting " + wsUri + "</p>";
+    document.getElementsByClassName("content")[0].innerHTML += insert;
+
+    let authObject = {
+        "action": "auth",
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjkyNjE2MDcsImlhdCI6MTcwMzM0MTYwNywidXNlcklkIjo0fQ._xG7vKsLsapllkm_9EKdSM1icuZUrptaLMnVIjF61Vw"
+    };
+    let heartbeatObject = {
+        "action": "heartbeat"
+    };
+
+    let limitConnect = 3;  // 断线重连次数
+    let timeConnect = 0;
+
+    function webSocketInit(service) {
+        let sock = new WebSocket(wsUri);
+
+        // 重连函数封装
+        let reconnect = function (service) {
+            // lockReconnect加锁，防止onclose、onerror两次重连
+            if (limitConnect > 0) {
+                limitConnect--;
+                timeConnect++;
+                console.log("NO:" + timeConnect + " times reconnect");
+                const insert = "<p>NO:" + timeConnect + " times reconnect</p>";
+                document.getElementsByClassName("content")[0].innerHTML += insert;
+                // 进行重连
+                setTimeout(function () {
+                    webSocketInit(service);
+                }, 3000);
+            } else {
+                const insert = "<p>max reconnect times,tcp connect timeout</p>";
+                document.getElementsByClassName("content")[0].innerHTML += insert;
+            }
+        }
+        // 心跳包封装
+        let heartBeatStart = function (service) {
+            return setInterval(function () {
+                sock.send(JSON.stringify(service));
+            }, 40000);
+        }
+        // 心跳清理
+        let heartBeatClear = function (heartBeat) {
+            clearInterval(heartBeat);
+        }
+        let heartBeat = 0;
+        // 连接成功
+        sock.onopen = function () {
+            console.log("connected to " + wsUri);
+            let insert = "<p>Connected to " + wsUri + " success</p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+
+            sock.send(JSON.stringify(authObject));
+            insert = "<p>Auth message sent</p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+            // 开启心跳
+            heartBeat = heartBeatStart(heartbeatObject)
+            insert = "<p>Heart beat start</p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+            // 重置重连次数
+            limitConnect = 3;
+            timeConnect = 0;
+        };
+
+        // 异常错误
+        sock.onerror = function (e) {
+            console.log("connection error", e);
+            const insert = "<p>Connection error </p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+        };
+
+        // 连接关闭时
+        sock.onclose = function (e) {
+            console.log("connection closed (" + e.code + ")");
+            let insert = "<hr/><p>Connection be closed</p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+            // 清理心跳
+            if (heartBeat > 0) {
+                heartBeatClear(heartBeat);
+                insert = "<p>Heart beat clear</p>";
+                document.getElementsByClassName("content")[0].innerHTML += insert;
+            }
+            // 开始重连
+            insert = "<p>Start reconnect</p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+            reconnect(service);
+        };
+
+        // 接收到消息时
+        sock.onmessage = function (e) {
+            console.log("Receive message: " + e.data);
+
+            let insert = "<p>Receive: " + e.data + "</p>";
+            document.getElementsByClassName("content")[0].innerHTML += insert;
+            let msg = JSON.parse(e.data);
+            if (msg.code === 201) {
+                insert = "<p>auth success</p>";
+                document.getElementsByClassName("content")[0].innerHTML += insert;
+            }else if (msg.code === 202) {
+                insert = "<p>heart beat deal success</p>";
+                document.getElementsByClassName("content")[0].innerHTML += insert;
+            }else if (msg.code === 203) {
+                insert = "<p>server heart come in </p>";
+                document.getElementsByClassName("content")[0].innerHTML += insert;
+            }
+        };
+    }
+
+    webSocketInit(wsUri);
+</script>
+</body>
+
+</html>

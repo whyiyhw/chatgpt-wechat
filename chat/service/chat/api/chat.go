@@ -23,6 +23,8 @@ import (
 
 var configFile = flag.String("f", "etc/chat-api.yaml", "the config file")
 
+//var configFile = flag.String("f", "/Users/whyiyhw/code/whyiyhw/chatgpt-wechat/chat/service/chat/api/etc/chat-api.yaml", "the config file")
+
 func main() {
 	flag.Parse()
 

@@ -22,7 +22,10 @@ type ServiceContext struct {
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	//启动Gorm支持
-	db, err := gorm.Open(mysql.Open(c.Mysql.DataSource), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(c.Mysql.DataSource), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		SkipDefaultTransaction:                   true,
+	})
 
 	if err != nil {
 		panic(err)

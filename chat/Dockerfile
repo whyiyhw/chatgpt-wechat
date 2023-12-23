@@ -1,13 +1,10 @@
 FROM golang:1.21.5-alpine AS builder
 
-RUN ARCH=$(uname -m | grep -q '^arm' && echo "arm" || echo "amd") \
-    && echo "ARCH=$ARCH" >> /etc/environment \
-
 # 为镜像设置必要的环境变量
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=$ARCH
+    GOARCH=amd64
 
 # 判定 docker 是否能够访问外部网络
 RUN ping -c 1 -W 1 google.com > /dev/null \
@@ -34,7 +31,7 @@ COPY . .
 # 将代码编译成二进制可执行文件 app
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./service/chat/api/chat.go
 
-RUN tar -xvf /build/build/ffmpeg/ffmpeg-release-{$ARCH}64-static.tar.xz -C /usr/local/bin --strip-components 1
+RUN tar -xvf /build/build/ffmpeg/ffmpeg-release-amd64-static.tar.xz -C /usr/local/bin --strip-components 1
 
 # 创建一个小镜像
 FROM scratch

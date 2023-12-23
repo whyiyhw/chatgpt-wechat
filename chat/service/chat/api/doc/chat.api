@@ -1,33 +1,30 @@
 syntax = "v1"
 
-info(
-    title: "user chat 相关 api"
-    desc: "语音相关"
-    author: "whyiyhw"
-    email: ""
-    version: "v1"
+info (
+	title:   "user chat 相关 api"
+	desc:    "语音相关"
+	author:  "whyiyhw"
+	email:   ""
+	version: "v1"
 )
 
 type (
-    ChatReq {
-        Channel string `json:"channel,optional" validate:"required,oneof=wecom openai" label:"渠道"`
-        MSG string `json:"msg,optional"`
-        UserID string `json:"user_id,optional" validate:"required,max=500" label:"用户标识"`
-        AgentID int64 `json:"agent_id,optional" validate:"required" label:"应用标识"`
-    }
-
-    ChatReply {
-        Message string `json:"message"`
-    }
-
-    CustomerChatReq struct {
-        MsgID      string `json:"msg_id"`
-        Msg        string `json:"msg"`
-        CustomerID string `json:"customer_id"`
-        OpenKfID   string `json:"open_kf_id"`
-    }
-
-    CustomerChatReply {
-        Message string `json:"message"`
-    }
+	ChatReq {
+		Channel string `json:"channel,optional" validate:"required,oneof=wecom openai" label:"渠道"`
+		MSG     string `json:"msg,optional"`
+		UserID  string `json:"user_id,optional" validate:"required,max=500" label:"用户标识"`
+		AgentID int64  `json:"agent_id,optional" validate:"required" label:"应用标识"`
+	}
+	ChatReply {
+		Message string `json:"message"`
+	}
+	CustomerChatReq {
+		MsgID      string `json:"msg_id"`
+		Msg        string `json:"msg"`
+		CustomerID string `json:"customer_id"`
+		OpenKfID   string `json:"open_kf_id"`
+	}
+	CustomerChatReply {
+		Message string `json:"message"`
+	}
 )

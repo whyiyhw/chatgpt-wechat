@@ -14,6 +14,17 @@ services:
     restart: always
     networks:
       - chat_network
+  websocket:
+    container_name: chat-websocket
+    build:
+      context: .
+      dockerfile: Dockerfile-websocket
+    ports:
+      - "8889:9501"
+    privileged: true
+    restart: always
+    networks:
+      - chat_network
   redis:
     container_name: redis7
     image: redis:7

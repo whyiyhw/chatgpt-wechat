@@ -32,12 +32,12 @@ func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *type
 	// 判断用户是否已经注册
 	userModel := l.svcCtx.UserModel.User
 	exist, selectErr := userModel.WithContext(l.ctx).Where(userModel.Email.Eq(req.Email)).First()
-	if err != nil && !errors.Is(selectErr, gorm.ErrRecordNotFound) {
-		return nil, errors.Wrapf(xerr.NewErrCodeMsg(xerr.DBError, "查询用户失败"), "查询用户失败 %v", err)
-	} else {
-		if exist.ID != 0 {
-			return nil, errors.Wrapf(xerr.NewErrMsg("用户已经注册"), "用户已经注册 %d", exist.ID)
-		}
+	switch {
+	case selectErr == nil:
+		return nil, errors.Wrapf(xerr.NewErrMsg("用户已经注册"), "用户已经注册 %d", exist.ID)
+	case errors.Is(selectErr, gorm.ErrRecordNotFound):
+	default:
+		return nil, errors.Wrapf(xerr.NewErrCodeMsg(xerr.DBError, "查询用户失败"), "查询用户失败 %v", selectErr)
 	}
 
 	// 加密密码
