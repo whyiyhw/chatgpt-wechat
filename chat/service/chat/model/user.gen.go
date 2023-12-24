@@ -16,6 +16,7 @@ type User struct {
 	Name      string    `gorm:"column:name;not null;comment:用户名称" json:"name"`                              // 用户名称
 	Email     string    `gorm:"column:email;not null;comment:用户邮箱" json:"email"`                            // 用户邮箱
 	Password  string    `gorm:"column:password;not null;comment:用户密码" json:"password"`                      // 用户密码
+	Avatar    string    `gorm:"column:avatar;not null;comment:用户头像" json:"avatar"`                          // 用户头像
 	CreatedAt time.Time `gorm:"column:created_at;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"` // 创建时间
 	UpdatedAt time.Time `gorm:"column:updated_at;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"` // 更新时间
 }

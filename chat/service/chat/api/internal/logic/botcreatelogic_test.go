@@ -1,21 +1,19 @@
 package logic
 
 import (
-	"chat/service/chat/api/internal/config"
-	"chat/service/chat/api/internal/svc"
-	"chat/service/chat/api/internal/types"
 	"context"
-	"flag"
-	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/logx"
+	"encoding/json"
 	"reflect"
 	"testing"
+
+	"chat/service/chat/api/internal/svc"
+	"chat/service/chat/api/internal/types"
+
+	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
-var configFile = flag.String("f", "../../etc/chat-test-api.yaml", "the config file")
-var c config.Config
-
-func TestUserRegisterLogic_UserRegister(t *testing.T) {
+func TestBotCreateLogic_BotCreate(t *testing.T) {
 	conf.MustLoad(*configFile, &c)
 
 	type fields struct {
@@ -24,50 +22,49 @@ func TestUserRegisterLogic_UserRegister(t *testing.T) {
 		svcCtx *svc.ServiceContext
 	}
 	type args struct {
-		req *types.UserRegisterReq
+		req *types.BotCreateReq
 	}
+	ctx := context.WithValue(context.Background(), "userId", json.Number("1"))
+
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantResp *types.UserRegisterReply
+		wantResp *types.BotCreateReply
 		wantErr  bool
 	}{
 		// Add test cases.
 		{
 			name: "success",
 			fields: fields{
-				Logger: logx.WithContext(context.Background()),
-				ctx:    context.Background(),
+				Logger: logx.WithContext(ctx),
+				ctx:    ctx,
 				svcCtx: svc.NewServiceContext(c),
 			},
 			args: args{
-				req: &types.UserRegisterReq{
-					Email:    "demo@163.com",
-					Name:     "demo",
-					Password: "demo@163.com",
+				req: &types.BotCreateReq{
+					Name:   "name-test",
+					Avatar: "avatar test",
+					Desc:   "desc test",
 				},
-			},
-			wantResp: &types.UserRegisterReply{
-				Message: "注册成功，去登录吧~",
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := &UserRegisterLogic{
+			l := &BotCreateLogic{
 				Logger: tt.fields.Logger,
 				ctx:    tt.fields.ctx,
 				svcCtx: tt.fields.svcCtx,
 			}
-			gotResp, err := l.UserRegister(tt.args.req)
+			gotResp, err := l.BotCreate(tt.args.req)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("UserRegister() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("BotCreate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(gotResp, tt.wantResp) {
-				t.Errorf("UserRegister() gotResp = %v, want %v", gotResp, tt.wantResp)
+				t.Errorf("BotCreate() gotResp = %v, want %v", gotResp, tt.wantResp)
 			}
 		})
 	}

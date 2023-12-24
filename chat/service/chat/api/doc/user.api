@@ -10,6 +10,7 @@ info (
 
 type (
 	UserRegisterReq {
+		Avatar   string `json:"avatar,optional" validate:"required" label:"头像"`
 		Email    string `json:"email,optional" validate:"required,email" label:"邮箱"`
 		Name     string `json:"name,optional" validate:"required,max=50" label:"用户名"`
 		Password string `json:"password,optional" validate:"required" label:"密码"`

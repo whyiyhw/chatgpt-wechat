@@ -1,0 +1,76 @@
+syntax = "v1"
+
+info(
+    title: "bot 相关API"
+    desc: "创建智能机器人基础配置"
+    author: "whyiyhw"
+    email: "whyiyhw@outlook.com"
+    version: "v1"
+)
+
+type (
+    BotCreateReq {
+        Name string `json:"name" validate:"required,max=50" label:"机器人名称"`
+        Avatar string `json:"avatar" validate:"max=255" label:"机器人头像"`
+        Desc string `json:"desc,optional" validate:"max=255" label:"机器人描述"`
+    }
+
+    BotCreateReply {
+        ID string `json:"id" label:"机器人ID"`
+    }
+
+    BotUpdateReq {
+        ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+        Name string `json:"name" validate:"required,max=50" label:"机器人名称"`
+        Avatar string `json:"avatar" validate:"max=255" label:"机器人头像"`
+        Desc string `json:"desc,optional" validate:"max=255" label:"机器人描述"`
+    }
+
+    BotUpdateReply {
+    }
+
+    BotPromptUpdateReq {
+        ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+        Prompt string `json:"prompt" validate:"required,max=1000" label:"机器人基础提示词配置"`
+    }
+    BotPromptUpdateReply {
+    }
+
+    BotDeleteReq {
+        ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+    }
+
+    BotDeleteReply {
+    }
+
+    BotDetailReq {
+        ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+    }
+
+    BotDetailReply {
+        ID int64 `json:"id" label:"机器人ID"`
+        Name string `json:"name" label:"机器人名称"`
+        Avatar string `json:"avatar" label:"机器人头像"`
+        Desc string `json:"desc" label:"机器人描述"`
+        Prompt string `json:"prompt" label:"机器人基础提示词配置"`
+    }
+
+    BotListDetail {
+        ID int64 `json:"id" label:"机器人ID"`
+        Name string `json:"name" label:"机器人名称"`
+        Avatar string `json:"avatar" label:"机器人头像"`
+        Desc string `json:"desc" label:"机器人描述"`
+    }
+
+    BotListReq {
+        Page int `json:"page" validate:"required,min=1" label:"页码"`
+        PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
+    }
+
+    BotListReply {
+        Total int `json:"total" label:"总数"`
+        Page int `json:"page" label:"页码"`
+        PageSize int `json:"page_size" label:"每页数量"`
+        List []*BotListDetail `json:"list" label:"机器人列表"`
+    }
+)

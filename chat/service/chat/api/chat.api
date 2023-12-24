@@ -3,6 +3,7 @@ syntax = "v1"
 import (
 	"doc/user.api"
 	"doc/chat.api"
+	"doc/bots.api"
 )
 
 info (
@@ -40,5 +41,24 @@ service chat-api {
 
 	@handler UserDetailHandler
 	get /user/detail (UserDetailReq) returns (UserDetailReply)
+
+	// bot 相关业务
+	@handler BotCreateHandler
+	post /bot/create (BotCreateReq) returns (BotCreateReply)
+
+	@handler BotUpdateHandler
+	post /bot/update (BotUpdateReq) returns (BotUpdateReply)
+
+	@handler BotDeleteHandler
+	post /bot/delete (BotDeleteReq) returns (BotDeleteReply)
+
+	@handler BotDetailHandler
+	get /bot/detail (BotDetailReq) returns (BotDetailReply)
+
+	@handler BotListHandler
+	get /bot/list (BotListReq) returns (BotListReply)
+
+	@handler BotPromptUpdateHandler
+	post /bot/prompt/update (BotPromptUpdateReq) returns (BotPromptUpdateReply)
 }
 

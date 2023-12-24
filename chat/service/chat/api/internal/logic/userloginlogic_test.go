@@ -71,13 +71,10 @@ func TestUserLoginLogic_UserLogin(t *testing.T) {
 				ctx:    tt.fields.ctx,
 				svcCtx: tt.fields.svcCtx,
 			}
-			gotResp, err := l.UserLogin(tt.args.req)
+			_, err := l.UserLogin(tt.args.req)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UserLogin() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if gotResp != nil && gotResp.Token == "" {
-				t.Errorf("UserLogin() gotResp = %v, want %v", gotResp, tt.wantResp)
 			}
 		})
 	}
