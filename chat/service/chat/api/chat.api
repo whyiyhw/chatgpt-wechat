@@ -53,10 +53,10 @@ service chat-api {
 	post /bot/delete (BotDeleteReq) returns (BotDeleteReply)
 
 	@handler BotDetailHandler
-	get /bot/detail (BotDetailReq) returns (BotDetailReply)
+	post /bot/detail (BotDetailReq) returns (BotDetailReply)
 
 	@handler BotListHandler
-	get /bot/list (BotListReq) returns (BotListReply)
+	post /bot/list (BotListReq) returns (BotListReply)
 
 	@handler BotPromptUpdateHandler
 	post /bot/prompt/update (BotPromptUpdateReq) returns (BotPromptUpdateReply)

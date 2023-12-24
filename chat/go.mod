@@ -20,7 +20,7 @@ require (
 	github.com/whyiyhw/go-workwx v0.0.9
 	github.com/whyiyhw/gws v0.0.4
 	github.com/zeromicro/go-zero v1.6.1
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/net v0.19.0
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/gen v0.3.24

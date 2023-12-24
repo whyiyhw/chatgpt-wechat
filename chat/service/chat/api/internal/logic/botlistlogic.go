@@ -33,15 +33,17 @@ func (l *BotListLogic) BotList(req *types.BotListReq) (resp *types.BotListReply,
 			return nil, err
 		}
 	}
-	offset := (req.Page - 1) * req.Page
+	offset := (req.Page - 1) * req.PageSize
 	table := l.svcCtx.ChatModel.Bot
-	ls, count, findErr := table.WithContext(l.ctx).Where(table.UserID.Eq(userId)).Order(table.ID).FindByPage(offset, req.Page)
+	ls, count, findErr := table.WithContext(l.ctx).Where(table.UserID.Eq(userId)).Order(table.ID).FindByPage(offset, req.PageSize)
 	if findErr != nil {
 		return nil, findErr
 	}
 	res := &types.BotListReply{
-		Page:  req.Page,
-		Total: int(count),
+		Page:     req.Page,
+		PageSize: req.PageSize,
+		List:     make([]*types.BotListDetail, 0),
+		Total:    int(count),
 	}
 	for _, v := range ls {
 		res.List = append(res.List, &types.BotListDetail{

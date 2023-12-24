@@ -4,6 +4,7 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/middleware"
@@ -27,6 +28,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	db, err := gorm.Open(mysql.Open(c.Mysql.DataSource), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		SkipDefaultTransaction:                   true,
+		Logger:                                   logger.Default.LogMode(logger.Info),
 	})
 
 	if err != nil {
