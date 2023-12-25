@@ -24,3 +24,11 @@ OpenAi:
 
 Response:                                           # 回复配置
     Stream: true                                    # 是否开启流式回复,自动断句（可选）
+
+ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
+  Company: "openai"                                 # openai / gemini
+
+Gemini:
+  Key: "AIzaxxxxx-xxxxx"                            # gemini key
+  Model: "gemini-pro"                               # 可选择 "gemini-pro" / "gemini-pro-vision"
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力

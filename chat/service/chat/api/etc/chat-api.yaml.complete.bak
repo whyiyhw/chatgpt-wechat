@@ -111,3 +111,11 @@ Draw:                                               # 绘画配置
 
 Session:                                            # 会话相关配置
   Timeout: -1                                       # 会话超时时间（m）分钟，如果在（x）分钟内，未进行对话，本次会话内容会被销毁，-1为永不超时（可选）
+
+ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
+  Company: "openai"                                 # openai / gemini
+
+Gemini:
+  Key: "AIzaxxxxx-xxxxx"                            # gemini key
+  Model: "gemini-pro"                               # 可选择 "gemini-pro" / "gemini-pro-vision"
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力

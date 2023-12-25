@@ -57,6 +57,7 @@ func main() {
 	wecom.WeCom.EncodingAESKey = c.WeCom.EncodingAESKey
 	wecom.WeCom.Auth.AccessSecret = c.Auth.AccessSecret
 	wecom.WeCom.Auth.AccessExpire = c.Auth.AccessExpire
+	wecom.ModelProvider.Company = c.ModelProvider.Company
 	for _, v := range c.WeCom.MultipleApplication {
 		wecom.WeCom.MultipleApplication = append(wecom.WeCom.MultipleApplication, wecom.Application{
 			AgentID:     v.AgentID,

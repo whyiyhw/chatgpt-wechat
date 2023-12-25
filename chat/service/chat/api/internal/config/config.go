@@ -147,4 +147,16 @@ type Config struct {
 	Session struct {
 		TimeOut int64 `json:",optional,default=-1"`
 	} `json:",optional"`
+
+	// 服务提供者
+	ModelProvider struct {
+		Company string `json:",optional,default=openai"`
+	}
+
+	// google gemini
+	Gemini struct {
+		Key   string  `json:",optional"`
+		Model string  `json:",optional,default=models/gemini-pro"`
+		Temp  float32 `json:",optional,default=0.8"`
+	}
 }

@@ -36,6 +36,11 @@ var (
 			AccessExpire int64
 		}
 	}
+
+	// ModelProvider `json:",optional,default=openai"`
+	ModelProvider struct {
+		Company string
+	}
 )
 
 type Application struct {
@@ -237,7 +242,7 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 	if msg.MsgType == workwx.MessageTypeText {
 		message, ok := msg.Text()
 		if ok {
-			realLogic("openai", message.GetContent(), msg.FromUserID, msg.AgentID)
+			realLogic(ModelProvider.Company, message.GetContent(), msg.FromUserID, msg.AgentID)
 		}
 	} else if msg.MsgType == workwx.MessageTypeVoice {
 		message, ok := msg.Voice()
@@ -247,19 +252,19 @@ func (dummyRxMessageHandler) OnIncomingMessage(msg *workwx.RxMessage) error {
 				logx.Error("应用音频文件读取失败:", err.Error())
 				realLogic("wecom", "音频文件读取失败:"+err.Error(), msg.FromUserID, msg.AgentID)
 			} else {
-				realLogic("openai", "#voice:"+filePath, msg.FromUserID, msg.AgentID)
+				realLogic(ModelProvider.Company, "#voice:"+filePath, msg.FromUserID, msg.AgentID)
 			}
 		}
 	} else if msg.MsgType == workwx.MessageTypeImage {
 		p, ok := msg.Image()
 		if ok {
-			realLogic("openai", "#image:"+p.GetPicURL(), msg.FromUserID, msg.AgentID)
+			realLogic(ModelProvider.Company, "#image:"+p.GetPicURL(), msg.FromUserID, msg.AgentID)
 		}
 	}
 
 	if msg.MsgType == workwx.MessageTypeEvent {
 		if string(msg.Event) == "enter_agent" {
-			realLogic("openai", "#welcome", msg.FromUserID, msg.AgentID)
+			realLogic(ModelProvider.Company, "#welcome", msg.FromUserID, msg.AgentID)
 		}
 		// 客服消息
 		if msg.Event == workwx.EventTypeKFMsgOrEvent {
@@ -301,6 +306,7 @@ func XmlServe() {
 	}
 }
 
+// 内部应用消息
 func realLogic(channel, msg, userID string, agentID int64) {
 	url := fmt.Sprintf("http://localhost:%d/api/msg/push", WeCom.RestPort)
 	method := "POST"
