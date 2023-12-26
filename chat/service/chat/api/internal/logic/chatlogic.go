@@ -6,11 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"io"
-	"net"
-	"net/http"
-	"net/url"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -31,7 +27,7 @@ import (
 	"chat/service/chat/model"
 
 	"github.com/zeromicro/go-zero/core/logx"
-	"golang.org/x/net/proxy"
+	"gorm.io/gorm"
 )
 
 type ChatLogic struct {
@@ -56,43 +52,39 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 	// 去 gemini 获取数据
 	if req.Channel == "gemini" {
-		go func() {
-			fmt.Printf("gemini start config: %v \n", l.svcCtx.Config.Gemini)
-			httpClient := &http.Client{
-				Timeout: 300 * time.Second,
-			}
-			if l.svcCtx.Config.Proxy.Enable {
-				if l.svcCtx.Config.Proxy.Http != "" {
-					proxyUrl, _ := url.Parse(l.svcCtx.Config.Proxy.Http)
-					if l.svcCtx.Config.Proxy.Auth.Username != "" && l.svcCtx.Config.Proxy.Auth.Password != "" {
-						proxyUrl.User = url.UserPassword(l.svcCtx.Config.Proxy.Auth.Username, l.svcCtx.Config.Proxy.Auth.Password)
-					}
-					transport := &http.Transport{
-						Proxy: http.ProxyURL(proxyUrl),
-					}
-					httpClient.Transport = transport
-				} else if l.svcCtx.Config.Proxy.Socket5 != "" {
-					socks5Transport := &http.Transport{}
-					auth := proxy.Auth{}
-					if l.svcCtx.Config.Proxy.Auth.Username != "" && l.svcCtx.Config.Proxy.Auth.Password != "" {
-						auth.Password = l.svcCtx.Config.Proxy.Auth.Password
-						auth.User = l.svcCtx.Config.Proxy.Auth.Username
-					}
-					dialer, _ := proxy.SOCKS5("tcp", l.svcCtx.Config.Proxy.Socket5, &auth, proxy.Direct)
-					socks5Transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-						return dialer.Dial(network, addr)
-					}
-					httpClient.Transport = socks5Transport
-				}
-			}
 
-			resp, err := gemini.Request(req.MSG, l.svcCtx.Config.Gemini.Key, l.svcCtx.Config.Gemini.Model, httpClient)
-			if err != nil {
-				sendToUser(req.AgentID, req.UserID, "系统错误-gemini-request-error:"+err.Error(), l.svcCtx.Config)
-				return
-			}
-			// 打印 resp 结构体
-			fmt.Printf("gemini: %v \n", resp)
+		// openai client
+		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+			WithTemperature(l.svcCtx.Config.OpenAi.Temperature)
+		if l.svcCtx.Config.Proxy.Enable {
+			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+		}
+		// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
+		proceed, _ := l.FactoryCommend(req)
+		if !proceed {
+			return &types.ChatReply{
+				Message: "ok",
+			}, nil
+		}
+		if l.message != "" {
+			req.MSG = l.message
+		}
+
+		// 从上下文中取出用户对话
+		collection := gemini.NewUserContext(
+			gemini.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
+		).WithModel(c.Model).WithPrompt("").WithClient(c)
+
+		go func() {
+			collection = collection.Set(req.MSG, "", false)
+			prompts := collection.GetChatSummary()
+			fmt.Println("上下文请求信息：")
+			fmt.Println(prompts)
+			messageText, err := c.Chat(prompts)
+
+			fmt.Printf("gemini resp: %v \n", messageText)
 			if err != nil {
 				errInfo := err.Error()
 				if strings.Contains(errInfo, "maximum context length") {
@@ -102,16 +94,10 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				return
 			}
 
-			// 解析出 messageText
-			messageText := ""
-			for _, content := range resp.Candidates {
-				for _, part := range content.Content.Parts {
-					messageText = fmt.Sprintf("%s%v", messageText, part.Text)
-				}
-			}
-
 			// 把数据 发给微信用户
 			go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
+
+			collection.Set("", messageText, true)
 
 			// 再去插入数据
 			table := l.svcCtx.ChatModel.Chat

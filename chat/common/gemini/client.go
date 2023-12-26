@@ -1,117 +1,130 @@
 package gemini
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
+	"context"
+	"net"
 	"net/http"
-	"strings"
+	"net/url"
+	"time"
+
+	"golang.org/x/net/proxy"
 )
 
-func Request(message, key, model string, client *http.Client) (*Response, error) {
+const ChatModel = "gemini-pro"
+const VisionModel = "gemini-pro-vision"
 
-	url := fmt.Sprintf(
-		"https://generativelanguage.googleapis.com/v1beta/%s:generateContent?key=%s", model, key,
-	)
-	method := "POST"
+var ChatModelInputTokenLimit = map[string]int{
+	ChatModel:   30720,
+	VisionModel: 12288,
+}
 
-	reqBody := new(RequestBody)
-	part := Part{
-		Text: message,
+var ChatModelOutputTokenLimit = map[string]int{
+	ChatModel:   2048,
+	VisionModel: 4096,
+}
+
+//Input token limit	30720
+//Output token limit	2048
+
+var Temperature = 0.8
+var DefaultHost = "https://generativelanguage.googleapis.com"
+
+type ChatModelMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type ChatClient struct {
+	HTTPClient    *http.Client `json:"-"`
+	Host          string       `json:"host"`
+	APIKey        string       `json:"api_key"`
+	HttpProxy     string       `json:"http_proxy"`
+	Socks5Proxy   string       `json:"socks5_proxy"`
+	ProxyUserName string       `json:"proxy_user_name"`
+	ProxyPassword string       `json:"proxy_password"`
+	Model         string       `json:"model"`
+	Temperature   float32      `json:"temperature"`
+}
+
+func NewChatClient(apiKey string) *ChatClient {
+	return &ChatClient{
+		APIKey:      apiKey,
+		Model:       ChatModel,
+		Temperature: float32(Temperature),
+		Host:        DefaultHost,
 	}
-	contents := new(Contents)
-	contents.Parts = append(contents.Parts, part)
-	reqBody.Contents = append(reqBody.Contents, *contents)
+}
 
-	s, _ := json.Marshal(reqBody)
+func (c *ChatClient) WithModel(model string) *ChatClient {
+	c.Model = model
+	return c
+}
 
-	fmt.Println("body" + string(s))
+// WithHost 设置服务地址
+func (c *ChatClient) WithHost(host string) *ChatClient {
+	c.Host = host
+	return c
+}
 
-	payload := strings.NewReader(string(s))
+// WithTemperature 设置响应灵活程度
+func (c *ChatClient) WithTemperature(temperature float32) *ChatClient {
+	c.Temperature = temperature
+	return c
+}
 
-	req, err := http.NewRequest(method, url, payload)
-	if err != nil {
-		fmt.Println("NewRequest error:" + err.Error())
-		return &Response{}, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("User-Agent", "PostmanRuntime/7.36.0")
+// WithHttpProxy 设置http代理
+func (c *ChatClient) WithHttpProxy(proxyUrl string) *ChatClient {
+	c.HttpProxy = proxyUrl
+	return c
+}
 
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println("requesting error:" + err.Error())
-		return &Response{}, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
+// WithSocks5Proxy 设置socks5代理
+func (c *ChatClient) WithSocks5Proxy(proxyUrl string) *ChatClient {
+	c.Socks5Proxy = proxyUrl
+	return c
+}
+
+// WithProxyUserName 设置代理用户名
+func (c *ChatClient) WithProxyUserName(userName string) *ChatClient {
+	c.ProxyUserName = userName
+	return c
+}
+
+// WithProxyPassword 设置代理密码
+func (c *ChatClient) WithProxyPassword(password string) *ChatClient {
+	c.ProxyPassword = password
+	return c
+}
+
+func (c *ChatClient) buildConfig() *ChatClient {
+	if c.HttpProxy != "" {
+		proxyUrl, _ := url.Parse(c.HttpProxy)
+		if c.ProxyUserName != "" && c.ProxyPassword != "" {
+			proxyUrl.User = url.UserPassword(c.ProxyUserName, c.ProxyPassword)
 		}
-	}(res.Body)
-
-	// 打印 res 中的所有数据
-	fmt.Printf("response status code: %v \n", res.Status)
-	fmt.Printf("response Proto:  %v \n" + res.Proto)
-	fmt.Printf("response ProtoMajor:  %v \n", res.ProtoMajor)
-	fmt.Printf("response ProtoMinor:  %v \n", res.ProtoMinor)
-	fmt.Printf("response ContentLength:  %v \n", res.ContentLength)
-	fmt.Printf("response Request:  %v \n", res.Request)
-	fmt.Printf("response Trailer:  %v \n", res.Trailer)
-	fmt.Printf("response StatusCode:  %v \n", res.StatusCode)
-	fmt.Printf("response Status:  %v \n", res.Status)
-	for k, v := range res.Header {
-		fmt.Printf(" %v : %v \n", k, v)
-	}
-	for k, v := range res.Cookies() {
-		fmt.Printf(" %v : %v \n", k, v)
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println("read io error:" + err.Error())
-		return &Response{}, err
-	}
-	fmt.Println("response body: " + string(body))
-
-	result := new(Response)
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		fmt.Println("unmarshal error:" + err.Error() + " http code: " + res.Status)
-		return &Response{}, err
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyUrl),
+		}
+		c.HTTPClient = &http.Client{
+			Transport: transport,
+			Timeout:   300 * time.Second,
+		}
+	} else if c.Socks5Proxy != "" {
+		socks5Transport := &http.Transport{}
+		auth := proxy.Auth{}
+		if c.ProxyUserName != "" && c.ProxyPassword != "" {
+			auth.Password = c.ProxyPassword
+			auth.User = c.ProxyUserName
+		}
+		dialer, _ := proxy.SOCKS5("tcp", c.Socks5Proxy, &auth, proxy.Direct)
+		socks5Transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(network, addr)
+		}
+		c.HTTPClient = &http.Client{
+			Transport: socks5Transport,
+			Timeout:   300 * time.Second,
+		}
 	}
 
-	return result, nil
-}
-
-type Response struct {
-	Candidates []struct {
-		Content struct {
-			Parts []struct {
-				Text string `json:"text"`
-			} `json:"parts"`
-			Role string `json:"role"`
-		} `json:"content"`
-		FinishReason  string `json:"finishReason"`
-		Index         int    `json:"index"`
-		SafetyRatings []struct {
-			Category    string `json:"category"`
-			Probability string `json:"probability"`
-		} `json:"safetyRatings"`
-	} `json:"candidates"`
-	PromptFeedback struct {
-		SafetyRatings []struct {
-			Category    string `json:"category"`
-			Probability string `json:"probability"`
-		} `json:"safetyRatings"`
-	} `json:"promptFeedback"`
-}
-
-type RequestBody struct {
-	Contents []Contents `json:"contents"`
-}
-type Contents struct {
-	Parts []Part `json:"parts"`
-}
-type Part struct {
-	Text string `json:"text"`
+	return c
 }
