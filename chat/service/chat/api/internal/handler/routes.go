@@ -60,6 +60,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/bot/replicate",
+					Handler: BotReplicateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/bot/update",
 					Handler: BotUpdateHandler(serverCtx),
 				},

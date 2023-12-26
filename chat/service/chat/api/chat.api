@@ -60,5 +60,8 @@ service chat-api {
 
 	@handler BotPromptUpdateHandler
 	post /bot/prompt/update (BotPromptUpdateReq) returns (BotPromptUpdateReply)
+
+	@handler BotReplicateHandler
+	post /bot/replicate (BotReplicateReq) returns (BotReplicateReply)
 }
 

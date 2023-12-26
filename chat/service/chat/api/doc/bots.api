@@ -42,6 +42,14 @@ type (
 
     BotDeleteReply {
     }
+        // 复制请求
+    BotReplicateReq {
+        ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+    }
+        // 复制响应
+    BotReplicateReply {
+        ID int64 `json:"id" label:"机器人ID"`
+    }
 
     BotDetailReq {
         ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
