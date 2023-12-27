@@ -122,13 +122,20 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					}
 					rs = append(rs, []rune(s)...)
 
-					if first && len(rs) > 50 && strings.Contains(s, "\n") {
-						go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n"), l.svcCtx.Config)
-						rs = []rune{}
+					if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+						lastIndex := strings.LastIndex(string(rs), "\n")
+						firstPart := string(rs)[:lastIndex]
+						secondPart := string(rs)[lastIndex+1:]
+						// 发送数据
+						go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+						rs = []rune(secondPart)
 						first = false
-					} else if len(rs) > 150 && strings.Contains(s, "\n") {
-						go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n"), l.svcCtx.Config)
-						rs = []rune{}
+					} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+						lastIndex := strings.LastIndex(string(rs), "\n")
+						firstPart := string(rs)[:lastIndex]
+						secondPart := string(rs)[lastIndex+1:]
+						go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+						rs = []rune(secondPart)
 					}
 				}
 			} else {
