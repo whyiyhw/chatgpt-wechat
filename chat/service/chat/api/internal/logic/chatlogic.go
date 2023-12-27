@@ -77,36 +77,87 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			gemini.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
 		).WithModel(c.Model).WithPrompt("").WithClient(c)
 
+		collection = collection.Set(req.MSG, "", false)
+		prompts := collection.GetChatSummary()
+
+		fmt.Println("上下文请求信息：")
+		fmt.Println(prompts)
 		go func() {
-			collection = collection.Set(req.MSG, "", false)
-			prompts := collection.GetChatSummary()
-			fmt.Println("上下文请求信息：")
-			fmt.Println(prompts)
-			messageText, err := c.Chat(prompts)
+			// 分段响应
+			if l.svcCtx.Config.Response.Stream {
+				channel := make(chan string, 100)
 
-			fmt.Printf("gemini resp: %v \n", messageText)
-			if err != nil {
-				errInfo := err.Error()
-				if strings.Contains(errInfo, "maximum context length") {
-					errInfo += "\n 请使用 #clear 清理所有上下文"
+				go func() {
+					messageText, err := c.ChatStream(prompts, channel)
+					if err != nil {
+						errInfo := err.Error()
+						if strings.Contains(errInfo, "maximum context length") {
+							errInfo += "\n 请使用 #clear 清理所有上下文"
+						}
+						sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
+						return
+					}
+					collection.Set("", messageText, true)
+					// 再去插入数据
+					table := l.svcCtx.ChatModel.Chat
+					_ = table.WithContext(context.Background()).Create(&model.Chat{
+						AgentID:    req.AgentID,
+						User:       req.UserID,
+						ReqContent: req.MSG,
+						ResContent: messageText,
+					})
+				}()
+
+				var rs []rune
+				first := true
+				for {
+					s, ok := <-channel
+					fmt.Printf("--------接受到数据: s:%s pk:%v", s, ok)
+					if !ok {
+						// 数据接受完成
+						if len(rs) > 0 {
+							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
+						}
+						return
+					}
+					rs = append(rs, []rune(s)...)
+
+					if first && len(rs) > 50 && strings.Contains(s, "\n") {
+						go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n"), l.svcCtx.Config)
+						rs = []rune{}
+						first = false
+					} else if len(rs) > 150 && strings.Contains(s, "\n") {
+						go sendToUser(req.AgentID, req.UserID, strings.TrimRight(string(rs), "\n"), l.svcCtx.Config)
+						rs = []rune{}
+					}
 				}
-				sendToUser(req.AgentID, req.UserID, "系统错误-gemini-resp-error:"+err.Error(), l.svcCtx.Config)
-				return
+			} else {
+				messageText, err := c.Chat(prompts)
+
+				fmt.Printf("gemini resp: %v \n", messageText)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.AgentID, req.UserID, "系统错误-gemini-resp-error:"+err.Error(), l.svcCtx.Config)
+					return
+				}
+
+				// 把数据 发给微信用户
+				go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
+
+				collection.Set("", messageText, true)
+
+				// 再去插入数据
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					AgentID:    req.AgentID,
+					User:       req.UserID,
+					ReqContent: req.MSG,
+					ResContent: messageText,
+				})
 			}
-
-			// 把数据 发给微信用户
-			go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
-
-			collection.Set("", messageText, true)
-
-			// 再去插入数据
-			table := l.svcCtx.ChatModel.Chat
-			_ = table.WithContext(context.Background()).Create(&model.Chat{
-				AgentID:    req.AgentID,
-				User:       req.UserID,
-				ReqContent: req.MSG,
-				ResContent: messageText,
-			})
 		}()
 	}
 
