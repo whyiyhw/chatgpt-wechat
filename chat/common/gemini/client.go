@@ -13,6 +13,15 @@ import (
 const ChatModel = "gemini-pro"
 const VisionModel = "gemini-pro-vision"
 
+const UserRole = "user"
+const ModelRole = "model"
+
+const MimetypeTextPlain = "text/plain"
+const MimetypeImagePng = "image/png"
+const MimetypeImageJpeg = "image/jpeg"
+const MimetypeImageJpg = "image/jpg"
+const MimetypeImageGif = "image/gif"
+
 var ChatModelInputTokenLimit = map[string]int{
 	ChatModel:   30720,
 	VisionModel: 12288,
@@ -23,15 +32,33 @@ var ChatModelOutputTokenLimit = map[string]int{
 	VisionModel: 4096,
 }
 
-//Input token limit	30720
-//Output token limit	2048
-
 var Temperature = 0.8
 var DefaultHost = "https://generativelanguage.googleapis.com"
 
 type ChatModelMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string      `json:"role"`
+	Content ChatContent `json:"content"`
+}
+
+func NewChatContent(data ...string) ChatContent {
+	if len(data) == 0 {
+		return ChatContent{}
+	}
+	if len(data) == 1 {
+		return ChatContent{
+			MIMEType: MimetypeTextPlain,
+			Data:     data[0],
+		}
+	}
+	return ChatContent{
+		Data:     data[0],
+		MIMEType: data[1],
+	}
+}
+
+type ChatContent struct {
+	MIMEType string `json:"mime_type"`
+	Data     string `json:"data"`
 }
 
 type ChatClient struct {

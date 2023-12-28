@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,27 +18,40 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 	client := cs.HTTPClient
 	start := 0
 	reqBody := new(RequestBody)
-	// lens 只可能是奇数
 	for i := range chatRequest {
-		if i%2 != 0 {
-			continue
-		}
 		//估算长度
-		if NumTokensFromMessages(chatRequest[len(chatRequest)-i-1:], "gpt-4") < (ChatModelInputTokenLimit[cs.Model]) {
+		if (NumTokensFromMessages(chatRequest[len(chatRequest)-i-1:], "gpt-4") < (ChatModelInputTokenLimit[cs.Model])) &&
+			chatRequest[len(chatRequest)-i-1].Role == ModelRole {
 			start = len(chatRequest) - i - 1
 		} else {
 			break
 		}
 	}
 	var messages []Contents
+	var pervParts []Part
 	for _, message := range chatRequest[start:] {
-		contents := new(Contents)
-		contents.Role = message.Role
-		contents.Parts = append(contents.Parts, Part{
-			Text: message.Content,
-		})
-		messages = append(messages, *contents)
-		reqBody.Contents = append(reqBody.Contents, *contents)
+		if message.Content.MIMEType == MimetypeTextPlain {
+			contents := new(Contents)
+			contents.Role = message.Role
+			contents.Parts = append(contents.Parts, Part{
+				Text: message.Content.Data,
+			})
+			if len(pervParts) > 0 {
+				contents.Parts = append(contents.Parts, pervParts...)
+			}
+			// 清空 pervParts
+			pervParts = []Part{}
+			messages = append(messages, *contents)
+			reqBody.Contents = append(reqBody.Contents, *contents)
+		} else {
+			pervParts = append(pervParts, Part{
+				InlineData: &InlineData{
+					MimeType: message.Content.MIMEType,
+					Data:     message.Content.Data,
+				},
+			})
+			cs.WithModel(VisionModel)
+		}
 	}
 
 	s, _ := json.Marshal(reqBody)
@@ -124,27 +138,42 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 	client := cs.HTTPClient
 	start := 0
 	reqBody := new(RequestBody)
-	// lens 只可能是奇数
 	for i := range chatRequest {
-		if i%2 != 0 {
-			continue
-		}
 		//估算长度
-		if NumTokensFromMessages(chatRequest[len(chatRequest)-i-1:], "gpt-4") < (ChatModelInputTokenLimit[cs.Model]) {
+		if (NumTokensFromMessages(chatRequest[len(chatRequest)-i-1:], "gpt-4") < (ChatModelInputTokenLimit[cs.Model])) &&
+			chatRequest[len(chatRequest)-i-1].Role == UserRole {
 			start = len(chatRequest) - i - 1
 		} else {
 			break
 		}
 	}
+	fmt.Println("start:", start)
+	fmt.Println("start:", start)
 	var messages []Contents
+	var pervParts []Part
 	for _, message := range chatRequest[start:] {
-		contents := new(Contents)
-		contents.Role = message.Role
-		contents.Parts = append(contents.Parts, Part{
-			Text: message.Content,
-		})
-		messages = append(messages, *contents)
-		reqBody.Contents = append(reqBody.Contents, *contents)
+		if message.Content.MIMEType == MimetypeTextPlain {
+			contents := new(Contents)
+			contents.Role = message.Role
+			contents.Parts = append(contents.Parts, Part{
+				Text: message.Content.Data,
+			})
+			if len(pervParts) > 0 {
+				contents.Parts = append(contents.Parts, pervParts...)
+				// 清空 pervParts
+				pervParts = []Part{}
+			}
+			messages = append(messages, *contents)
+			reqBody.Contents = append(reqBody.Contents, *contents)
+		} else {
+			pervParts = append(pervParts, Part{
+				InlineData: &InlineData{
+					MimeType: message.Content.MIMEType,
+					Data:     message.Content.Data,
+				},
+			})
+			cs.WithModel(VisionModel)
+		}
 	}
 
 	s, _ := json.Marshal(reqBody)
@@ -274,10 +303,52 @@ type Response struct {
 type RequestBody struct {
 	Contents []Contents `json:"contents"`
 }
+
 type Contents struct {
 	Parts []Part `json:"parts"`
 	Role  string `json:"role"`
 }
+
+type InlineData struct {
+	MimeType string `json:"mimeType"`
+	Data     string `json:"data"`
+}
+
 type Part struct {
 	Text string `json:"text"`
+	// 字段 为空时 json.Marshal 不会序列化
+	InlineData *InlineData `json:"inlineData,omitempty"`
+}
+
+func GetImageContent(url string) (string, string, error) {
+	// get url by http
+	// body to base64(string)
+	// get  mime by url
+	// get URL content
+	response, err := http.Get(url)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to fetch URL: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(response.Body)
+
+	// check status code
+	if response.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("bad status: %s", response.Status)
+	}
+
+	// read response body
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// convert body to base64
+	encoded := base64.StdEncoding.EncodeToString(body)
+
+	// get mime type of body
+	mime := http.DetectContentType(body)
+
+	return encoded, mime, nil
 }

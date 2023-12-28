@@ -1,13 +1,15 @@
 package gemini
 
 import (
-	"chat/common/redis"
-	"chat/common/tiktoken"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"time"
+
+	"chat/common/redis"
+	"chat/common/tiktoken"
+
+	"github.com/google/uuid"
 )
 
 // UserContext is the context of a user once started a chat session
@@ -35,27 +37,39 @@ func getSessionKey(sessionKey string) string {
 	return fmt.Sprintf(redis.SessionKey, sessionKey)
 }
 
-func (c *UserContext) Set(q, a string, save bool) *UserContext {
+func (c *UserContext) Set(q ChatContent, a string, save bool) *UserContext {
 
-	if q != "" {
+	if q.Data != "" {
 		c.Messages = append(c.Messages, ChatModelMessage{
-			Role:    "user",
-			Content: q,
+			Role: UserRole,
+			Content: ChatContent{
+				MIMEType: q.MIMEType,
+				Data:     q.Data,
+			},
 		})
 		c.Summary = append(c.Summary, ChatModelMessage{
-			Role:    "user",
-			Content: q,
+			Role: UserRole,
+			Content: ChatContent{
+				MIMEType: q.MIMEType,
+				Data:     q.Data,
+			},
 		})
 	}
 
 	if a != "" {
 		c.Messages = append(c.Messages, ChatModelMessage{
-			Role:    "model",
-			Content: a,
+			Role: ModelRole,
+			Content: ChatContent{
+				MIMEType: MimetypeTextPlain,
+				Data:     a,
+			},
 		})
 		c.Summary = append(c.Summary, ChatModelMessage{
-			Role:    "model",
-			Content: a,
+			Role: ModelRole,
+			Content: ChatContent{
+				MIMEType: MimetypeTextPlain,
+				Data:     a,
+			},
 		})
 	}
 
@@ -139,7 +153,7 @@ func NumTokensFromMessages(messages []ChatModelMessage, model string) (numTokens
 
 	for _, message := range messages {
 		numTokens += tokensPerMessage
-		numTokens += len(tkm.Encode(message.Content, nil, nil))
+		numTokens += len(tkm.Encode(message.Content.Data, nil, nil))
 		numTokens += len(tkm.Encode(message.Role, nil, nil))
 	}
 	numTokens += 3

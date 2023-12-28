@@ -7,13 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"chat/common/ali/ocr"
 	"chat/common/draw"
 	"chat/common/gemini"
 	"chat/common/milvus"
@@ -77,7 +75,28 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			gemini.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
 		).WithModel(c.Model).WithPrompt("").WithClient(c)
 
-		collection = collection.Set(req.MSG, "", false)
+		// 将 URL 存入memory 中，需要时候，再取出来 进行 base64
+		cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, req.AgentID, req.UserID)
+		// 可存入多张图片
+		ok, _ := redis.Rdb.Exists(context.Background(), cacheKey).Result()
+		if ok > 0 {
+			// 从 redis 中取出图片信息，加入请求
+			images := redis.Rdb.HGetAll(context.Background(), cacheKey).Val()
+			for _, image := range images {
+				content, mime, err := gemini.GetImageContent(image)
+				if err != nil {
+					sendToUser(req.AgentID, req.UserID, "读取图片文件失败:"+err.Error(), l.svcCtx.Config)
+					return &types.ChatReply{
+						Message: "ok",
+					}, nil
+				}
+				collection = collection.Set(gemini.NewChatContent(content, mime), "", false)
+			}
+			// 清理图片信息
+			redis.Rdb.Del(context.Background(), cacheKey)
+		}
+		collection = collection.Set(gemini.NewChatContent(req.MSG), "", false)
+
 		prompts := collection.GetChatSummary()
 
 		fmt.Println("上下文请求信息：")
@@ -97,7 +116,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
 						return
 					}
-					collection.Set("", messageText, true)
+					collection.Set(gemini.NewChatContent(), messageText, true)
 					// 再去插入数据
 					table := l.svcCtx.ChatModel.Chat
 					_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -154,7 +173,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				// 把数据 发给微信用户
 				go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
 
-				collection.Set("", messageText, true)
+				collection.Set(gemini.NewChatContent(), messageText, true)
 
 				// 再去插入数据
 				table := l.svcCtx.ChatModel.Chat
@@ -714,37 +733,53 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 		sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：#image:https://www.google.com/img/bd_logo1.png", l.svcCtx.Config)
 		return false
 	}
-	vi := reflect.ValueOf(l.svcCtx.Config.OCR)
-	if vi.Kind() == reflect.Ptr && vi.IsNil() {
-		sendToUser(req.AgentID, req.UserID, "请先配置OCR", l.svcCtx.Config)
-		return false
-	}
-	if l.svcCtx.Config.OCR.Company != "ali" {
-		sendToUser(req.AgentID, req.UserID, "目前只支持阿里OCR", l.svcCtx.Config)
-		return false
-	}
-	ocrCli, _err := ocr.CreateClient(&l.svcCtx.Config.OCR.AliYun.AccessKeyId, &l.svcCtx.Config.OCR.AliYun.AccessKeySecret)
-	if _err != nil {
-		// 创建失败
-		sendToUser(req.AgentID, req.UserID, "图片识别客户端创建失败失败:"+_err.Error(), l.svcCtx.Config)
-		return false
-	}
-
-	// 进行图片识别
-	txt, err := ocr.Image2Txt(msg, ocrCli)
+	// 将 URL 存入memory 中，需要时候，再取出来 进行 base64
+	cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, req.AgentID, req.UserID)
+	// 可存入多张图片
+	res, err := redis.Rdb.HSet(context.Background(), cacheKey, time.Now().Unix(), msg).Result()
 	if err != nil {
-		sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+		sendToUser(req.AgentID, req.UserID, "图片保存失败:"+err.Error(), l.svcCtx.Config)
 		return false
 	}
-	if msg == "" {
-		sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+	if res == 0 {
+		sendToUser(req.AgentID, req.UserID, "图片保存失败，请稍后再试~", l.svcCtx.Config)
 		return false
 	}
-	// 图片识别成功
-	sendToUser(req.AgentID, req.UserID, "图片识别成功:\n\n"+txt, l.svcCtx.Config)
+	sendToUser(req.AgentID, req.UserID, "已收到您的图片，关于图片你想了解什么呢~", l.svcCtx.Config)
 
-	l.message = txt
-	return true
+	return false
+
+	//vi := reflect.ValueOf(l.svcCtx.Config.OCR)
+	//if vi.Kind() == reflect.Ptr && vi.IsNil() {
+	//	sendToUser(req.AgentID, req.UserID, "请先配置OCR", l.svcCtx.Config)
+	//	return false
+	//}
+	//if l.svcCtx.Config.OCR.Company != "ali" {
+	//	sendToUser(req.AgentID, req.UserID, "目前只支持阿里OCR", l.svcCtx.Config)
+	//	return false
+	//}
+	//ocrCli, _err := ocr.CreateClient(&l.svcCtx.Config.OCR.AliYun.AccessKeyId, &l.svcCtx.Config.OCR.AliYun.AccessKeySecret)
+	//if _err != nil {
+	//	// 创建失败
+	//	sendToUser(req.AgentID, req.UserID, "图片识别客户端创建失败失败:"+_err.Error(), l.svcCtx.Config)
+	//	return false
+	//}
+	//
+	//// 进行图片识别
+	//txt, err := ocr.Image2Txt(msg, ocrCli)
+	//if err != nil {
+	//	sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+	//	return false
+	//}
+	//if msg == "" {
+	//	sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+	//	return false
+	//}
+	//// 图片识别成功
+	//sendToUser(req.AgentID, req.UserID, "图片识别成功:\n\n"+txt, l.svcCtx.Config)
+	//
+	//l.message = txt
+	//return true
 }
 
 type CommendPromptList struct{}

@@ -95,7 +95,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			gemini.GetUserUniqueID(req.CustomerID, req.OpenKfID),
 		).WithModel(c.Model).WithPrompt("").WithClient(c)
 
-		collection = collection.Set(req.Msg, "", false)
+		collection = collection.Set(gemini.NewChatContent(req.Msg), "", false)
 		prompts := collection.GetChatSummary()
 
 		fmt.Println("上下文请求信息：")
@@ -115,7 +115,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 						sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error(), l.svcCtx.Config)
 						return
 					}
-					collection.Set("", messageText, true)
+					collection.Set(gemini.NewChatContent(), messageText, true)
 					// 再去插入数据
 					table := l.svcCtx.ChatModel.Chat
 					_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -175,7 +175,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				// 把数据 发给微信用户
 				go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
 
-				collection.Set("", messageText, true)
+				collection.Set(gemini.NewChatContent(), messageText, true)
 
 				// 再去插入数据
 				table := l.svcCtx.ChatModel.Chat
