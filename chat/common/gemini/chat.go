@@ -141,7 +141,7 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 	for i := range chatRequest {
 		//估算长度
 		if (NumTokensFromMessages(chatRequest[len(chatRequest)-i-1:], "gpt-4") < (ChatModelInputTokenLimit[cs.Model])) &&
-			chatRequest[len(chatRequest)-i-1].Role == UserRole {
+			chatRequest[len(chatRequest)-i-1].Role == ModelRole {
 			start = len(chatRequest) - i - 1
 		} else {
 			break
@@ -310,14 +310,14 @@ type Contents struct {
 }
 
 type InlineData struct {
-	MimeType string `json:"mimeType"`
+	MimeType string `json:"mime_type"`
 	Data     string `json:"data"`
 }
 
 type Part struct {
-	Text string `json:"text"`
+	Text string `json:"text,omitempty"`
 	// 字段 为空时 json.Marshal 不会序列化
-	InlineData *InlineData `json:"inlineData,omitempty"`
+	InlineData *InlineData `json:"inline_data,omitempty"`
 }
 
 func GetImageContent(url string) (string, string, error) {
