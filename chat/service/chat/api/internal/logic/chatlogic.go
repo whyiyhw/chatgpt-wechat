@@ -51,15 +51,15 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 	// 去 gemini 获取数据
 	if req.Channel == "gemini" {
 
-		// openai client
+		// gemini client
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
-			WithTemperature(l.svcCtx.Config.OpenAi.Temperature)
+			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
 		if l.svcCtx.Config.Proxy.Enable {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 		}
-		// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
+		// 指令匹配， 根据响应值判定是否需要去调用 gemini 接口了
 		proceed, _ := l.FactoryCommend(req)
 		if !proceed {
 			return &types.ChatReply{
@@ -73,33 +73,15 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		// 从上下文中取出用户对话
 		collection := gemini.NewUserContext(
 			gemini.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
-		).WithModel(c.Model).WithPrompt("").WithClient(c)
-
-		// 将 URL 存入memory 中，需要时候，再取出来 进行 base64
-		cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, req.AgentID, req.UserID)
-		// 可存入多张图片
-		ok, _ := redis.Rdb.Exists(context.Background(), cacheKey).Result()
-		if ok > 0 {
-			// 从 redis 中取出图片信息，加入请求
-			images := redis.Rdb.HGetAll(context.Background(), cacheKey).Val()
-			for _, image := range images {
-				content, mime, err := gemini.GetImageContent(image)
-				if err != nil {
-					sendToUser(req.AgentID, req.UserID, "读取图片文件失败:"+err.Error(), l.svcCtx.Config)
-					return &types.ChatReply{
-						Message: "ok",
-					}, nil
-				}
-				collection = collection.Set(gemini.NewChatContent(content, mime), "", false)
-			}
-			// 清理图片信息
-			redis.Rdb.Del(context.Background(), cacheKey)
-		}
-		collection = collection.Set(gemini.NewChatContent(req.MSG), "", false)
+		).WithModel(c.Model).
+			WithPrompt(l.svcCtx.Config.Gemini.Prompt).
+			WithClient(c).
+			WithImage(req.AgentID, req.UserID). // 为后续版本做准备，Gemini 暂时不支持图文问答展示
+			Set(gemini.NewChatContent(req.MSG), "", false)
 
 		prompts := collection.GetChatSummary()
 
-		fmt.Println("上下文请求信息：")
+		fmt.Println("上下文请求信息： collection.Prompt" + collection.Prompt)
 		fmt.Println(prompts)
 		go func() {
 			// 分段响应

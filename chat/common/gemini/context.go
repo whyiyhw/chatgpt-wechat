@@ -85,6 +85,23 @@ func (c *UserContext) Set(q ChatContent, a string, save bool) *UserContext {
 func (c *UserContext) GetChatSummary() []ChatModelMessage {
 	var summary []ChatModelMessage
 	summary = append(summary, c.Summary...)
+	if c.Prompt != "" {
+		summary = append([]ChatModelMessage{
+			{
+				Role: UserRole,
+				Content: ChatContent{
+					MIMEType: MimetypeTextPlain,
+					Data:     c.Prompt,
+				},
+			},
+			{
+				Role: ModelRole,
+				Content: ChatContent{
+					MIMEType: MimetypeTextPlain,
+					Data:     "好的，收到！",
+				},
+			}}, summary...)
+	}
 	return summary
 }
 
@@ -137,6 +154,30 @@ func (c *UserContext) GetSummary() []ChatModelMessage {
 // WithClient 通过 openai 客户端初始化会话上下文
 func (c *UserContext) WithClient(client *ChatClient) *UserContext {
 	c.Client = client
+	return c
+}
+
+func (c *UserContext) WithImage(agentID int64, userID string) *UserContext {
+	// 将 URL 存入memory 中，需要时候，再取出来 进行 base64
+	cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, agentID, userID)
+	// 可存入多张图片
+	ok, _ := redis.Rdb.Exists(context.Background(), cacheKey).Result()
+	if ok > 0 {
+		// 从 redis 中取出图片信息，加入请求
+		images := redis.Rdb.HGetAll(context.Background(), cacheKey).Val()
+		for _, image := range images {
+			content, mime, err := GetImageContent(image)
+			if err != nil {
+				// log info and continue
+				//sendToUser(req.AgentID, req.UserID, "读取图片文件失败:"+err.Error(), l.svcCtx.Config)
+				return c
+			}
+			c.Set(NewChatContent(content, mime), "", false)
+		}
+		// 清理图片信息
+		redis.Rdb.Del(context.Background(), cacheKey)
+	}
+
 	return c
 }
 

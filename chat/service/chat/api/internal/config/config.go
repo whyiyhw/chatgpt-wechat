@@ -155,8 +155,9 @@ type Config struct {
 
 	// google gemini
 	Gemini struct {
-		Key   string  `json:",optional"`
-		Model string  `json:",optional,default=models/gemini-pro"`
-		Temp  float32 `json:",optional,default=0.8"`
+		Key         string  `json:",optional"`
+		Model       string  `json:",optional,default=gemini-pro"`
+		Temperature float32 `json:",optional,default=0.8"`
+		Prompt      string  `json:",optional,default=''"`
 	}
 }

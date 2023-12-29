@@ -73,7 +73,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 
 		// openai client
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
-			WithTemperature(l.svcCtx.Config.OpenAi.Temperature)
+			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
 		if l.svcCtx.Config.Proxy.Enable {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
@@ -93,7 +93,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// 从上下文中取出用户对话
 		collection := gemini.NewUserContext(
 			gemini.GetUserUniqueID(req.CustomerID, req.OpenKfID),
-		).WithModel(c.Model).WithPrompt("").WithClient(c)
+		).WithModel(c.Model).WithPrompt(l.svcCtx.Config.Gemini.Prompt).WithClient(c)
 
 		collection = collection.Set(gemini.NewChatContent(req.Msg), "", false)
 		prompts := collection.GetChatSummary()

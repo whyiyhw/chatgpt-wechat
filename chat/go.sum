@@ -286,8 +286,12 @@ github.com/microsoft/go-mssqldb v0.17.0 h1:Fto83dMZPnYv1Zwx5vHHxpNraeEaUlQ/hhHLg
 github.com/microsoft/go-mssqldb v0.17.0/go.mod h1:OkoNGhGEs8EZqchVTtochlXruEhEOaO4S0d2sB5aeGQ=
 github.com/milvus-io/milvus-proto/go-api/v2 v2.3.3 h1:j6Ru7Lq421Ukp+XH8I+ny7dsVF2rLDLLoWpuFgoDZLM=
 github.com/milvus-io/milvus-proto/go-api/v2 v2.3.3/go.mod h1:1OIl0v5PQeNxIJhCvY+K55CBUOYDZevw9g9380u1Wek=
+github.com/milvus-io/milvus-proto/go-api/v2 v2.3.4 h1:HtNGcUb52ojnl+zDAZMmbHyVaTdBjzuCnnBHpb675TU=
+github.com/milvus-io/milvus-proto/go-api/v2 v2.3.4/go.mod h1:1OIl0v5PQeNxIJhCvY+K55CBUOYDZevw9g9380u1Wek=
 github.com/milvus-io/milvus-sdk-go/v2 v2.3.3 h1:jHZJTQsTwZCxT5UyogIYecKqkjPAXyuYODfBAP3Qq2w=
 github.com/milvus-io/milvus-sdk-go/v2 v2.3.3/go.mod h1:MrlykwjCuFFg3xYL7gh5JmVkbpSo04W1w7MVT3JiE6A=
+github.com/milvus-io/milvus-sdk-go/v2 v2.3.4 h1:WeZ/QCwpcZVOiaVScuqoKhjuv3DaEAx+jM6U5PJhK+E=
+github.com/milvus-io/milvus-sdk-go/v2 v2.3.4/go.mod h1:ubhpNcq6Y25PNl2JabqIlH64yGHAEeo3Y7tgQHXQwnU=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
