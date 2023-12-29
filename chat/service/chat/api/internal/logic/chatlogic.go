@@ -715,22 +715,59 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 		sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：#image:https://www.google.com/img/bd_logo1.png", l.svcCtx.Config)
 		return false
 	}
-	// 将 URL 存入memory 中，需要时候，再取出来 进行 base64
-	cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, req.AgentID, req.UserID)
-	// 可存入多张图片
-	res, err := redis.Rdb.HSet(context.Background(), cacheKey, time.Now().Unix(), msg).Result()
+	//// 将 URL 存入memory 中，需要时候，再取出来 进行 base64 暂时不能这么处理 gemini 不支持 带图片文本的多轮对话
+	//cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, req.AgentID, req.UserID)
+	//// 可存入多张图片
+	//res, err := redis.Rdb.HSet(context.Background(), cacheKey, time.Now().Unix(), msg).Result()
+	//if err != nil {
+	//	sendToUser(req.AgentID, req.UserID, "图片保存失败:"+err.Error(), l.svcCtx.Config)
+	//	return false
+	//}
+	//if res == 0 {
+	//	sendToUser(req.AgentID, req.UserID, "图片保存失败，请稍后再试~", l.svcCtx.Config)
+	//	return false
+	//}
+	//sendToUser(req.AgentID, req.UserID, "已收到您的图片，关于图片你想了解什么呢~", l.svcCtx.Config)
+	//
+	//return false
+
+	// 中间思路，请求进行图片识别
+	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
+	if l.svcCtx.Config.Proxy.Enable {
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+	}
+	var parseImage []gemini.ChatModelMessage
+	// 将 图片 转成 base64
+	base64Data, mime, err := gemini.GetImageContent(msg)
 	if err != nil {
-		sendToUser(req.AgentID, req.UserID, "图片保存失败:"+err.Error(), l.svcCtx.Config)
+		sendToUser(req.AgentID, req.UserID, "图片解析失败:"+err.Error(), l.svcCtx.Config)
 		return false
 	}
-	if res == 0 {
-		sendToUser(req.AgentID, req.UserID, "图片保存失败，请稍后再试~", l.svcCtx.Config)
+	sendToUser(req.AgentID, req.UserID, "好的收到了您的图片，正在识别中~", l.svcCtx.Config)
+	result, err := c.Chat(append(parseImage, gemini.ChatModelMessage{
+		Role:    gemini.UserRole,
+		Content: gemini.NewChatContent(base64Data, mime),
+	}, gemini.ChatModelMessage{
+		Role:    gemini.UserRole,
+		Content: gemini.NewChatContent("你能详细描述图片中的内容吗？"),
+	}))
+	if err != nil {
+		sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
 		return false
 	}
-	sendToUser(req.AgentID, req.UserID, "已收到您的图片，关于图片你想了解什么呢~", l.svcCtx.Config)
 
+	sendToUser(req.AgentID, req.UserID, "图片识别完成:\n\n"+result, l.svcCtx.Config)
+	// 将其存入 上下文
+	gemini.NewUserContext(
+		gemini.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
+	).WithModel(c.Model).
+		WithPrompt(l.svcCtx.Config.Gemini.Prompt).
+		WithClient(c).
+		Set(gemini.NewChatContent("我向你描述一副图片的内容如下：\n\n"+result), "收到,我了解了您的图片！", true)
 	return false
-
 	//vi := reflect.ValueOf(l.svcCtx.Config.OCR)
 	//if vi.Kind() == reflect.Ptr && vi.IsNil() {
 	//	sendToUser(req.AgentID, req.UserID, "请先配置OCR", l.svcCtx.Config)

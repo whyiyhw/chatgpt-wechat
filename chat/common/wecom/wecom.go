@@ -194,6 +194,15 @@ func DealUserLastMessageByToken(token, openKfID string) {
 				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#voice:"+filePath)
 			}
 		}
+		if v.Msgtype == "image" && v.Origin == 3 {
+			filePath, err := DealCustomerImageMessageByMediaID(v.Image.MediaId)
+			if err != nil {
+				logx.Info("图片文件读取失败", v.Image.MediaId)
+				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#direct:图片文件读取失败:"+err.Error())
+			} else {
+				CustomerCallLogic(v.ExternalUserid, v.OpenKfid, v.Msgid, "#image:"+filePath)
+			}
+		}
 	}
 }
 
@@ -586,4 +595,17 @@ func DealCustomerVoiceMessageByMediaID(mediaID string) (string, error) {
 	filepath := fmt.Sprintf("/tmp/voice/%s", mediaID)
 	err := DownloadFile("/tmp/voice", filepath, "amr", url)
 	return filepath + ".mp3", err
+}
+
+func DealCustomerImageMessageByMediaID(mediaID string) (string, error) {
+	defaultAgentSecret := WeCom.CustomerServiceSecret
+	if defaultAgentSecret == "" {
+		return "", fmt.Errorf("应用密钥不匹配")
+	}
+	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
+	token := app.GetAccessToken()
+	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
+	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
+
+	return url, nil
 }

@@ -2,13 +2,18 @@ package gemini
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image/gif"
+	"image/jpeg"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
+	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -344,11 +349,48 @@ func GetImageContent(url string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	// convert body to base64
-	encoded := base64.StdEncoding.EncodeToString(body)
-
 	// get mime type of body
 	mime := http.DetectContentType(body)
+
+	//MIME type must be image/png, image/jpeg, image/webp, image/heic, or image/heif.\n
+	if mime == "image/gif" {
+		gifImage, err := gif.Decode(bytes.NewReader(body))
+		if err != nil {
+			return "", "", err
+		}
+		var gifBuffer bytes.Buffer
+		// gif 转 png 只转第一帧，后续的看情况再转
+		err = imaging.Encode(&gifBuffer, gifImage, imaging.PNG)
+		if err != nil {
+			return "", "", err
+		}
+		body = gifBuffer.Bytes()
+	}
+
+	// body 转 io.Reader
+	srcImg, err := imaging.Decode(bytes.NewReader(body))
+	if err != nil {
+		return "", "", err
+	}
+	// 获取原始图像的宽度和高度
+	width := srcImg.Bounds().Dx()
+	height := srcImg.Bounds().Dy()
+	// 计算新的高度以保持宽高比
+	newHeight := height * 512 / width
+
+	// 重设图像尺寸
+	dstImg := imaging.Resize(srcImg, 512, newHeight, imaging.Lanczos)
+
+	// 将图像编码为 JPEG 格式，并存储到字节缓冲区
+	var buffer bytes.Buffer
+	err = jpeg.Encode(&buffer, dstImg, nil)
+	if err != nil {
+		log.Fatalf("Failed to encode image: %v", err)
+	}
+	mime = "image/jpeg"
+
+	// convert to base64
+	encoded := base64.StdEncoding.EncodeToString(buffer.Bytes())
 
 	return encoded, mime, nil
 }

@@ -93,9 +93,12 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// 从上下文中取出用户对话
 		collection := gemini.NewUserContext(
 			gemini.GetUserUniqueID(req.CustomerID, req.OpenKfID),
-		).WithModel(c.Model).WithPrompt(l.svcCtx.Config.Gemini.Prompt).WithClient(c)
+		).WithModel(c.Model).WithPrompt(l.svcCtx.Config.Gemini.Prompt).WithClient(c).
+			WithPrompt(l.svcCtx.Config.Gemini.Prompt).
+			WithClient(c).
+			//WithImage(req.OpenKfID, req.CustomerID). // 为后续版本做准备，Gemini 暂时不支持图文问答展示
+			Set(gemini.NewChatContent(req.Msg), "", false)
 
-		collection = collection.Set(gemini.NewChatContent(req.Msg), "", false)
 		prompts := collection.GetChatSummary()
 
 		fmt.Println("上下文请求信息：")
@@ -456,6 +459,7 @@ func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed 
 	template["#clear"] = CustomerCommendClear{}
 	template["#about"] = CustomerCommendAbout{}
 	template["#plugin"] = CustomerPlugin{}
+	template["#image"] = CustomerCommendImage{}
 
 	for s, data := range template {
 		if strings.HasPrefix(req.Msg, s) {
@@ -615,4 +619,53 @@ func (p CustomerPlugin) customerExec(l *CustomerChatLogic, req *types.CustomerCh
 		}
 	}
 	return true
+}
+
+type CustomerCommendImage struct{}
+
+func (p CustomerCommendImage) customerExec(l *CustomerChatLogic, req *types.CustomerChatReq) bool {
+	// #image:https://www.baidu.com/img/bd_logo1.png
+	msg := strings.Replace(req.Msg, "#image:", "", -1)
+	if msg == "" {
+		sendToUser(req.OpenKfID, req.CustomerID, "请输入完整的设置 如：#image:https://www.google.com/img/bd_logo1.png", l.svcCtx.Config)
+		return false
+	}
+
+	// 中间思路，请求进行图片识别
+	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
+	if l.svcCtx.Config.Proxy.Enable {
+		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+	}
+	var parseImage []gemini.ChatModelMessage
+	// 将 图片 转成 base64
+	base64Data, mime, err := gemini.GetImageContent(msg)
+	if err != nil {
+		sendToUser(req.OpenKfID, req.CustomerID, "图片解析失败:"+err.Error(), l.svcCtx.Config)
+		return false
+	}
+	sendToUser(req.OpenKfID, req.CustomerID, "好的收到了您的图片，正在识别中~", l.svcCtx.Config)
+	result, err := c.Chat(append(parseImage, gemini.ChatModelMessage{
+		Role:    gemini.UserRole,
+		Content: gemini.NewChatContent(base64Data, mime),
+	}, gemini.ChatModelMessage{
+		Role:    gemini.UserRole,
+		Content: gemini.NewChatContent("你能详细描述图片中的内容吗？"),
+	}))
+	if err != nil {
+		sendToUser(req.OpenKfID, req.CustomerID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
+		return false
+	}
+
+	sendToUser(req.OpenKfID, req.CustomerID, "图片识别完成:\n\n"+result, l.svcCtx.Config)
+	// 将其存入 上下文
+	gemini.NewUserContext(
+		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
+	).WithModel(c.Model).
+		WithPrompt(l.svcCtx.Config.Gemini.Prompt).
+		WithClient(c).
+		Set(gemini.NewChatContent("我向你描述一副图片的内容如下：\n\n"+result), "收到,我了解了您的图片！", true)
+	return false
 }
