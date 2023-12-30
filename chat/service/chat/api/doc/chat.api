@@ -4,27 +4,27 @@ info (
 	title:   "user chat 相关 api"
 	desc:    "语音相关"
 	author:  "whyiyhw"
-	email:   ""
+	email:   "whyiyhw@outlook.com"
 	version: "v1"
 )
 
 type (
 	ChatReq {
 		Channel string `json:"channel,optional" validate:"required,oneof=wecom openai gemini" label:"渠道"`
-		MSG     string `json:"msg,optional"`
+		MSG     string `json:"msg,optional" label:"消息"`
 		UserID  string `json:"user_id,optional" validate:"required,max=500" label:"用户标识"`
 		AgentID int64  `json:"agent_id,optional" validate:"required" label:"应用标识"`
 	}
 	ChatReply {
-		Message string `json:"message"`
+		Message string `json:"message" label:"消息"`
 	}
 	CustomerChatReq {
-		MsgID      string `json:"msg_id"`
-		Msg        string `json:"msg"`
-		CustomerID string `json:"customer_id"`
-		OpenKfID   string `json:"open_kf_id"`
+		MsgID      string `json:"msg_id" label:"消息标识"`
+		Msg        string `json:"msg" label:"消息"`
+		CustomerID string `json:"customer_id" label:"客户标识"`
+		OpenKfID   string `json:"open_kf_id" label:"客服标识"`
 	}
 	CustomerChatReply {
-		Message string `json:"message"`
+		Message string `json:"message" label:"响应消息"`
 	}
 )

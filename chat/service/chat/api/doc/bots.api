@@ -81,4 +81,14 @@ type (
         PageSize int `json:"page_size" label:"每页数量"`
         List []*BotListDetail `json:"list" label:"机器人列表"`
     }
+
+    // chat with bot
+    BotChatReq {
+        MSG string `json:"msg" validate:"required" label:"消息"`
+        BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+    }
+
+    BotChatReply {
+        MessageID string `json:"message_id" label:"消息标识"`
+    }
 )

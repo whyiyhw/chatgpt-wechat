@@ -16,7 +16,7 @@ info (
 
 @server (
 	middleware: AccessLog // 路由中间件声明
-	prefix:     api
+	prefix:     /api
 )
 service chat-api {
 	@handler UserRegisterHandler
@@ -29,7 +29,7 @@ service chat-api {
 // 需要鉴权的服务
 @server (
 	middleware: AccessLog // 路由中间件声明
-	prefix:     api
+	prefix:     /api
 	jwt:        Auth // jwt中间件声明
 )
 service chat-api {
@@ -63,5 +63,9 @@ service chat-api {
 
 	@handler BotReplicateHandler
 	post /bot/replicate (BotReplicateReq) returns (BotReplicateReply)
+
+	// chat with bot
+	@handler BotChatHandler
+	post /bot/chat (BotChatReq) returns (BotChatReply)
 }
 

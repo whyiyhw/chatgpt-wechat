@@ -35,6 +35,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			[]rest.Route{
 				{
 					Method:  http.MethodPost,
+					Path:    "/bot/chat",
+					Handler: BotChatHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/bot/create",
 					Handler: BotCreateHandler(serverCtx),
 				},

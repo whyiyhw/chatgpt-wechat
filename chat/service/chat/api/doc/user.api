@@ -4,7 +4,7 @@ info (
 	title:   "user 相关 api"
 	desc:    "注册登录"
 	author:  "whyiyhw"
-	email:   ""
+	email:   "whyiyhw@outlook.com"
 	version: "v1"
 )
 
@@ -23,13 +23,13 @@ type (
 		Password string `json:"password,optional" validate:"required" label:"密码"`
 	}
 	UserLoginReply {
-		Token string `json:"token"`
+		Token string `json:"token" label:"认证token"`
 	}
 	UserDetailReq  {}
 	UserDetailReply {
-		ID    int64  `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		ID    int64  `json:"id" label:"用户id"`
+		Email string `json:"email" label:"邮箱"`
+		Name  string `json:"name" label:"用户名"`
 	}
 )
 
