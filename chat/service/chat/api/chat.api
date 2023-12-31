@@ -67,5 +67,9 @@ service chat-api {
 	// chat with bot
 	@handler BotChatHandler
 	post /bot/chat (BotChatReq) returns (BotChatReply)
+
+	// optimize prompt
+	@handler BotOptimizePromptHandler
+	post /bot/prompt/optimize (BotOptimizePromptReq) returns (BotOptimizePromptReply)
 }
 

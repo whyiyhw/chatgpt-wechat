@@ -58,6 +58,15 @@ type BotListReq struct {
 	PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
 }
 
+type BotOptimizePromptReply struct {
+	MessageID string `json:"message_id" label:"消息标识"`
+}
+
+type BotOptimizePromptReq struct {
+	BotID        int64  `json:"id" validate:"required,min=1" label:"机器人ID"`
+	OriginPrompt string `json:"prompt" validate:"required,max=1000" label:"机器人基础提示词配置"`
+}
+
 type BotPromptUpdateReply struct {
 }
 

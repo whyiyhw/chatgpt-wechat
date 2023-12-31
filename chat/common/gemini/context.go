@@ -200,3 +200,26 @@ func NumTokensFromMessages(messages []ChatModelMessage, model string) (numTokens
 	numTokens += 3
 	return numTokens
 }
+
+// GetNewChatMessage 获取全新的对话
+func (c *UserContext) GetNewChatMessage(prompt string) []ChatModelMessage {
+	var summary []ChatModelMessage
+	if prompt != "" {
+		summary = append([]ChatModelMessage{
+			{
+				Role: UserRole,
+				Content: ChatContent{
+					MIMEType: MimetypeTextPlain,
+					Data:     prompt,
+				},
+			},
+			{
+				Role: ModelRole,
+				Content: ChatContent{
+					MIMEType: MimetypeTextPlain,
+					Data:     "好的，收到！",
+				},
+			}}, summary...)
+	}
+	return summary
+}

@@ -60,6 +60,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/bot/prompt/optimize",
+					Handler: BotOptimizePromptHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/bot/prompt/update",
 					Handler: BotPromptUpdateHandler(serverCtx),
 				},

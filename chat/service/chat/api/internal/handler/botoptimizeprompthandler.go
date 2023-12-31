@@ -13,9 +13,9 @@ import (
 	"chat/service/chat/api/internal/types"
 )
 
-func BotChatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+func BotOptimizePromptHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req types.BotChatReq
+		var req types.BotOptimizePromptReq
 		if err := httpx.Parse(r, &req); err != nil {
 			response.ParamError(r, w, err)
 			return
@@ -31,8 +31,8 @@ func BotChatHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			return
 		}
 
-		l := logic.NewBotChatLogic(r.Context(), svcCtx)
-		resp, err := l.BotChat(&req)
+		l := logic.NewBotOptimizePromptLogic(r.Context(), svcCtx)
+		resp, err := l.BotOptimizePrompt(&req)
 		response.Response(r, w, resp, err)
 	}
 }
