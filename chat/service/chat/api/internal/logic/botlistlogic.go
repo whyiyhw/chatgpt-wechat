@@ -35,7 +35,7 @@ func (l *BotListLogic) BotList(req *types.BotListReq) (resp *types.BotListReply,
 	}
 	offset := (req.Page - 1) * req.PageSize
 	table := l.svcCtx.ChatModel.Bot
-	ls, count, findErr := table.WithContext(l.ctx).Where(table.UserID.Eq(userId)).Order(table.ID).FindByPage(offset, req.PageSize)
+	ls, count, findErr := table.WithContext(l.ctx).Where(table.UserID.Eq(userId)).Order(table.ID.Desc()).FindByPage(offset, req.PageSize)
 	if findErr != nil {
 		return nil, findErr
 	}
