@@ -111,6 +111,19 @@ func (c *UserContext) GetChatHistory() []ChatModelMessage {
 	return append(summary, c.Messages...)
 }
 
+// ChatClear 清理会话
+func (c *UserContext) ChatClear(userUniqueID string) {
+	// 去 redis 中 获取 userUniqueID 对应的会话ID
+	sessionKey, _ := redis.Rdb.Get(context.Background(), userUniqueID).Result()
+	if sessionKey != "" {
+		// 清理会话
+		redis.Rdb.Del(context.Background(), userUniqueID)
+		redis.Rdb.SRem(context.Background(), UserSessionListKey(userUniqueID), sessionKey)
+		// 清理会话上下文
+		redis.Rdb.Del(context.Background(), getSessionKey(sessionKey))
+	}
+}
+
 // NewUserContext 通过用户唯一标识获取会话上下文
 func NewUserContext(userUniqueID string) *UserContext {
 	// 去 redis 中 获取 userUniqueID 对应的会话ID

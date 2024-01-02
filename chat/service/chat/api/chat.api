@@ -72,6 +72,10 @@ service chat-api {
 	@handler BotChatHistoryHandler
 	post /bot/chat/history (BotChatHistoryReq) returns (BotChatHistoryReply)
 
+	// clear chat history
+	@handler BotChatHistoryClearHandler
+	post /bot/chat/history/clear (BotChatHistoryClearReq) returns (BotChatHistoryClearReply)
+
 	// optimize prompt
 	@handler BotOptimizePromptHandler
 	post /bot/prompt/optimize (BotOptimizePromptReq) returns (BotOptimizePromptReply)

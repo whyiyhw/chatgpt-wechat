@@ -107,6 +107,12 @@ type (
     BotChatHistoryReply {
         List []*BotChatWholeReply `json:"list" label:"消息列表"`
     }
+    // clear chat history
+    BotChatHistoryClearReq {
+        BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+    }
+    BotChatHistoryClearReply {
+    }
 
     // optimize prompt
     BotOptimizePromptReq {

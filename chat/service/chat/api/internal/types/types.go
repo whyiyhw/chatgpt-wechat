@@ -6,6 +6,13 @@ type BotChatContent struct {
 	Data     string `json:"data" label:"消息内容"`
 }
 
+type BotChatHistoryClearReply struct {
+}
+
+type BotChatHistoryClearReq struct {
+	BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+}
+
 type BotChatHistoryReply struct {
 	List []*BotChatWholeReply `json:"list" label:"消息列表"`
 }
