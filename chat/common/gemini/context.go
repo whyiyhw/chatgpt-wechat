@@ -105,6 +105,12 @@ func (c *UserContext) GetChatSummary() []ChatModelMessage {
 	return summary
 }
 
+// GetChatHistory 获取对话历史
+func (c *UserContext) GetChatHistory() []ChatModelMessage {
+	var summary []ChatModelMessage
+	return append(summary, c.Messages...)
+}
+
 // NewUserContext 通过用户唯一标识获取会话上下文
 func NewUserContext(userUniqueID string) *UserContext {
 	// 去 redis 中 获取 userUniqueID 对应的会话ID

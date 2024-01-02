@@ -92,6 +92,22 @@ type (
         MessageID string `json:"message_id" label:"消息标识"`
     }
 
+    // chat with bot history
+    BotChatHistoryReq {
+        BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+    }
+    BotChatWholeReply {
+        Role string `json:"role" label:"角色"`
+        Content BotChatContent `json:"content" label:"消息内容"`
+    }
+    BotChatContent {
+        MimeType string `json:"mime_type" label:"消息类型"`
+        Data string `json:"data" label:"消息内容"`
+    }
+    BotChatHistoryReply {
+        List []*BotChatWholeReply `json:"list" label:"消息列表"`
+    }
+
     // optimize prompt
     BotOptimizePromptReq {
         BotID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
