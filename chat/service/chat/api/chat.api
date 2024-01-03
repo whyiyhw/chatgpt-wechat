@@ -79,5 +79,9 @@ service chat-api {
 	// optimize prompt
 	@handler BotOptimizePromptHandler
 	post /bot/prompt/optimize (BotOptimizePromptReq) returns (BotOptimizePromptReply)
+
+	// explore bot list
+	@handler BotExploreListHandler
+	post /bot/explore/list (BotExploreListReq) returns (BotExploreListReply)
 }
 

@@ -1,11 +1,11 @@
 package logic
 
 import (
-	"context"
-	"encoding/json"
-
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
+	"chat/service/chat/model"
+	"context"
+	"encoding/json"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -34,17 +34,20 @@ func (l *BotUpdateLogic) BotUpdate(req *types.BotUpdateReq) (resp *types.BotUpda
 		}
 	}
 	table := l.svcCtx.ChatModel.Bot
-	first, selectErr := table.WithContext(l.ctx).
+	_, selectErr := table.WithContext(l.ctx).
 		Where(table.ID.Eq(req.ID), table.UserID.Eq(userId)).First()
 	if selectErr != nil {
 		return nil, selectErr
 	}
-	first.Desc = req.Desc
-	first.Name = req.Name
-	first.Avatar = req.Avatar
-	err = table.WithContext(l.ctx).
+	// 更新机器人信息
+	_, err = table.WithContext(l.ctx).
 		Where(table.ID.Eq(req.ID), table.UserID.Eq(userId)).
-		Save(first)
+		Updates(model.Bot{
+			Desc:   req.Desc,
+			Name:   req.Name,
+			Avatar: req.Avatar,
+			UserID: userId,
+		})
 	if err != nil {
 		return nil, err
 	}

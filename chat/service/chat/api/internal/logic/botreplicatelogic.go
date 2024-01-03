@@ -33,30 +33,61 @@ func (l *BotReplicateLogic) BotReplicate(req *types.BotReplicateReq) (resp *type
 			return nil, err
 		}
 	}
-	table := l.svcCtx.ChatModel.Bot
-	first, selectErr := table.WithContext(l.ctx).
-		Where(table.ID.Eq(req.ID), table.UserID.Eq(userId)).First()
-	if selectErr != nil {
-		return nil, selectErr
-	}
-	// 去生成新的bot
-	newBot := &model.Bot{
-		UserID: userId,
-		Name:   first.Name,
-		Avatar: first.Avatar,
-		Desc:   first.Desc,
-	}
-	insertErr := table.WithContext(l.ctx).Create(newBot)
-	if insertErr != nil {
-		return nil, insertErr
-	}
-	// 去找 prompt
-	e := l.svcCtx.ChatModel.BotsPrompt
-	prompt, promptErr := e.WithContext(l.ctx).Where(e.BotID.Eq(req.ID)).First()
-	if promptErr == nil {
+	var newBot *model.Bot
+	if req.OriginType == 1 {
+		table := l.svcCtx.ChatModel.Bot
+		first, selectErr := table.WithContext(l.ctx).
+			Where(table.ID.Eq(req.ID), table.UserID.Eq(userId)).First()
+		if selectErr != nil {
+			return nil, selectErr
+		}
+		// 去生成新的bot
+		newBot = &model.Bot{
+			UserID: userId,
+			Name:   first.Name,
+			Avatar: first.Avatar,
+			Desc:   first.Desc,
+		}
+		insertErr := table.WithContext(l.ctx).Create(newBot)
+		if insertErr != nil {
+			return nil, insertErr
+		}
+		// 去找 prompt
+		e := l.svcCtx.ChatModel.BotsPrompt
+		prompt, promptErr := e.WithContext(l.ctx).Where(e.BotID.Eq(req.ID)).First()
+		if promptErr == nil {
+			updateErr := e.WithContext(l.ctx).Create(&model.BotsPrompt{
+				BotID:  newBot.ID,
+				Prompt: prompt.Prompt,
+			})
+			if updateErr != nil {
+				return nil, updateErr
+			}
+		}
+	} else {
+		table := l.svcCtx.ChatModel.PromptConfig
+		first, selectErr := table.WithContext(l.ctx).
+			Where(table.ID.Eq(req.ID)).First()
+		if selectErr != nil {
+			return nil, selectErr
+		}
+		// 去生成新的bot
+		newBot = &model.Bot{
+			UserID: userId,
+			Name:   first.Key,
+			Avatar: "",
+			Desc:   "",
+		}
+		botTable := l.svcCtx.ChatModel.Bot
+		insertErr := botTable.WithContext(l.ctx).Create(newBot)
+		if insertErr != nil {
+			return nil, insertErr
+		}
+		// 去找 prompt
+		e := l.svcCtx.ChatModel.BotsPrompt
 		updateErr := e.WithContext(l.ctx).Create(&model.BotsPrompt{
 			BotID:  newBot.ID,
-			Prompt: prompt.Prompt,
+			Prompt: first.Value,
 		})
 		if updateErr != nil {
 			return nil, updateErr

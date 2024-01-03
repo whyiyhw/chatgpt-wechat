@@ -1,12 +1,12 @@
 CREATE TABLE "user"
 (
     "id"         bigserial PRIMARY KEY,
-    "name"       varchar(50)  NOT NULL DEFAULT '',
-    "email"      varchar(121) NOT NULL DEFAULT '',
-    "password"   varchar(255) NOT NULL DEFAULT '',
-    "avatar"     varchar(255) NOT NULL DEFAULT '',
-    "created_at" timestamp             DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" timestamp             DEFAULT CURRENT_TIMESTAMP
+    "name"       varchar(50)  NOT NULL,
+    "email"      varchar(121) NOT NULL,
+    "password"   varchar(255) NOT NULL,
+    "avatar"     varchar(255) NOT NULL,
+    "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE "user" IS '用户信息表';

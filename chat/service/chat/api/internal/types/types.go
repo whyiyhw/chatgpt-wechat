@@ -64,6 +64,18 @@ type BotDetailReq struct {
 	ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
 }
 
+type BotExploreListReply struct {
+	Total    int               `json:"total" label:"总数"`
+	Page     int               `json:"page" label:"页码"`
+	PageSize int               `json:"page_size" label:"每页数量"`
+	List     []*ExploreListBot `json:"list" label:"机器人列表"`
+}
+
+type BotExploreListReq struct {
+	Page     int `json:"page" validate:"required,min=1" label:"页码"`
+	PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
+}
+
 type BotListDetail struct {
 	ID     int64  `json:"id" label:"机器人ID"`
 	Name   string `json:"name" label:"机器人名称"`
@@ -105,7 +117,8 @@ type BotReplicateReply struct {
 }
 
 type BotReplicateReq struct {
-	ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+	ID         int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+	OriginType int   `json:"origin_type,optional,default=1" label:"复制类型 1:复制机器人 2: 复制prompt配置"`
 }
 
 type BotUpdateReply struct {
@@ -138,6 +151,11 @@ type CustomerChatReq struct {
 	Msg        string `json:"msg" label:"消息"`
 	CustomerID string `json:"customer_id" label:"客户标识"`
 	OpenKfID   string `json:"open_kf_id" label:"客服标识"`
+}
+
+type ExploreListBot struct {
+	ID  int64  `json:"id" label:"提示词ID"`
+	Key string `json:"key" label:"key"`
 }
 
 type UserDetailReply struct {

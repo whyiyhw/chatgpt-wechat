@@ -65,6 +65,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/bot/explore/list",
+					Handler: BotExploreListHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/bot/list",
 					Handler: BotListHandler(serverCtx),
 				},

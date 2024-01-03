@@ -1,8 +1,8 @@
 CREATE TABLE prompt_config
 (
-    id bigserial PRIMARY KEY,
-    key varchar(255) NOT NULL DEFAULT '',
-    value varchar(500) NOT NULL DEFAULT '',
+    id         bigserial PRIMARY KEY,
+    key        varchar(255) NOT NULL,
+    value      varchar(500) NOT NULL,
     created_at timestamp DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp DEFAULT CURRENT_TIMESTAMP
 );

@@ -42,11 +42,12 @@ type (
 
     BotDeleteReply {
     }
-        // 复制请求
+    // 复制请求
     BotReplicateReq {
         ID int64 `json:"id" validate:"required,min=1" label:"机器人ID"`
+        OriginType int `json:"origin_type,optional,default=1" label:"复制类型 1:复制机器人 2: 复制prompt配置"`
     }
-        // 复制响应
+    // 复制响应
     BotReplicateReply {
         ID int64 `json:"id" label:"机器人ID"`
     }
@@ -122,4 +123,21 @@ type (
     BotOptimizePromptReply {
         MessageID string `json:"message_id" label:"消息标识"`
     }
+
+    // explore bot list
+    BotExploreListReq {
+        Page int `json:"page" validate:"required,min=1" label:"页码"`
+        PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
+    }
+    BotExploreListReply {
+        Total int `json:"total" label:"总数"`
+        Page int `json:"page" label:"页码"`
+        PageSize int `json:"page_size" label:"每页数量"`
+        List []*ExploreListBot `json:"list" label:"机器人列表"`
+    }
+    ExploreListBot {
+        ID int64 `json:"id" label:"提示词ID"`
+        Key string `json:"key" label:"key"`
+    }
+
 )
