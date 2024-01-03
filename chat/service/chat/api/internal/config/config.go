@@ -8,7 +8,7 @@ import (
 type Config struct {
 	rest.RestConf
 
-	Mysql struct {
+	PGSql struct {
 		DataSource string
 	}
 

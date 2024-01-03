@@ -44,7 +44,7 @@ type chatConfig struct {
 	chatConfigDo chatConfigDo
 
 	ALL       field.Asterisk
-	ID        field.Int64
+	ID        field.Int64  // 聊天配置ID
 	User      field.String // 用户标识
 	AgentID   field.Int64  // 应用ID
 	Model     field.String // 模型

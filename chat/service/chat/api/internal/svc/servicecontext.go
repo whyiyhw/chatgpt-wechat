@@ -1,14 +1,13 @@
 package svc
 
 import (
-	"github.com/zeromicro/go-zero/rest"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/middleware"
 	"chat/service/chat/dao"
+	"github.com/zeromicro/go-zero/rest"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type ServiceContext struct {
@@ -25,7 +24,16 @@ type ServiceContext struct {
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	//启动Gorm支持
-	db, err := gorm.Open(mysql.Open(c.Mysql.DataSource), &gorm.Config{
+	//db, err := gorm.Open(mysql.Open(c.Mysql.DataSource), &gorm.Config{
+	//	DisableForeignKeyConstraintWhenMigrating: true,
+	//	SkipDefaultTransaction:                   true,
+	//	Logger:                                   logger.Default.LogMode(logger.Info),
+	//})
+
+	db, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  c.PGSql.DataSource,
+		PreferSimpleProtocol: true, // disables implicit prepared statement usage
+	}), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		SkipDefaultTransaction:                   true,
 		Logger:                                   logger.Default.LogMode(logger.Info),

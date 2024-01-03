@@ -40,12 +40,11 @@ func newBot(db *gorm.DB, opts ...gen.DOOption) bot {
 	return _bot
 }
 
-// bot 机器人基础设置表
 type bot struct {
 	botDo botDo
 
 	ALL       field.Asterisk
-	ID        field.Int64
+	ID        field.Int64  // 机器人ID
 	Name      field.String // 机器人名称
 	Avatar    field.String // 机器人头像
 	Desc      field.String // 机器人描述

@@ -5,5 +5,5 @@ go install gorm.io/gen/tools/gentool@latest
 
 ## 运行生成 model
 ```shell
-gentool -dsn "chat:Chat-gpt~wechat@tcp(127.0.0.1:43306)/chat?charset=utf8mb4&parseTime=true&loc=Local" -outPath "./service/chat/dao"
+gentool -db postgres -dsn "host=127.0.0.1 user=chat password=Chat-gpt~wechat dbname=chat port=43306 sslmode=disable TimeZone=Asia/Shanghai" -outPath "./service/chat/dao"
 ```

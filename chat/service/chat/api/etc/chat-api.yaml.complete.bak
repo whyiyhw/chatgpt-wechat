@@ -2,8 +2,11 @@ Name: chat-api                                      # 项目名称
 Host: 0.0.0.0                                       # 项目监听地址
 Port: 8888                                          # 项目监听端口
 
-Mysql:                                              # mysql配置
-    DataSource: chat:Chat-gpt~wechat@tcp(mysql81:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai  # 数据库连接地址
+#Mysql:
+#    DataSource: chat:Chat-gpt~wechat@tcp(mysql81:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
+
+PGSql:
+  DataSource: "host=pgvector user=chat password=Chat-gpt~wechat dbname=chat port=5432 sslmode=disable TimeZone=Asia/Shanghai"
 
 RedisCache:                                         # redis缓存配置
   - Host: redis7:6379                               # redis缓存地址

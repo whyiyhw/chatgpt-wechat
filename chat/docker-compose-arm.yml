@@ -40,24 +40,42 @@ services:
       - chat_network
     restart: always
     command: redis-server /etc/redis/redis.conf
-  mysql:
-    container_name: mysql81
-    image: arm64v8/mysql:8.1
-    ports:
-      - "43306:3306"
-    environment:
-      TZ: Asia/Shanghai
-      MYSQL_ROOT_PASSWORD: 'Chat-gpt~wechat'
-      MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
-      MYSQL_DATABASE: 'chat'
-      MYSQL_USER: 'chat'
-      MYSQL_PASSWORD: 'Chat-gpt~wechat'
-    volumes:
-      - ./build/mysql/data:/var/lib/mysql
-      - ./build/mysql/init:/docker-entrypoint-initdb.d
-    networks:
-      - chat_network
-    restart: always
-    command: --default-authentication-plugin=caching_sha2_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+#  mysql:
+#    container_name: mysql81
+#    image: arm64v8/mysql:8.1
+#    ports:
+#      - "43306:3306"
+#    environment:
+#      TZ: Asia/Shanghai
+#      MYSQL_ROOT_PASSWORD: 'Chat-gpt~wechat'
+#      MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
+#      MYSQL_DATABASE: 'chat'
+#      MYSQL_USER: 'chat'
+#      MYSQL_PASSWORD: 'Chat-gpt~wechat'
+#    volumes:
+#      - ./build/mysql/data:/var/lib/mysql
+#      - ./build/mysql/init:/docker-entrypoint-initdb.d
+#    networks:
+#      - chat_network
+#    restart: always
+#    command: --default-authentication-plugin=caching_sha2_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+  pgvector:
+      container_name: pgvector
+      image: ankane/pgvector:v0.5.1
+      environment:
+        TZ: Asia/Shanghai
+        PGTZ: Asia/Shanghai
+        POSTGRES_DB: chat
+        POSTGRES_USER: chat
+        POSTGRES_PASSWORD: Chat-gpt~wechat
+        PGDATA: /data/postgres
+      volumes:
+        - ./build/pgvector/data:/data/postgres
+        - ./build/pgvector/init:/docker-entrypoint-initdb.d/
+      ports:
+        - "43306:5432"
+      networks:
+        - chat_network
+      restart: always
 networks:
   chat_network:

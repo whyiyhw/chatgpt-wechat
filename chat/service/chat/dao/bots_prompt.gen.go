@@ -38,12 +38,11 @@ func newBotsPrompt(db *gorm.DB, opts ...gen.DOOption) botsPrompt {
 	return _botsPrompt
 }
 
-// botsPrompt 机器人prompt设置表
 type botsPrompt struct {
 	botsPromptDo botsPromptDo
 
 	ALL       field.Asterisk
-	ID        field.Int64
+	ID        field.Int64  // 机器人初始设置ID
 	BotID     field.Int64  // 机器人ID 关联 bots.id
 	Prompt    field.String // 机器人初始设置
 	CreatedAt field.Time   // 创建时间

@@ -46,7 +46,7 @@ type chat struct {
 	chatDo chatDo
 
 	ALL        field.Asterisk
-	ID         field.Int64
+	ID         field.Int64  // 聊天记录ID
 	User       field.String // weCom用户标识/customer用户标识
 	MessageID  field.String // message_id customer消息唯一ID
 	OpenKfID   field.String // 客服标识
