@@ -17,3 +17,24 @@ COMMENT ON COLUMN bots_prompt.updated_at IS '更新时间';
 
 -- 加入索引 idx_bot_id
 CREATE INDEX bots_prompt_idx_bot_id ON bots_prompt (bot_id);
+
+-- auto-generated definition
+create table bots_with_custom
+(
+    id         bigserial
+        primary key,
+    bot_id     bigint    default 0 not null,
+    open_kf_id varchar             not null,
+    created_at timestamp default CURRENT_TIMESTAMP,
+    updated_at timestamp default CURRENT_TIMESTAMP
+);
+
+comment on table bots_with_custom is '机器人关联客服设置表';
+comment on column bots_with_custom.id is '机器人初始设置ID';
+comment on column bots_with_custom.bot_id is '机器人ID 关联 bots.id';
+comment on column bots_with_custom.open_kf_id is '客服id 关联企业微信 客服ID';
+comment on column bots_with_custom.created_at is '创建时间';
+comment on column bots_with_custom.updated_at is '更新时间';
+
+create index bots_with_custom_idx_kf_id_bot_id on bots_with_custom (open_kf_id, bot_id);
+

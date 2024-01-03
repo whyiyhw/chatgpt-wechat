@@ -140,4 +140,28 @@ type (
         Key string `json:"key" label:"key"`
     }
 
+    // 获取客服列表
+    BotCustomListReq {
+        Page int `json:"page" validate:"required,min=1" label:"页码"`
+        PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
+    }
+    BotCustomListReply {
+        Total int `json:"total" label:"总数"`
+        Page int `json:"page" label:"页码"`
+        PageSize int `json:"page_size" label:"每页数量"`
+        List []*BotCustomListDetail `json:"list" label:"机器人列表"`
+    }
+    BotCustomListDetail {
+        OpenKfid string `json:"open_kf_id" label:"客服ID"`
+        Name string `json:"name" label:"客服名称"`
+        Avatar string `json:"avatar" label:"客服头像"`
+        ManagePrivilege bool `json:"manage_privilege" label:"是否有管理权限"`
+    }
+    // bot 关联客服ID
+    BotCustomUpdateReq {
+        BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+        OpenKfid string `json:"open_kfid" validate:"required" label:"客服ID"`
+    }
+    BotCustomUpdateReply {
+    }
 )

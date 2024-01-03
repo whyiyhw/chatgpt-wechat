@@ -55,6 +55,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/bot/customer/list",
+					Handler: CustomerListHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/bot/customer/update",
+					Handler: BotCustomerUpdateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/bot/delete",
 					Handler: BotDeleteHandler(serverCtx),
 				},

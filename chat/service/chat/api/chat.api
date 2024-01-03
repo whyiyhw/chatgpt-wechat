@@ -83,5 +83,13 @@ service chat-api {
 	// explore bot list
 	@handler BotExploreListHandler
 	post /bot/explore/list (BotExploreListReq) returns (BotExploreListReply)
+
+	// 客服列表API
+	@handler CustomerListHandler
+	post /bot/customer/list (BotCustomListReq) returns (BotCustomListReply)
+
+	// bot 关联 客服
+	@handler BotCustomerUpdateHandler
+	post /bot/customer/update (BotCustomUpdateReq) returns (BotCustomUpdateReply)
 }
 

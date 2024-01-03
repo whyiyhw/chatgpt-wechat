@@ -1,6 +1,7 @@
 package wecom
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -608,4 +609,75 @@ func DealCustomerImageMessageByMediaID(mediaID string) (string, error) {
 	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
 
 	return url, nil
+}
+
+// GetCustomerList 获取客服列表
+func GetCustomerList(page, limit int) ([]CustomAccount, error) {
+	defaultAgentSecret := WeCom.CustomerServiceSecret
+	if defaultAgentSecret == "" {
+		return nil, fmt.Errorf("应用密钥不匹配")
+	}
+	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
+	token := app.GetAccessToken()
+	// https://qyapi.weixin.qq.com/cgi-bin/service/get
+	//请求地址: https://qyapi.weixin.qq.com/cgi-bin/kf/account/list?access_token=ACCESS_TOKEN
+	//{
+	//	"offset": 0,
+	//    "limit": 100
+	//}
+
+	// http get
+	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/kf/account/list?access_token=%s", token)
+	fmt.Println("req url:", url)
+	type CustomReq struct {
+		Offset int `json:"offset"`
+		Limit  int `json:"limit"`
+	}
+	reqBody := CustomReq{
+		Offset: limit * (page - 1),
+		Limit:  limit,
+	}
+	b, err := json.Marshal(reqBody)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
+	if err != nil {
+		fmt.Println("http new request err:", err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("http do err:", err)
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Println("http close err:", err)
+		}
+	}(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("http status err:", resp.Status)
+		return nil, err
+	}
+	var customList CustomList
+	err = json.NewDecoder(resp.Body).Decode(&customList)
+	if err != nil {
+		fmt.Println("json decode err:", err)
+		return nil, err
+	}
+	return customList.AccountList, nil
+}
+
+type CustomList struct {
+	Errcode     int             `json:"errcode"`
+	Errmsg      string          `json:"errmsg"`
+	AccountList []CustomAccount `json:"account_list"`
+}
+
+type CustomAccount struct {
+	OpenKfid        string `json:"open_kfid"`
+	Name            string `json:"name"`
+	Avatar          string `json:"avatar"`
+	ManagePrivilege bool   `json:"manage_privilege"`
 }

@@ -45,6 +45,33 @@ type BotCreateReq struct {
 	Desc   string `json:"desc,optional" validate:"max=255" label:"机器人描述"`
 }
 
+type BotCustomListDetail struct {
+	OpenKfid        string `json:"open_kf_id" label:"客服ID"`
+	Name            string `json:"name" label:"客服名称"`
+	Avatar          string `json:"avatar" label:"客服头像"`
+	ManagePrivilege bool   `json:"manage_privilege" label:"是否有管理权限"`
+}
+
+type BotCustomListReply struct {
+	Total    int                    `json:"total" label:"总数"`
+	Page     int                    `json:"page" label:"页码"`
+	PageSize int                    `json:"page_size" label:"每页数量"`
+	List     []*BotCustomListDetail `json:"list" label:"机器人列表"`
+}
+
+type BotCustomListReq struct {
+	Page     int `json:"page" validate:"required,min=1" label:"页码"`
+	PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
+}
+
+type BotCustomUpdateReply struct {
+}
+
+type BotCustomUpdateReq struct {
+	BotID    int64  `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+	OpenKfid string `json:"open_kfid" validate:"required" label:"客服ID"`
+}
+
 type BotDeleteReply struct {
 }
 
