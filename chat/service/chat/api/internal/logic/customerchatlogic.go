@@ -79,7 +79,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 		}
-		// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
+		// 指令匹配， 根据响应值判定是否需要去调用 gemini 接口了
 		proceed, _ := l.FactoryCommend(req)
 		if !proceed {
 			return &types.CustomerChatReply{
@@ -88,6 +88,21 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		}
 		if l.message != "" {
 			req.Msg = l.message
+		}
+
+		// 如果绑定了bot，那就使用bot 的 prompt 跟 各种其它设定
+		botWithCustomTable := l.svcCtx.ChatModel.BotsWithCustom
+		first, err := botWithCustomTable.WithContext(l.ctx).Where(botWithCustomTable.OpenKfID.Eq(req.OpenKfID)).First()
+		if err == nil {
+			botTable := l.svcCtx.ChatModel.Bot
+			bot, err := botTable.WithContext(l.ctx).Where(botTable.ID.Eq(first.BotID)).First()
+			if err == nil {
+				botPromptTable := l.svcCtx.ChatModel.BotsPrompt
+				botPrompt, err := botPromptTable.WithContext(l.ctx).Where(botPromptTable.BotID.Eq(bot.ID)).First()
+				if err == nil {
+					l.svcCtx.Config.Gemini.Prompt = botPrompt.Prompt
+				}
+			}
 		}
 
 		// 从上下文中取出用户对话
@@ -205,6 +220,20 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 		}
 
+		// 如果绑定了bot，那就使用bot 的 prompt 跟 各种其它设定
+		botWithCustomTable := l.svcCtx.ChatModel.BotsWithCustom
+		first, err := botWithCustomTable.WithContext(l.ctx).Where(botWithCustomTable.OpenKfID.Eq(req.OpenKfID)).First()
+		if err == nil {
+			botTable := l.svcCtx.ChatModel.Bot
+			bot, err := botTable.WithContext(l.ctx).Where(botTable.ID.Eq(first.BotID)).First()
+			if err == nil {
+				botPromptTable := l.svcCtx.ChatModel.BotsPrompt
+				botPrompt, err := botPromptTable.WithContext(l.ctx).Where(botPromptTable.BotID.Eq(bot.ID)).First()
+				if err == nil {
+					l.basePrompt = botPrompt.Prompt
+				}
+			}
+		}
 		// context
 		collection := openai.NewUserContext(
 			openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),

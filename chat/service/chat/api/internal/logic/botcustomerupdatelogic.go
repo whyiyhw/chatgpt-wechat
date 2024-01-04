@@ -43,7 +43,7 @@ func (l *BotCustomerUpdateLogic) BotCustomerUpdate(req *types.BotCustomUpdateReq
 	botWithCustomTable := l.svcCtx.ChatModel.BotsWithCustom
 	// 先删除再新增
 	_, _ = botWithCustomTable.WithContext(l.ctx).
-		Where(botWithCustomTable.BotID.Eq(req.BotID)).
+		Where(botWithCustomTable.OpenKfID.Eq(req.OpenKfid)).
 		Delete()
 
 	insertError := botWithCustomTable.WithContext(l.ctx).Create(&model.BotsWithCustom{
