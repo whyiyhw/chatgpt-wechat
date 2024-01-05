@@ -5,6 +5,12 @@
 > 本项目开源免费，不开知识星球，没有付费环节，除了最后给我自己的公众号【积木成楼】打了广告，
 > 未在 GitHub 以外的地方进行引流操作。请谨记，要求你付费的都是骗子！
 
+## 升级指引(v1.0.0 目前还处开发期,稳定版本使用 v0.6.6)
+- 原始功能基本不受影响，但数据库切换到 `pgsql` 方便 向量化查询
+- 支持了 Google 的 Gemini-pro 每个 token 60/m 的调用还是很香
+- 支持了 web bot 设置，同时支持将 bot 发布到客服
+- web 项目地址 [https://github.com/whyiyhw/agent-web](https://github.com/whyiyhw/agent-web) 前端苦手，全靠 Gemini 配合写的页面
+
 ## 主要能力（[点击查看详情](./doc/ability.md)）
 
 - 微信可用：基于企业微信中转，可在微信中安全使用
