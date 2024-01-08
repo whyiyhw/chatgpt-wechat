@@ -136,7 +136,7 @@ type BotPromptUpdateReply struct {
 
 type BotPromptUpdateReq struct {
 	ID     int64  `json:"id" validate:"required,min=1" label:"机器人ID"`
-	Prompt string `json:"prompt" validate:"required,max=1000" label:"机器人基础提示词配置"`
+	Prompt string `json:"prompt" validate:"required,max=10000" label:"机器人基础提示词配置"`
 }
 
 type BotReplicateReply struct {
