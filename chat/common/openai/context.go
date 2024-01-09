@@ -137,37 +137,37 @@ func (c *UserContext) Set(q, a string, save bool) *UserContext {
 
 		// 窗口给 1/8 的 MaxToken 其他的都需要摘要到 summary 中
 
-		maxWindowToken := c.Client.MaxToken / 6
-		fmt.Println("maxWindowToken", maxWindowToken)
-		maxWord := maxWindowToken / 5
-		fmt.Println("maxWord", maxWord)
-		var currChatModelMessage []ChatModelMessage
+		//maxWindowToken := c.Client.MaxToken / 6
+		//fmt.Println("maxWindowToken", maxWindowToken)
+		//maxWord := maxWindowToken / 5
+		//fmt.Println("maxWord", maxWord)
+		//var currChatModelMessage []ChatModelMessage
 		//当录入最新的对话信息时，从新到旧，一轮轮累加评估，是否大于设置的 maxWindowToken
 		//如果大于，就会对那一轮之前的对话进行 summery + 窗口内的会话，得到实际的上下文环境
-		for i := 0; i < len(c.Summary); i++ {
-			s := c.Summary[len(c.Summary)-i-1]
-			currChatModelMessage = append(currChatModelMessage, s)
-			if i%2 == 0 {
-				continue
-			}
-			if NumTokensFromMessages(currChatModelMessage, c.Model) > maxWindowToken &&
-				NumTokensFromMessages(c.Summary[:len(c.Summary)-i-1], c.Model) > maxWindowToken {
-				// 去总结 这个数据之前的数据
-				go func() {
-					newSummary, err := c.doSummary(c.Summary[:len(c.Summary)-i-1], maxWord)
-					if err != nil {
-						fmt.Println("summary error", err)
-						return
-					}
-					// 将新的 summary 赋值给 c.Summary
-					c.Summary = append(newSummary, c.Summary[len(c.Summary)-i-1:]...)
-					// 重新保存数据
-					byteData, _ := json.Marshal(c)
-					redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), time.Duration(c.TimeOut)*time.Minute)
-				}()
-				break
-			}
-		}
+		//for i := 0; i < len(c.Summary); i++ {
+		//	s := c.Summary[len(c.Summary)-i-1]
+		//	currChatModelMessage = append(currChatModelMessage, s)
+		//	if i%2 == 0 {
+		//		continue
+		//	}
+		//	if NumTokensFromMessages(currChatModelMessage, c.Model) > maxWindowToken &&
+		//		NumTokensFromMessages(c.Summary[:len(c.Summary)-i-1], c.Model) > maxWindowToken {
+		//		// 去总结 这个数据之前的数据
+		//		go func() {
+		//			newSummary, err := c.doSummary(c.Summary[:len(c.Summary)-i-1], maxWord)
+		//			if err != nil {
+		//				fmt.Println("summary error", err)
+		//				return
+		//			}
+		//			// 将新的 summary 赋值给 c.Summary
+		//			c.Summary = append(newSummary, c.Summary[len(c.Summary)-i-1:]...)
+		//			// 重新保存数据
+		//			byteData, _ := json.Marshal(c)
+		//			redis.Rdb.Set(context.Background(), getSessionKey(c.SessionKey), string(byteData), time.Duration(c.TimeOut)*time.Minute)
+		//		}()
+		//		break
+		//	}
+		//}
 	}
 	return c
 }
