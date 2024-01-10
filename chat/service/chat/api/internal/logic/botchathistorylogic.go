@@ -1,12 +1,14 @@
 package logic
 
 import (
-	"chat/common/gemini"
-	"chat/service/chat/api/internal/svc"
-	"chat/service/chat/api/internal/types"
 	"context"
 	"encoding/json"
 	"strconv"
+
+	"chat/common/gemini"
+	"chat/common/openai"
+	"chat/service/chat/api/internal/svc"
+	"chat/service/chat/api/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -65,5 +67,21 @@ func (l *BotChatHistoryLogic) BotChatHistory(req *types.BotChatHistoryReq) (resp
 		}
 		return response, nil
 	}
-	return resp, nil
+	// openai
+	collection := openai.NewUserContext(
+		openai.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10)),
+	).GetChatSummary()
+	response := &types.BotChatHistoryReply{
+		List: make([]*types.BotChatWholeReply, 0),
+	}
+	for _, message := range collection {
+		response.List = append(response.List, &types.BotChatWholeReply{
+			Role: message.Role,
+			Content: types.BotChatContent{
+				MimeType: "text/plain",
+				Data:     message.Content,
+			},
+		})
+	}
+	return response, nil
 }

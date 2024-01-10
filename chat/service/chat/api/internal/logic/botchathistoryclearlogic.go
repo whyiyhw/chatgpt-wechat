@@ -1,11 +1,12 @@
 package logic
 
 import (
-	"chat/common/gemini"
 	"context"
 	"encoding/json"
 	"strconv"
 
+	"chat/common/gemini"
+	"chat/common/openai"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
 
@@ -48,6 +49,11 @@ func (l *BotChatHistoryClearLogic) BotChatHistoryClear(req *types.BotChatHistory
 		// 从上下文中清理用户对话
 		uniqueKey := gemini.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10))
 		gemini.NewUserContext(uniqueKey).ChatClear(uniqueKey)
+	} else {
+		// 从上下文中清理用户对话
+		openai.NewUserContext(
+			openai.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10)),
+		).Clear()
 	}
 
 	return
