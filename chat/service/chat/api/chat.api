@@ -91,5 +91,13 @@ service chat-api {
 	// bot 关联 客服
 	@handler BotCustomerUpdateHandler
 	post /bot/customer/update (BotCustomUpdateReq) returns (BotCustomUpdateReply)
+
+	// bot 关联 model
+	@handler BotModelUpdateHandler
+	post /bot/model/update (BotModelUpdateReq) returns (BotModelUpdateReply)
+
+	// 查询 bot 关联 model 详情
+	@handler BotModelDetailHandler
+	post /bot/model/detail (BotModelDetailReq) returns (BotModelDetailReply)
 }
 

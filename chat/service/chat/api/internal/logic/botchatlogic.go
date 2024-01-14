@@ -61,10 +61,34 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 	}
 	conversationId := uuidObj.String()
 
+	// 去找到 bot 机器人对应的model 配置
+	botWithModelTable := l.svcCtx.ChatModel.BotsWithModel
+	// 找到第一个配置
+	firstModel, selectModelErr := botWithModelTable.WithContext(l.ctx).
+		Where(botWithModelTable.BotID.Eq(req.BotID)).
+		First()
+	company := l.svcCtx.Config.ModelProvider.Company
+	modelName := ""
+	var Temperature float32
+
+	if selectModelErr == nil {
+		company = firstModel.ModelType
+		modelName = firstModel.ModelName
+		Temperature = float32(firstModel.Temperature)
+	} else {
+		if company == "openai" {
+			modelName = openai.ChatModel4
+			Temperature = l.svcCtx.Config.OpenAi.Temperature
+		} else {
+			modelName = l.svcCtx.Config.Gemini.Model
+			Temperature = l.svcCtx.Config.Gemini.Temperature
+		}
+	}
+
 	// 根据 bot 机器人 找到对应的配置进行回复
-	if l.svcCtx.Config.ModelProvider.Company == "gemini" {
+	if company == "gemini" {
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
-			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
+			WithTemperature(Temperature)
 		if l.svcCtx.Config.Proxy.Enable {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
@@ -73,7 +97,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 		// 从上下文中取出用户对话
 		collection := gemini.NewUserContext(
 			gemini.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10)),
-		).WithModel(c.Model).
+		).WithModel(modelName).
 			WithPrompt(basePrompt).
 			WithClient(c).
 			Set(gemini.NewChatContent(req.MSG), "", false)
@@ -183,12 +207,12 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 
 	} else {
 		c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
-			WithModel(openai.ChatModel4).
+			WithModel(modelName).
 			WithBaseHost(l.svcCtx.Config.OpenAi.Host).
 			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 			WithEngine(l.svcCtx.Config.OpenAi.Engine).
 			WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).
-			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
+			WithTemperature(Temperature).
 			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
 		if l.svcCtx.Config.Proxy.Enable {

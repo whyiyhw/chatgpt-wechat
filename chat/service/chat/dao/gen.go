@@ -21,6 +21,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Bot:            newBot(db, opts...),
 		BotsPrompt:     newBotsPrompt(db, opts...),
 		BotsWithCustom: newBotsWithCustom(db, opts...),
+		BotsWithModel:  newBotsWithModel(db, opts...),
 		Chat:           newChat(db, opts...),
 		ChatConfig:     newChatConfig(db, opts...),
 		PromptConfig:   newPromptConfig(db, opts...),
@@ -34,6 +35,7 @@ type Query struct {
 	Bot            bot
 	BotsPrompt     botsPrompt
 	BotsWithCustom botsWithCustom
+	BotsWithModel  botsWithModel
 	Chat           chat
 	ChatConfig     chatConfig
 	PromptConfig   promptConfig
@@ -48,6 +50,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Bot:            q.Bot.clone(db),
 		BotsPrompt:     q.BotsPrompt.clone(db),
 		BotsWithCustom: q.BotsWithCustom.clone(db),
+		BotsWithModel:  q.BotsWithModel.clone(db),
 		Chat:           q.Chat.clone(db),
 		ChatConfig:     q.ChatConfig.clone(db),
 		PromptConfig:   q.PromptConfig.clone(db),
@@ -69,6 +72,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Bot:            q.Bot.replaceDB(db),
 		BotsPrompt:     q.BotsPrompt.replaceDB(db),
 		BotsWithCustom: q.BotsWithCustom.replaceDB(db),
+		BotsWithModel:  q.BotsWithModel.replaceDB(db),
 		Chat:           q.Chat.replaceDB(db),
 		ChatConfig:     q.ChatConfig.replaceDB(db),
 		PromptConfig:   q.PromptConfig.replaceDB(db),
@@ -80,6 +84,7 @@ type queryCtx struct {
 	Bot            *botDo
 	BotsPrompt     *botsPromptDo
 	BotsWithCustom *botsWithCustomDo
+	BotsWithModel  *botsWithModelDo
 	Chat           *chatDo
 	ChatConfig     *chatConfigDo
 	PromptConfig   *promptConfigDo
@@ -91,6 +96,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Bot:            q.Bot.WithContext(ctx),
 		BotsPrompt:     q.BotsPrompt.WithContext(ctx),
 		BotsWithCustom: q.BotsWithCustom.WithContext(ctx),
+		BotsWithModel:  q.BotsWithModel.WithContext(ctx),
 		Chat:           q.Chat.WithContext(ctx),
 		ChatConfig:     q.ChatConfig.WithContext(ctx),
 		PromptConfig:   q.PromptConfig.WithContext(ctx),

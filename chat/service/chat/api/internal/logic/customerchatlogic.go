@@ -66,28 +66,43 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	if l.message != "" {
 		req.Msg = l.message
 	}
+	company := l.svcCtx.Config.ModelProvider.Company
+	modelName := ""
+	var temperature float32
+	// 找到 客服 对应的应用机器人
+	botCustomerTable := l.svcCtx.ChatModel.BotsWithCustom
+	botCustomer, botCustomerSelectErr := botCustomerTable.WithContext(l.ctx).Where(botCustomerTable.OpenKfID.Eq(req.OpenKfID)).First()
+	if botCustomerSelectErr == nil {
+		// 去找到 bot 机器人对应的model 配置
+		botWithModelTable := l.svcCtx.ChatModel.BotsWithModel
+		// 找到第一个配置
+		firstModel, selectModelErr := botWithModelTable.WithContext(l.ctx).
+			Where(botWithModelTable.BotID.Eq(botCustomer.BotID)).
+			First()
+		if selectModelErr == nil {
+			company = firstModel.ModelType
+			modelName = firstModel.ModelName
+			temperature = float32(firstModel.Temperature)
+		}
+	} else {
+		if company == "openai" {
+			modelName = l.model
+			temperature = l.svcCtx.Config.OpenAi.Temperature
+		} else {
+			modelName = l.svcCtx.Config.Gemini.Model
+			temperature = l.svcCtx.Config.Gemini.Temperature
+		}
+	}
 
 	// gemini api
-	if l.svcCtx.Config.ModelProvider.Company == "gemini" {
-		// 去 gemini 获取数据
-
-		// openai client
+	if company == "gemini" {
+		// gemini client
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
-			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
+			WithTemperature(temperature)
 		if l.svcCtx.Config.Proxy.Enable {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
-		}
-		// 指令匹配， 根据响应值判定是否需要去调用 gemini 接口了
-		proceed, _ := l.FactoryCommend(req)
-		if !proceed {
-			return &types.CustomerChatReply{
-				Message: "ok",
-			}, nil
-		}
-		if l.message != "" {
-			req.Msg = l.message
 		}
 
 		// 如果绑定了bot，那就使用bot 的 prompt 跟 各种其它设定
@@ -108,9 +123,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// 从上下文中取出用户对话
 		collection := gemini.NewUserContext(
 			gemini.GetUserUniqueID(req.CustomerID, req.OpenKfID),
-		).WithModel(c.Model).WithPrompt(l.svcCtx.Config.Gemini.Prompt).WithClient(c).
-			WithPrompt(l.svcCtx.Config.Gemini.Prompt).
-			WithClient(c).
+		).WithModel(modelName).WithPrompt(l.svcCtx.Config.Gemini.Prompt).WithClient(c).
 			//WithImage(req.OpenKfID, req.CustomerID). // 为后续版本做准备，Gemini 暂时不支持图文问答展示
 			Set(gemini.NewChatContent(req.Msg), "", false)
 
@@ -207,10 +220,10 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			}
 		}()
 	} else {
-
 		// openai client
 		c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
-			WithModel(l.model).
+			WithModel(modelName).
+			WithTemperature(temperature).
 			WithBaseHost(l.baseHost).
 			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 			WithEngine(l.svcCtx.Config.OpenAi.Engine)
@@ -237,7 +250,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// context
 		collection := openai.NewUserContext(
 			openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
-		).WithModel(l.model).WithPrompt(l.basePrompt).WithClient(c).WithTimeOut(l.svcCtx.Config.Session.TimeOut)
+		).WithModel(modelName).WithPrompt(l.basePrompt).WithClient(c).WithTimeOut(l.svcCtx.Config.Session.TimeOut)
 
 		// 然后 把 消息 发给 openai
 		go func() {

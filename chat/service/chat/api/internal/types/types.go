@@ -122,6 +122,26 @@ type BotListReq struct {
 	PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
 }
 
+type BotModelDetailReply struct {
+	ModelType   string  `json:"model_type"  label:"模型类型"`
+	ModelName   string  `json:"model_name" " label:"模型名称"`
+	Temperature float64 `json:"temperature" label:"温度"`
+}
+
+type BotModelDetailReq struct {
+	BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+}
+
+type BotModelUpdateReply struct {
+}
+
+type BotModelUpdateReq struct {
+	BotID       int64   `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+	ModelType   string  `json:"model_type" validate:"required,oneof=openai gemini" label:"模型类型"`
+	ModelName   string  `json:"model_name" validate:"required" label:"模型名称"`
+	Temperature float64 `json:"temperature" validate:"required" label:"温度"`
+}
+
 type BotOptimizePromptReply struct {
 	MessageID string `json:"message_id" label:"消息标识"`
 }

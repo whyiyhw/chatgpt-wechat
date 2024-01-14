@@ -38,3 +38,25 @@ comment on column bots_with_custom.updated_at is '更新时间';
 
 create index bots_with_custom_idx_kf_id_bot_id on bots_with_custom (open_kf_id, bot_id);
 
+-- auto-generated definition bots_with_model
+create table bots_with_model
+(
+    id         bigserial
+        primary key,
+    bot_id     bigint    default 0 not null,
+    model_type varchar             not null,
+    model_name varchar             not null,
+    temperature numeric(10, 2)     default 0.00 not null,
+    created_at timestamp default CURRENT_TIMESTAMP,
+    updated_at timestamp default CURRENT_TIMESTAMP
+);
+
+comment on table bots_with_model is '机器人关联模型设置表';
+comment on column bots_with_model.id is '机器人初始设置ID';
+comment on column bots_with_model.bot_id is '机器人ID 关联 bots.id';
+comment on column bots_with_model.model_type is '模型类型 openai/gemini';
+comment on column bots_with_model.model_name is '模型名称';
+comment on column bots_with_model.temperature is '温度';
+comment on column bots_with_model.created_at is '创建时间';
+comment on column bots_with_model.updated_at is '更新时间';
+

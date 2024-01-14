@@ -85,6 +85,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/bot/model/detail",
+					Handler: BotModelDetailHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/bot/model/update",
+					Handler: BotModelUpdateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/bot/prompt/optimize",
 					Handler: BotOptimizePromptHandler(serverCtx),
 				},
