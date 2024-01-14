@@ -1,3 +1,8 @@
+## v1.0.0-bate
+- 因为企业微信调整了api 客服消息跟着改动
+  - https://developer.work.weixin.qq.com/document/51165
+  - https://developer.work.weixin.qq.com/community/question/detail?content_id=16545017483768547791
+
 ### v0.5
 #### 新增多渠道客服消息,支持自定义端口
 

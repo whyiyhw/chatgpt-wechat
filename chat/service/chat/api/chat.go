@@ -50,9 +50,7 @@ func main() {
 	handler.RegisterHandlers(server, ctx)
 	wecom.WeCom.RestPort = c.RestConf.Port
 	wecom.WeCom.Port = c.WeCom.Port
-	wecom.WeCom.DefaultAgentSecret = c.WeCom.DefaultAgentSecret
 	wecom.WeCom.CorpID = c.WeCom.CorpID
-	wecom.WeCom.CustomerServiceSecret = c.WeCom.CustomerServiceSecret
 	wecom.WeCom.Token = c.WeCom.Token
 	wecom.WeCom.EncodingAESKey = c.WeCom.EncodingAESKey
 	wecom.WeCom.Auth.AccessSecret = c.Auth.AccessSecret
@@ -60,21 +58,13 @@ func main() {
 	wecom.ModelProvider.Company = c.ModelProvider.Company
 	for _, v := range c.WeCom.MultipleApplication {
 		wecom.WeCom.MultipleApplication = append(wecom.WeCom.MultipleApplication, wecom.Application{
-			AgentID:     v.AgentID,
-			AgentSecret: v.AgentSecret,
+			AgentID:            v.AgentID,
+			AgentSecret:        v.AgentSecret,
+			ManageAllKFSession: v.ManageAllKFSession,
 		})
 	}
 
 	go wecom.XmlServe()
-
-	if len(c.WeCom.MultipleApplication) > 0 {
-		for _, v := range c.WeCom.MultipleApplication {
-			if v.GroupEnable {
-				fmt.Println("初始化群聊", v.GroupName, v.GroupChatID, c.WeCom.CorpID, v.AgentSecret, v.AgentID)
-				go wecom.InitGroup(v.GroupName, v.GroupChatID, v.AgentSecret, v.AgentID)
-			}
-		}
-	}
 
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	// disable stat

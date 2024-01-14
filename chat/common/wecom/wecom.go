@@ -24,15 +24,13 @@ var (
 	Token string
 
 	WeCom struct {
-		Port                  int
-		RestPort              int
-		CorpID                string
-		DefaultAgentSecret    string
-		CustomerServiceSecret string
-		Token                 string
-		EncodingAESKey        string
-		MultipleApplication   []Application
-		Auth                  struct {
+		Port                int
+		RestPort            int
+		CorpID              string
+		Token               string
+		EncodingAESKey      string
+		MultipleApplication []Application
+		Auth                struct {
 			AccessSecret string
 			AccessExpire int64
 		}
@@ -45,8 +43,9 @@ var (
 )
 
 type Application struct {
-	AgentID     int64
-	AgentSecret string
+	AgentID            int64
+	AgentSecret        string
+	ManageAllKFSession bool
 }
 
 // SendToWeComUser 发送应用消息给用户
@@ -163,8 +162,13 @@ func splitMsg(rs []rune, i int) []string {
 	return msgList
 }
 
+// DealUserLastMessageByToken 处理客服用户最后一条消息
 func DealUserLastMessageByToken(token, openKfID string) {
-	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
+	app, ok := getCustomerApp()
+	if !ok {
+		logx.Info("客服消息-获取 app 失败")
+		return
+	}
 	cacheKey := fmt.Sprintf(redis.CursorCacheKey, openKfID)
 	cursor, _ := redis.Rdb.Get(context.Background(), cacheKey).Result()
 
@@ -212,7 +216,11 @@ func SendCustomerChatMessage(openKfID, customerID, msg string) {
 
 	go func() {
 		// 然后把数据 发给微信用户
-		app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
+		app, ok := getCustomerApp()
+		if !ok {
+			logx.Info("客服消息-获取 app 失败")
+			return
+		}
 
 		recipient := workwx.Recipient{
 			UserIDs:  []string{customerID},
@@ -370,122 +378,9 @@ func realLogic(channel, msg, userID string, agentID int64) {
 	}
 }
 
-func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
-	url := fmt.Sprintf("http://localhost:%d/api/msg/customer/push", WeCom.RestPort)
-	method := "POST"
-
-	type ChatReq struct {
-		MsgID      string `json:"msg_id"`
-		Msg        string `json:"msg"`
-		CustomerID string `json:"customer_id"`
-		OpenKfID   string `json:"open_kf_id"`
-	}
-
-	r := ChatReq{
-		OpenKfID:   OpenKfID,
-		CustomerID: CustomerID,
-		MsgID:      MsgID,
-		Msg:        Msg,
-	}
-
-	b, _ := json.Marshal(r)
-
-	payload := strings.NewReader(string(b))
-
-	client := &http.Client{}
-	req, err := http.NewRequest(method, url, payload)
-
-	if err != nil {
-		logx.Error("客服消息:请求参数构造错误", err.Error())
-		return
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+Token)
-
-	res, err := client.Do(req)
-	if err != nil {
-		logx.Error("客服消息:请求错误", err.Error())
-		return
-	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(res.Body)
-
-	_, err = io.ReadAll(res.Body)
-	if err != nil {
-		logx.Error("客服消息：响应读取错误", err.Error())
-		return
-	}
-}
-
-// InitGroup 初始化群组
-func InitGroup(name, chatID, corpSecret string, agentID int64) {
-	// 然后把数据 发给微信用户
-	app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
-
-	//  获取群聊会话
-	appChat, err := app.GetAppchat(chatID)
-	if err == nil && appChat != nil {
-		fmt.Println("群聊已经存在，不需要创建")
-
-		// 推送一条消息
-		err = app.SendTextMessage(&workwx.Recipient{
-			ChatID: appChat.ChatID,
-		}, "应用重新部署完成", false)
-		if err != nil {
-			fmt.Println("应用消息发送失败 err:", err)
-		}
-		fmt.Println("应用消息发送成功")
-		return
-	}
-	fmt.Println("群聊不存在，开始创建 err:", err)
-	// 查询根部门的管理员与成员信息
-	// 1. 获取根部门
-	root, err := app.ListUsersByDeptID(1, true)
-	if err != nil {
-		fmt.Println("获取用户信息失败，群创建失败 err:", err)
-		return
-	}
-	// 2. 获取管理员 与 成员
-	owner := ""
-	var userList []string
-	for _, info := range root {
-		if info.IsEnabled && info.Status == 1 {
-			userList = append(userList, info.UserID)
-		}
-		for _, i2 := range info.Departments {
-			if i2.DeptID == 1 && i2.IsLeader {
-				owner = info.UserID
-			}
-		}
-	}
-
-	// 创建群聊
-	chatIDInfo, err := app.CreateAppchat(&workwx.ChatInfo{
-		ChatID:        chatID,
-		Name:          name,
-		OwnerUserID:   owner,
-		MemberUserIDs: userList,
-	})
-	if err != nil {
-		fmt.Println("创建群聊失败 err:", err)
-		return
-	}
-	fmt.Println("创建群聊成功", chatIDInfo)
-	// 推送一条消息
-	err = app.SendTextMessage(&workwx.Recipient{
-		ChatID: chatIDInfo,
-	}, "应用初始化完成", false)
-	if err != nil {
-		fmt.Println("应用消息发送失败 err:", err)
-	}
-	fmt.Println("应用消息发送成功")
-}
-
 // DealUserVoiceMessageByMediaID 获取应用内语音消息
 func DealUserVoiceMessageByMediaID(mediaID string, agentID int64) (string, error) {
-	defaultAgentSecret := WeCom.DefaultAgentSecret
+	defaultAgentSecret := ""
 	for _, application := range WeCom.MultipleApplication {
 		if application.AgentID == agentID {
 			defaultAgentSecret = application.AgentSecret
@@ -580,13 +475,63 @@ func DownloadFile(fileDir, filepath, fileMime string, url string) error {
 	return nil
 }
 
+// CustomerCallLogic 发送客服消息
+func CustomerCallLogic(CustomerID, OpenKfID, MsgID, Msg string) {
+	url := fmt.Sprintf("http://localhost:%d/api/msg/customer/push", WeCom.RestPort)
+	method := "POST"
+
+	type ChatReq struct {
+		MsgID      string `json:"msg_id"`
+		Msg        string `json:"msg"`
+		CustomerID string `json:"customer_id"`
+		OpenKfID   string `json:"open_kf_id"`
+	}
+
+	r := ChatReq{
+		OpenKfID:   OpenKfID,
+		CustomerID: CustomerID,
+		MsgID:      MsgID,
+		Msg:        Msg,
+	}
+
+	b, _ := json.Marshal(r)
+
+	payload := strings.NewReader(string(b))
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		logx.Error("客服消息:请求参数构造错误", err.Error())
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Bearer "+Token)
+
+	res, err := client.Do(req)
+	if err != nil {
+		logx.Error("客服消息:请求错误", err.Error())
+		return
+	}
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(res.Body)
+
+	_, err = io.ReadAll(res.Body)
+	if err != nil {
+		logx.Error("客服消息：响应读取错误", err.Error())
+		return
+	}
+}
+
 // DealCustomerVoiceMessageByMediaID 获取客服语音消息
 func DealCustomerVoiceMessageByMediaID(mediaID string) (string, error) {
-	defaultAgentSecret := WeCom.CustomerServiceSecret
-	if defaultAgentSecret == "" {
+	app, ok := getCustomerApp()
+	if !ok {
+		logx.Info("客服消息-获取 app 失败")
 		return "", fmt.Errorf("应用密钥不匹配")
 	}
-	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
 	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
@@ -598,12 +543,13 @@ func DealCustomerVoiceMessageByMediaID(mediaID string) (string, error) {
 	return filepath + ".mp3", err
 }
 
+// DealCustomerImageMessageByMediaID 获取客服图片消息
 func DealCustomerImageMessageByMediaID(mediaID string) (string, error) {
-	defaultAgentSecret := WeCom.CustomerServiceSecret
-	if defaultAgentSecret == "" {
+	app, ok := getCustomerApp()
+	if !ok {
+		logx.Info("客服消息-获取 app 失败")
 		return "", fmt.Errorf("应用密钥不匹配")
 	}
-	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
 	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
@@ -613,11 +559,11 @@ func DealCustomerImageMessageByMediaID(mediaID string) (string, error) {
 
 // GetCustomerList 获取客服列表
 func GetCustomerList(page, limit int) ([]CustomAccount, error) {
-	defaultAgentSecret := WeCom.CustomerServiceSecret
-	if defaultAgentSecret == "" {
+	app, ok := getCustomerApp()
+	if !ok {
+		logx.Info("客服消息-获取 app 失败")
 		return nil, fmt.Errorf("应用密钥不匹配")
 	}
-	app := workwx.New(WeCom.CorpID).WithApp(WeCom.CustomerServiceSecret, 0)
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/service/get
 	//请求地址: https://qyapi.weixin.qq.com/cgi-bin/kf/account/list?access_token=ACCESS_TOKEN
@@ -680,4 +626,22 @@ type CustomAccount struct {
 	Name            string `json:"name"`
 	Avatar          string `json:"avatar"`
 	ManagePrivilege bool   `json:"manage_privilege"`
+}
+
+func getCustomerApp() (*workwx.WorkwxApp, bool) {
+	defaultAgentSecret := ""
+	var defaultAgentId int64
+	for _, application := range WeCom.MultipleApplication {
+		if application.ManageAllKFSession {
+			defaultAgentSecret = application.AgentSecret
+			defaultAgentId = application.AgentID
+			break
+		}
+	}
+	if defaultAgentSecret == "" {
+		return nil, false
+	}
+	// 然后把数据 发给微信用户
+	app := workwx.New(WeCom.CorpID).WithApp(defaultAgentSecret, defaultAgentId)
+	return app, true
 }

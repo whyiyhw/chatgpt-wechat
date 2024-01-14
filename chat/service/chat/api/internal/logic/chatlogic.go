@@ -451,7 +451,7 @@ func (l *ChatLogic) setBaseHost() (ls *ChatLogic) {
 }
 
 func (l *ChatLogic) setModelName(agentID int64) (ls *ChatLogic) {
-	m := l.svcCtx.Config.WeCom.Model
+	m := "gpt-3.5-turbo"
 	for _, application := range l.svcCtx.Config.WeCom.MultipleApplication {
 		if application.AgentID == agentID {
 			m = application.Model
@@ -467,7 +467,7 @@ func (l *ChatLogic) setModelName(agentID int64) (ls *ChatLogic) {
 }
 
 func (l *ChatLogic) setBasePrompt(agentID int64) (ls *ChatLogic) {
-	p := l.svcCtx.Config.WeCom.BasePrompt
+	p := ""
 	for _, application := range l.svcCtx.Config.WeCom.MultipleApplication {
 		if application.AgentID == agentID {
 			p = application.BasePrompt
@@ -519,12 +519,7 @@ func sendToUser(agentID any, userID, msg string, config config.Config, file ...s
 	// 根据 agentID 的类型 执行不同的方法
 	switch agentID.(type) {
 	case int64:
-		// 确认多应用模式是否开启
-		corpSecret := config.WeCom.DefaultAgentSecret
-		// 兼容性调整 取 DefaultAgentSecret 作为默认值 兼容老版本 CorpSecret
-		if corpSecret == "" {
-			corpSecret = config.WeCom.CorpSecret
-		}
+		corpSecret := ""
 		for _, application := range config.WeCom.MultipleApplication {
 			if application.AgentID == agentID {
 				corpSecret = application.AgentSecret
@@ -698,7 +693,13 @@ func (p CommendWelcome) exec(l *ChatLogic, req *types.ChatReq) bool {
 	if _, err := redis.Rdb.Get(context.Background(), cacheKey).Result(); err == nil {
 		return false
 	}
-	sendToUser(req.AgentID, req.UserID, l.svcCtx.Config.WeCom.Welcome, l.svcCtx.Config)
+	welcome := ""
+	for _, s := range l.svcCtx.Config.WeCom.MultipleApplication {
+		if s.AgentID == req.AgentID {
+			welcome = s.Welcome
+		}
+	}
+	sendToUser(req.AgentID, req.UserID, welcome, l.svcCtx.Config)
 	_, err := redis.Rdb.SetEx(context.Background(), cacheKey, "1", 24*15*time.Hour).Result()
 	if err != nil {
 		fmt.Println("welcome2:" + err.Error())

@@ -10,19 +10,25 @@ PGSql:
 
 RedisCache:
   - Host: redis7:6379                               # redis缓存地址
-    Pass: "Chat-gpt~wechat"                        # redis缓存密码
+    Pass: "Chat-gpt~wechat"                         # redis缓存密码
 
-WeCom:
-  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信CorpID
-  DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxxU"    # 企业微信应用 Secret
+WeCom:                                              # 企业微信配置
+  Port: 8887                                        # 企业微信回调监听端口（可选）默认为8887
+  CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
   Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
   EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
-  Model: "gpt-3.5-turbo-16k"                        # openai 模型（可选）默认为 gpt-3.5-turbo 可选[gpt-3.5-turbo-16k, gpt-4,gpt-4-32k, text-davinci-003]
+  MultipleApplication:                              # 多应用配置
+  - AgentID: 1000002                                # 企业微信应用ID
+    AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
+    ManageAllKFSession: true                        # manage_all_kf_session 为 true 时，管理所有客服会话
+    Model: "gpt-3.5-turbo"                          # openai 模型（可选）默认为 gpt-3.5-turbo 可选[gpt-3.5-turbo-16k, gpt-4,gpt-4-32k]
+    BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # openai 基础设定（可选）
+    Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key
-  MaxToken: 7500                                    # 一次会话能响应内容的最大 token
-  TotalToken: 15800                                 # 一次对话 openai 能处理的最大 token 数量 gpt3-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
+  MaxToken: 4000                                    # 一次会话能响应内容的最大 token
+  TotalToken: 8192                                  # 一次对话 openai 能处理的最大 token 数量 gpt3-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
 Response:                                           # 回复配置

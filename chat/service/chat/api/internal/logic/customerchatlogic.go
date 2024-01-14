@@ -447,18 +447,27 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 }
 
 func (l *CustomerChatLogic) setModelName() (ls *CustomerChatLogic) {
-	m := l.svcCtx.Config.WeCom.Model
+	m := "gpt-3.5-turbo"
+	for _, s := range l.svcCtx.Config.WeCom.MultipleApplication {
+		if s.ManageAllKFSession {
+			m = s.Model
+		}
+	}
 	m = strings.ToLower(m)
 	if _, ok := openai.Models[m]; !ok {
 		m = openai.ChatModel
 	}
-	l.svcCtx.Config.WeCom.Model = m
 	l.model = m
 	return l
 }
 
 func (l *CustomerChatLogic) setBasePrompt() (ls *CustomerChatLogic) {
-	p := l.svcCtx.Config.WeCom.BasePrompt
+	p := ""
+	for _, s := range l.svcCtx.Config.WeCom.MultipleApplication {
+		if s.ManageAllKFSession {
+			p = s.BasePrompt
+		}
+	}
 	if p == "" {
 		p = "你是 ChatGPT, 一个由 OpenAI 训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。\n"
 	}

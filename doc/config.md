@@ -28,6 +28,7 @@ WeCom:                                              # 企业微信配置
   MultipleApplication:                              # 多应用配置（可选）
     - AgentID: 1000002                                # 企业微信应用ID
       AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
+      ManageAllKFSession: true                        # manage_all_kf_session 为 true 时，管理所有客服会话
       Model: "gpt-3.5-turbo"                          # openai 模型（可选）默认为 gpt-3.5-turbo-0301
       BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # openai 基础设定（可选）
       Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语
@@ -52,16 +53,17 @@ OCR:                                                # OCR配置 ,开启图片识
     AccessKeyId: ""                                 # 阿里云 key
     AccessKeySecret: ""                             # 阿里云 secret
 
-Embeddings:
-  Enable: true
-  Mlvus:
-    Host: "192.168.1.202:19530"
-    KeyWords:
-      - "xx"
-
 Response:                                           # 回复配置
-  Stream: true                                    # 是否开启流式回复,自动断句推荐（可选）
+  Stream: true                                      # 是否开启流式回复,自动断句推荐（可选）
+  
+ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
+  Company: "openai"                                 # openai / gemini
 
+Gemini:
+  Key: "AIzaxxxxx-xxxxx"                            # gemini key
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
+  Prompt: "xxxx"                                    # model 角色背景
+  
 Plugins:
   Enable: true
   Debug: false

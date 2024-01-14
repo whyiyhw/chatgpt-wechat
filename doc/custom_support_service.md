@@ -2,36 +2,28 @@
 
 [点击企业微信官方配置页面](https://work.weixin.qq.com/wework_admin/frame#/app/servicer)
 
+- 官方开发者问答文档 [点击这里](https://developer.work.weixin.qq.com/community/question/detail?content_id=16545017483768547791)
+- https://developer.work.weixin.qq.com/document/path/94677#%E6%8E%A5%E5%8F%A3%E5%AE%9A%E4%B9%89
 ## 基础配置
 
-### 1.1 获取 secret 
-![image35.png](./image35.png)
+### 1.1 设置 可调用接口的应用
+![img_7.png](img_7.png)
 
-这个 secret 对应 `WeCom.CustomerServiceSecret` 
+这个 AgentID 对应 `WeCom.CustomerServiceSecret` 
 ```yaml
 WeCom:                                              # 企业微信配置
-  CustomerServiceSecret: "xxxx-xxxx-xxxx"           # 企业微信客服消息 Secret
+  MultipleApplication:
+    - AgentID: 1000002                              # 企业微信客服消息 agent
+      ManageAllKFSession: true                      # 是否管理所有客服会话
 ```
-**（感觉是企业微信的设计没有通盘考虑，不应该存在两个 类似 secret 与 token）**
+~~（感觉是企业微信的设计没有通盘考虑，不应该存在两个 类似 secret 与 token）~~ 一语成真，好家伙真的就改版了呗
 
-### 1.2 接收事件服务器 设置
-![image34.png](./image34.png)
-
-这里我复用了配置
-```yaml
-WeCom:                                              # 企业微信配置
-  Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
-  EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
-```
-对应的URL 就是 `http://{host}:8887` 我们创建应用时候的 url
-
-### 1.3 创建账号
+### 1.2 创建账号
 ![image36.png](./image36.png)
 随便填填
 
 滚动到最下方
-![image37.png](./image37.png)
-
+![img_9.png](img_9.png)
 自此，最基础的配置就完成了
 
 ### 1.4 我们可以做什么？
