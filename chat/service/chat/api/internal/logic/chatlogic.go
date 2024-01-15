@@ -54,7 +54,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		// gemini client
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
 			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -204,7 +204,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
 			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.OpenAi.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -501,7 +501,7 @@ func (l *ChatLogic) FactoryCommend(req *types.ChatReq) (proceed bool, err error)
 	template["#system"] = CommendSystem{}
 	template["#welcome"] = CommendWelcome{}
 	template["#about"] = CommendAbout{}
-	template["#usage"] = CommendUsage{}
+	//template["#usage"] = CommendUsage{}
 	template["#plugin"] = CommendPlugin{}
 
 	for s, data := range template {
@@ -735,7 +735,7 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 	// 中间思路，请求进行图片识别
 	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
 		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
-	if l.svcCtx.Config.Proxy.Enable {
+	if l.svcCtx.Config.Gemini.EnableProxy {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -876,7 +876,7 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 
-	if l.svcCtx.Config.Proxy.Enable {
+	if l.svcCtx.Config.OpenAi.EnableProxy {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -1020,7 +1020,7 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 						WithTemperature(0).
 						WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
-					if l.svcCtx.Config.Proxy.Enable {
+					if l.svcCtx.Config.OpenAi.EnableProxy {
 						c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 							WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 							WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -1079,55 +1079,54 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 	return false
 }
 
-type CommendUsage struct{}
-
-func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
-	if strings.HasPrefix(req.MSG, "#usage") {
-		// 查询自己key的使用情况
-		key := l.svcCtx.Config.OpenAi.Key
-		if strings.HasPrefix(req.MSG, "#usage:") {
-			key = strings.Replace(req.MSG, "#usage:", "", -1)
-		}
-		// 查询使用情况
-
-		usage, err := openai.GetUsageByKey(
-			key, l.baseHost, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5,
-			l.svcCtx.Config.Proxy.Auth.Username, l.svcCtx.Config.Proxy.Auth.Password,
-		)
-
-		if err != nil {
-			logx.Info("get usage fail", err)
-			sendToUser(req.AgentID, req.UserID, "查询使用情况失败，请重新尝试~", l.svcCtx.Config)
-			return false
-		}
-		// openai client
-		c := openai.NewChatClient(key).
-			WithModel(l.model).
-			WithBaseHost(l.baseHost).
-			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
-			WithEngine(l.svcCtx.Config.OpenAi.Engine).
-			WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).
-			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
-			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
-
-		if l.svcCtx.Config.Proxy.Enable {
-			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
-				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
-				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
-		}
-		hasGpt4Msg := "否"
-		if c.HasGpt4() {
-			hasGpt4Msg = "是"
-		}
-		sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
-			"当前key的使用情况：\n到期时间：%s\n总计可用金额：%f$\n账户名称：%s\n已使用金额：%f$\n剩余可用金额：%f$\n是否绑卡：%s\n是否有gpt4权限：%s\n",
-			usage.AccessUntil, usage.HardLimitUsd, usage.AccountName, usage.UsedAmountUsd, usage.RemainingAmountUsd,
-			usage.HasPaymentMethod, hasGpt4Msg,
-		), l.svcCtx.Config)
-		return false
-	}
-	return true
-}
+//type CommendUsage struct{}
+//func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
+//	if strings.HasPrefix(req.MSG, "#usage") {
+//		// 查询自己key的使用情况
+//		key := l.svcCtx.Config.OpenAi.Key
+//		if strings.HasPrefix(req.MSG, "#usage:") {
+//			key = strings.Replace(req.MSG, "#usage:", "", -1)
+//		}
+//		// 查询使用情况
+//
+//		usage, err := openai.GetUsageByKey(
+//			key, l.baseHost, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5,
+//			l.svcCtx.Config.Proxy.Auth.Username, l.svcCtx.Config.Proxy.Auth.Password,
+//		)
+//
+//		if err != nil {
+//			logx.Info("get usage fail", err)
+//			sendToUser(req.AgentID, req.UserID, "查询使用情况失败，请重新尝试~", l.svcCtx.Config)
+//			return false
+//		}
+//		// openai client
+//		c := openai.NewChatClient(key).
+//			WithModel(l.model).
+//			WithBaseHost(l.baseHost).
+//			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
+//			WithEngine(l.svcCtx.Config.OpenAi.Engine).
+//			WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).
+//			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
+//			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
+//
+//		if l.svcCtx.Config.Proxy.Enable {
+//			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+//				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+//				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+//		}
+//		hasGpt4Msg := "否"
+//		if c.HasGpt4() {
+//			hasGpt4Msg = "是"
+//		}
+//		sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
+//			"当前key的使用情况：\n到期时间：%s\n总计可用金额：%f$\n账户名称：%s\n已使用金额：%f$\n剩余可用金额：%f$\n是否绑卡：%s\n是否有gpt4权限：%s\n",
+//			usage.AccessUntil, usage.HardLimitUsd, usage.AccountName, usage.UsedAmountUsd, usage.RemainingAmountUsd,
+//			usage.HasPaymentMethod, hasGpt4Msg,
+//		), l.svcCtx.Config)
+//		return false
+//	}
+//	return true
+//}
 
 type CommendPlugin struct{}
 

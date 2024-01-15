@@ -61,7 +61,7 @@ func (l *BotOptimizePromptLogic) BotOptimizePrompt(req *types.BotOptimizePromptR
 	if l.svcCtx.Config.ModelProvider.Company == "gemini" {
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
 			WithTemperature(0.7)
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -181,7 +181,7 @@ func (l *BotOptimizePromptLogic) BotOptimizePrompt(req *types.BotOptimizePromptR
 			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
 			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.OpenAi.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)

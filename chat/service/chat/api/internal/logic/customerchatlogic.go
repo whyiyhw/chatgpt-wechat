@@ -99,7 +99,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// gemini client
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
 			WithTemperature(temperature)
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -227,7 +227,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			WithBaseHost(l.baseHost).
 			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 			WithEngine(l.svcCtx.Config.OpenAi.Engine)
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.OpenAi.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -504,7 +504,7 @@ func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed 
 	}
 
 	template["#direct"] = CustomerCommendDirect{}
-	template["#voice"] = CustomerCommendVoice{}
+	//template["#voice"] = CustomerCommendVoice{}
 	template["#help"] = CustomerCommendHelp{}
 	template["#system"] = CustomerCommendSystem{}
 	template["#clear"] = CustomerCommendClear{}
@@ -541,7 +541,7 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 		WithOrigin(l.svcCtx.Config.OpenAi.Origin).
 		WithEngine(l.svcCtx.Config.OpenAi.Engine)
 
-	if l.svcCtx.Config.Proxy.Enable {
+	if l.svcCtx.Config.OpenAi.EnableProxy {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -685,7 +685,7 @@ func (p CustomerCommendImage) customerExec(l *CustomerChatLogic, req *types.Cust
 	// 中间思路，请求进行图片识别
 	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
 		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
-	if l.svcCtx.Config.Proxy.Enable {
+	if l.svcCtx.Config.Gemini.EnableProxy {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 			WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 			WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)

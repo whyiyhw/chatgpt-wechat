@@ -107,7 +107,7 @@
   - 应用消息的 关键字为 `应用消息-发送失败 err:` 
   - 客服消息的 关键字为 `客服消息-发送失败 err:`
 - 如果存在 `Code 41001， Msg: "access token mising` ... 等 access_token 异常的,请再次确认
-安装流程中的对应参数`CorpID ,corpSercret ,agentID` 是否正确配置
+安装流程中的对应参数`CorpID ,agentSercret ,agentID` 是否正确配置
 </details>
 
 ### 服务器在国内，出现 `connect: connection refused`
@@ -142,7 +142,7 @@ requirepass "xxxxx"
 - 最后 `docker-compose down && docker-compose up -d` 重启整个服务
 </details>
 
-### 更新后 redis 服务启动失败或者连不上redid？
+### 更新后 redis 服务启动失败或者连不上redis？
 <details>
 <summary></summary>
 

@@ -47,6 +47,7 @@ type Config struct {
 		MaxToken    int     `json:",optional,default=2000"`
 		TotalToken  int     `json:",optional,default=3900"`
 		Temperature float32 `json:",optional,default=0.8"`
+		EnableProxy bool    `json:",optional,default=false"`
 	}
 
 	// http proxy 设置
@@ -151,5 +152,6 @@ type Config struct {
 		Model       string  `json:",optional,default=gemini-pro"`
 		Temperature float32 `json:",optional,default=0.8"`
 		Prompt      string  `json:",optional,default=''"`
+		EnableProxy bool    `json:",optional,default=false"`
 	}
 }

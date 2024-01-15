@@ -89,7 +89,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 	if company == "gemini" {
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
 			WithTemperature(Temperature)
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
@@ -215,7 +215,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 			WithTemperature(Temperature).
 			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
 
-		if l.svcCtx.Config.Proxy.Enable {
+		if l.svcCtx.Config.OpenAi.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
