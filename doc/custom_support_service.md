@@ -9,7 +9,7 @@
 ### 1.1 设置 可调用接口的应用
 ![img_7.png](img_7.png)
 
-这个 AgentID 对应 `WeCom.CustomerServiceSecret` 
+在对应的 AgentID 下开启 `WeCom.MultipleApplication.ManageAllKFSession` 让 应用 可以管理所有的客服会话
 ```yaml
 WeCom:                                              # 企业微信配置
   MultipleApplication:
