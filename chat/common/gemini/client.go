@@ -151,6 +151,10 @@ func (c *ChatClient) buildConfig() *ChatClient {
 			Transport: socks5Transport,
 			Timeout:   300 * time.Second,
 		}
+	} else {
+		c.HTTPClient = &http.Client{
+			Timeout: 300 * time.Second,
+		}
 	}
 
 	return c

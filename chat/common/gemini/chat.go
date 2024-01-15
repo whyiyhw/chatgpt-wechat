@@ -153,7 +153,6 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 		}
 	}
 	fmt.Println("start:", start)
-	fmt.Println("start:", start)
 	var messages []Contents
 	var pervParts []Part
 	for _, message := range chatRequest[start:] {
