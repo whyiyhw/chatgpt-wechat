@@ -52,7 +52,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 	if req.Channel == "gemini" {
 
 		// gemini client
-		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
 		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
@@ -733,7 +733,7 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 	//return false
 
 	// 中间思路，请求进行图片识别
-	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
 	if l.svcCtx.Config.Gemini.EnableProxy {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).

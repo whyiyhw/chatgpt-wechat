@@ -29,6 +29,9 @@ WeCom:                                              # 企业微信配置
     BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # openai 基础设定（可选）
     Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语
 
+ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
+  Company: "openai"                                 # openai / gemini
+
 OpenAi:                                             # openai配置
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # openai key
   Host: "https://api.openai.com"                    # openai host （可选，使用cf进行反向代理时，修改可用）
@@ -37,9 +40,16 @@ OpenAi:                                             # openai配置
   MaxToken: 2000                                    # 一次会话能响应内容的最大 token
   TotalToken: 3900                                  # 一次对话 openai 能处理的最大 token 数量 gpt3-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
+  EnableProxy: false                                #（可选）是否启用代理，默认为 false
+
+Gemini:
+  Key: "AIzaxxxxx-xxxxx"                            # gemini key
+  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
+  Prompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # model 角色背景
+  Host: "https://generativelanguage.googleapis.com" #（可选） gemini host 默认为 https://generativelanguage.googleapis.com
+  EnableProxy: false                                #（可选）是否开启代理，默认为 false
 
 Proxy:                                              # （可选）代理配置
-  Enable: false                                     # （可选）是否启用代理，默认为 false
   Socket5: "127.0.0.1:1080"                         # （可选）代理地址 默认为空 如 127.0.0.1:1080
   Http: "http://127.0.0.1:1080"                     # （可选）代理地址 默认为空 如 http://127.0.0.1:1080
   Auth:                                             # （可选）代理认证
@@ -111,11 +121,4 @@ Draw:                                               # 绘画配置
 Session:                                            # 会话相关配置
   Timeout: -1                                       # 会话超时时间（m）分钟，如果在（x）分钟内，未进行对话，本次会话内容会被销毁，-1为永不超时（可选）
 
-ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
-  Company: "openai"                                 # openai / gemini
 
-Gemini:
-  Key: "AIzaxxxxx-xxxxx"                            # gemini key
-  Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
-  Prompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # model 角色背景
-  EnableProxy: false                                # 是否开启代理

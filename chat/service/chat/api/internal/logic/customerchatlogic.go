@@ -97,7 +97,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	// gemini api
 	if company == "gemini" {
 		// gemini client
-		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 			WithTemperature(temperature)
 		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
@@ -683,7 +683,7 @@ func (p CustomerCommendImage) customerExec(l *CustomerChatLogic, req *types.Cust
 	}
 
 	// 中间思路，请求进行图片识别
-	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
 	if l.svcCtx.Config.Gemini.EnableProxy {
 		c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).

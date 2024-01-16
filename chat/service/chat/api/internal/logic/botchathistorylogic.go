@@ -46,7 +46,7 @@ func (l *BotChatHistoryLogic) BotChatHistory(req *types.BotChatHistoryReq) (resp
 
 	// 根据 bot 机器人 找到对应的配置进行回复
 	if l.svcCtx.Config.ModelProvider.Company == "gemini" {
-		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
 		// 从上下文中取出用户对话
 		collection := gemini.NewUserContext(

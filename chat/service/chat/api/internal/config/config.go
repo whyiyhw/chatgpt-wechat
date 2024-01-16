@@ -149,6 +149,7 @@ type Config struct {
 	// google gemini
 	Gemini struct {
 		Key         string  `json:",optional"`
+		Host        string  `json:",optional,default=https://generativelanguage.googleapis.com"`
 		Model       string  `json:",optional,default=gemini-pro"`
 		Temperature float32 `json:",optional,default=0.8"`
 		Prompt      string  `json:",optional,default=''"`

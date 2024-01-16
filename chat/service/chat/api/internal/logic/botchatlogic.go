@@ -87,7 +87,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 
 	// 根据 bot 机器人 找到对应的配置进行回复
 	if company == "gemini" {
-		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).
+		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 			WithTemperature(Temperature)
 		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
