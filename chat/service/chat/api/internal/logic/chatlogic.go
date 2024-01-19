@@ -521,7 +521,7 @@ func sendToUser(agentID any, userID, msg string, config config.Config, file ...s
 	case int64:
 		corpSecret := ""
 		for _, application := range config.WeCom.MultipleApplication {
-			if application.AgentID == agentID {
+			if application.AgentID == agentID.(int64) {
 				corpSecret = application.AgentSecret
 			}
 		}

@@ -14,10 +14,10 @@ require (
 	github.com/go-playground/validator/v10 v10.17.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.5.0
-	github.com/milvus-io/milvus-sdk-go/v2 v2.3.4
+	github.com/milvus-io/milvus-sdk-go/v2 v2.3.5
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.4.0
-	github.com/sashabaranov/go-openai v1.17.11
+	github.com/sashabaranov/go-openai v1.18.3
 	github.com/whyiyhw/go-workwx v0.0.9
 	github.com/whyiyhw/gws v0.0.4
 	github.com/zeromicro/go-zero v1.6.1
@@ -70,7 +70,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/milvus-io/milvus-proto/go-api/v2 v2.3.4 // indirect
+	github.com/milvus-io/milvus-proto/go-api/v2 v2.3.5 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/openzipkin/zipkin-go v0.4.2 // indirect

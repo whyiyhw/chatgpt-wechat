@@ -77,6 +77,7 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 		response, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
 			logx.Info("Stream finished")
+			close(channel)
 			return messageText, nil
 		}
 

@@ -59,7 +59,7 @@ func (c *ChatClient) CreateOpenAIEmbeddings(input string) (EmbeddingResponse, er
 	return EmbeddingResponse{
 		Object: res.Object,
 		Data:   arr,
-		Model:  res.Model.String(),
+		Model:  string(res.Model),
 		Usage: EmbeddingUsage{
 			PromptTokens: res.Usage.PromptTokens,
 			TotalTokens:  res.Usage.TotalTokens,
