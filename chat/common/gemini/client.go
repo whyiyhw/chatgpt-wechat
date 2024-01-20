@@ -12,6 +12,7 @@ import (
 
 const ChatModel = "gemini-pro"
 const VisionModel = "gemini-pro-vision"
+const EmbeddingModel = "embedding-001"
 
 const UserRole = "user"
 const ModelRole = "model"
@@ -71,6 +72,7 @@ type ChatClient struct {
 	ProxyPassword string       `json:"proxy_password"`
 	Model         string       `json:"model"`
 	Temperature   float32      `json:"temperature"`
+	Debug         bool         `json:"debug"`
 }
 
 func NewChatClient(apiKey string) *ChatClient {
@@ -79,6 +81,7 @@ func NewChatClient(apiKey string) *ChatClient {
 		Model:       ChatModel,
 		Temperature: float32(Temperature),
 		Host:        DefaultHost,
+		Debug:       false,
 	}
 }
 
@@ -120,6 +123,12 @@ func (c *ChatClient) WithProxyUserName(userName string) *ChatClient {
 // WithProxyPassword 设置代理密码
 func (c *ChatClient) WithProxyPassword(password string) *ChatClient {
 	c.ProxyPassword = password
+	return c
+}
+
+// WithDebug 设置调试模式
+func (c *ChatClient) WithDebug(debug bool) *ChatClient {
+	c.Debug = debug
 	return c
 }
 
