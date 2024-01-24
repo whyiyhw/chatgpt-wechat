@@ -3,6 +3,7 @@ syntax = "v1"
 import (
 	"doc/user.api"
 	"doc/chat.api"
+	"doc/knowledge.api"
 	"doc/bots.api"
 )
 
@@ -99,5 +100,52 @@ service chat-api {
 	// 查询 bot 关联 model 详情
 	@handler BotModelDetailHandler
 	post /bot/model/detail (BotModelDetailReq) returns (BotModelDetailReply)
+
+	// Knowledge 相关业务
+	// Knowledge 新增
+	@handler KnowledgeCreateHandler
+	post /knowledge/create (KnowledgeCreateReq) returns (KnowledgeCreateReply)
+
+	// Knowledge 更新
+	@handler KnowledgeUpdateHandler
+	post /knowledge/update (KnowledgeUpdateReq) returns (KnowledgeUpdateReply)
+
+	// Knowledge 删除
+	@handler KnowledgeDeleteHandler
+	post /knowledge/delete (KnowledgeDeleteReq) returns (KnowledgeDeleteReply)
+
+	// Knowledge 列表
+	@handler KnowledgeListHandler
+	post /knowledge/list (KnowledgeListReq) returns (KnowledgeListReply)
+
+	// KnowledgeUnit 相关业务
+	// KnowledgeUnit 新增
+	@handler KnowledgeUnitCreateHandler
+	post /knowledge/unit/create (KnowledgeUnitCreateReq) returns (KnowledgeUnitCreateReply)
+
+	// KnowledgeUnit 开启关闭
+	@handler KnowledgeUnitSwitchHandler
+	post /knowledge/unit/switch (KnowledgeUnitSwitchReq) returns (KnowledgeUnitSwitchReply)
+
+	// KnowledgeUnit 删除
+	@handler KnowledgeUnitDeleteHandler
+	post /knowledge/unit/delete (KnowledgeUnitDeleteReq) returns (KnowledgeUnitDeleteReply)
+
+	// KnowledgeUnit 列表
+	@handler KnowledgeUnitListHandler
+	post /knowledge/unit/list (KnowledgeUnitListReq) returns (KnowledgeUnitListReply)
+
+	// KnowledgeSegments 相关业务
+	// KnowledgeSegments 新增
+	@handler KnowledgeSegmentsCreateHandler
+	post /knowledge/segments/create (KnowledgeSegmentsCreateReq) returns (KnowledgeSegmentsCreateReply)
+
+	// KnowledgeSegments 更新
+	@handler KnowledgeSegmentsUpdateHandler
+	post /knowledge/segments/update (KnowledgeSegmentsUpdateReq) returns (KnowledgeSegmentsUpdateReply)
+
+	// KnowledgeSegments 删除
+	@handler KnowledgeSegmentsDeleteHandler
+	post /knowledge/segments/delete (KnowledgeSegmentsDeleteReq) returns (KnowledgeSegmentsDeleteReply)
 }
 

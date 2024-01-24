@@ -17,44 +17,53 @@ import (
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:             db,
-		Bot:            newBot(db, opts...),
-		BotsPrompt:     newBotsPrompt(db, opts...),
-		BotsWithCustom: newBotsWithCustom(db, opts...),
-		BotsWithModel:  newBotsWithModel(db, opts...),
-		Chat:           newChat(db, opts...),
-		ChatConfig:     newChatConfig(db, opts...),
-		PromptConfig:   newPromptConfig(db, opts...),
-		User:           newUser(db, opts...),
+		db:                   db,
+		Bot:                  newBot(db, opts...),
+		BotsPrompt:           newBotsPrompt(db, opts...),
+		BotsWithCustom:       newBotsWithCustom(db, opts...),
+		BotsWithModel:        newBotsWithModel(db, opts...),
+		Chat:                 newChat(db, opts...),
+		ChatConfig:           newChatConfig(db, opts...),
+		Knowledge:            newKnowledge(db, opts...),
+		KnowledgeUnit:        newKnowledgeUnit(db, opts...),
+		KnowledgeUnitSegment: newKnowledgeUnitSegment(db, opts...),
+		PromptConfig:         newPromptConfig(db, opts...),
+		User:                 newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Bot            bot
-	BotsPrompt     botsPrompt
-	BotsWithCustom botsWithCustom
-	BotsWithModel  botsWithModel
-	Chat           chat
-	ChatConfig     chatConfig
-	PromptConfig   promptConfig
-	User           user
+	Bot                  bot
+	BotsPrompt           botsPrompt
+	BotsWithCustom       botsWithCustom
+	BotsWithModel        botsWithModel
+	Chat                 chat
+	ChatConfig           chatConfig
+	Knowledge            knowledge
+	KnowledgeUnit        knowledgeUnit
+	KnowledgeUnitSegment knowledgeUnitSegment
+	PromptConfig         promptConfig
+	User                 user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:             db,
-		Bot:            q.Bot.clone(db),
-		BotsPrompt:     q.BotsPrompt.clone(db),
-		BotsWithCustom: q.BotsWithCustom.clone(db),
-		BotsWithModel:  q.BotsWithModel.clone(db),
-		Chat:           q.Chat.clone(db),
-		ChatConfig:     q.ChatConfig.clone(db),
-		PromptConfig:   q.PromptConfig.clone(db),
-		User:           q.User.clone(db),
+		db:                   db,
+		Bot:                  q.Bot.clone(db),
+		BotsPrompt:           q.BotsPrompt.clone(db),
+		BotsWithCustom:       q.BotsWithCustom.clone(db),
+		BotsWithModel:        q.BotsWithModel.clone(db),
+		Chat:                 q.Chat.clone(db),
+		ChatConfig:           q.ChatConfig.clone(db),
+		Knowledge:            q.Knowledge.clone(db),
+		KnowledgeUnit:        q.KnowledgeUnit.clone(db),
+		KnowledgeUnitSegment: q.KnowledgeUnitSegment.clone(db),
+		PromptConfig:         q.PromptConfig.clone(db),
+		User:                 q.User.clone(db),
 	}
 }
 
@@ -68,39 +77,48 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:             db,
-		Bot:            q.Bot.replaceDB(db),
-		BotsPrompt:     q.BotsPrompt.replaceDB(db),
-		BotsWithCustom: q.BotsWithCustom.replaceDB(db),
-		BotsWithModel:  q.BotsWithModel.replaceDB(db),
-		Chat:           q.Chat.replaceDB(db),
-		ChatConfig:     q.ChatConfig.replaceDB(db),
-		PromptConfig:   q.PromptConfig.replaceDB(db),
-		User:           q.User.replaceDB(db),
+		db:                   db,
+		Bot:                  q.Bot.replaceDB(db),
+		BotsPrompt:           q.BotsPrompt.replaceDB(db),
+		BotsWithCustom:       q.BotsWithCustom.replaceDB(db),
+		BotsWithModel:        q.BotsWithModel.replaceDB(db),
+		Chat:                 q.Chat.replaceDB(db),
+		ChatConfig:           q.ChatConfig.replaceDB(db),
+		Knowledge:            q.Knowledge.replaceDB(db),
+		KnowledgeUnit:        q.KnowledgeUnit.replaceDB(db),
+		KnowledgeUnitSegment: q.KnowledgeUnitSegment.replaceDB(db),
+		PromptConfig:         q.PromptConfig.replaceDB(db),
+		User:                 q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Bot            *botDo
-	BotsPrompt     *botsPromptDo
-	BotsWithCustom *botsWithCustomDo
-	BotsWithModel  *botsWithModelDo
-	Chat           *chatDo
-	ChatConfig     *chatConfigDo
-	PromptConfig   *promptConfigDo
-	User           *userDo
+	Bot                  *botDo
+	BotsPrompt           *botsPromptDo
+	BotsWithCustom       *botsWithCustomDo
+	BotsWithModel        *botsWithModelDo
+	Chat                 *chatDo
+	ChatConfig           *chatConfigDo
+	Knowledge            *knowledgeDo
+	KnowledgeUnit        *knowledgeUnitDo
+	KnowledgeUnitSegment *knowledgeUnitSegmentDo
+	PromptConfig         *promptConfigDo
+	User                 *userDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Bot:            q.Bot.WithContext(ctx),
-		BotsPrompt:     q.BotsPrompt.WithContext(ctx),
-		BotsWithCustom: q.BotsWithCustom.WithContext(ctx),
-		BotsWithModel:  q.BotsWithModel.WithContext(ctx),
-		Chat:           q.Chat.WithContext(ctx),
-		ChatConfig:     q.ChatConfig.WithContext(ctx),
-		PromptConfig:   q.PromptConfig.WithContext(ctx),
-		User:           q.User.WithContext(ctx),
+		Bot:                  q.Bot.WithContext(ctx),
+		BotsPrompt:           q.BotsPrompt.WithContext(ctx),
+		BotsWithCustom:       q.BotsWithCustom.WithContext(ctx),
+		BotsWithModel:        q.BotsWithModel.WithContext(ctx),
+		Chat:                 q.Chat.WithContext(ctx),
+		ChatConfig:           q.ChatConfig.WithContext(ctx),
+		Knowledge:            q.Knowledge.WithContext(ctx),
+		KnowledgeUnit:        q.KnowledgeUnit.WithContext(ctx),
+		KnowledgeUnitSegment: q.KnowledgeUnitSegment.WithContext(ctx),
+		PromptConfig:         q.PromptConfig.WithContext(ctx),
+		User:                 q.User.WithContext(ctx),
 	}
 }
 

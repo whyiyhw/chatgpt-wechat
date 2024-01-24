@@ -19,6 +19,7 @@ type ServiceContext struct {
 	PromptConfigModel *dao.Query
 	BotModel          *dao.Query
 	BotsPromptModel   *dao.Query
+	Knowledge         *dao.Query
 	AccessLog         rest.Middleware
 }
 
@@ -52,6 +53,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		PromptConfigModel: dao.Use(db),
 		BotModel:          dao.Use(db),
 		BotsPromptModel:   dao.Use(db),
+		Knowledge:         dao.Use(db),
 		AccessLog:         middleware.NewAccessLogMiddleware().Handle,
 	}
 }

@@ -205,6 +205,122 @@ type ExploreListBot struct {
 	Key string `json:"key" label:"key"`
 }
 
+type Knowledge struct {
+	ID         int64  `json:"id" label:"知识库ID"`
+	Name       string `json:"name" label:"知识库名称"`
+	Avatar     string `json:"avatar" label:"知识库头像"`
+	Desc       string `json:"desc" label:"知识库描述"`
+	CreateTime string `json:"create_time" label:"创建时间"`
+	UpdateTime string `json:"update_time" label:"更新时间"`
+}
+
+type KnowledgeCreateReply struct {
+	ID int64 `json:"id" label:"知识库ID"`
+}
+
+type KnowledgeCreateReq struct {
+	Name   string `json:"name" validate:"required,max=50" label:"知识库名称"`
+	Avatar string `json:"avatar" validate:"max=255" label:"知识库头像"`
+	Desc   string `json:"desc,optional" validate:"max=255" label:"知识库描述"`
+}
+
+type KnowledgeDeleteReply struct {
+}
+
+type KnowledgeDeleteReq struct {
+	ID int64 `json:"id" validate:"required" label:"知识库ID"`
+}
+
+type KnowledgeListReply struct {
+	List  []Knowledge `json:"list" label:"知识库列表"`
+	Total int         `json:"total" label:"总数"`
+}
+
+type KnowledgeListReq struct {
+	Page     int `json:"page" validate:"required,min=1" label:"页码"`
+	PageSize int `json:"page_size" validate:"required,min=1,max=100" label:"每页数量"`
+}
+
+type KnowledgeSegmentsCreateReply struct {
+	ID int64 `json:"id" label:"知识点ID"`
+}
+
+type KnowledgeSegmentsCreateReq struct {
+	KnowledgeID     int64  `json:"knowledge_id" validate:"required" label:"知识库ID"`
+	KnowledgeUnitID int64  `json:"knowledge_unit_id" validate:"required" label:"知识库单元ID"`
+	Value           string `json:"value" validate:"required,max=2000" label:"知识点内容"`
+}
+
+type KnowledgeSegmentsDeleteReply struct {
+}
+
+type KnowledgeSegmentsDeleteReq struct {
+	ID int64 `json:"id" validate:"required" label:"知识点ID"`
+}
+
+type KnowledgeSegmentsUpdateReply struct {
+}
+
+type KnowledgeSegmentsUpdateReq struct {
+	ID    int64  `json:"id" validate:"required" label:"知识点ID"`
+	Value string `json:"value" validate:"required,max=2000" label:"知识点内容"`
+}
+
+type KnowledgeUnit struct {
+	ID          int64  `json:"id" label:"知识库单元ID"`
+	KnowledgeID int64  `json:"knowledge_id" label:"知识库ID"`
+	Name        string `json:"name" label:"知识库单元名称"`
+	Type        string `json:"type" label:"知识库单元类型"`
+	Source      string `json:"source" label:"知识库单元来源"`
+	Enable      bool   `json:"enable" label:"知识库单元开关"`
+	CreateTime  string `json:"create_time" label:"创建时间"`
+	UpdateTime  string `json:"update_time" label:"更新时间"`
+}
+
+type KnowledgeUnitCreateReply struct {
+	ID int64 `json:"id" label:"知识库单元ID"`
+}
+
+type KnowledgeUnitCreateReq struct {
+	KnowledgeID int64  `json:"knowledge_id" validate:"required" label:"知识库ID"`
+	Name        string `json:"name" validate:"required,max=191" label:"知识库单元名称"`
+}
+
+type KnowledgeUnitDeleteReply struct {
+}
+
+type KnowledgeUnitDeleteReq struct {
+	ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
+}
+
+type KnowledgeUnitListReply struct {
+	List  []KnowledgeUnit `json:"list" label:"知识库单元列表"`
+	Total int             `json:"total" label:"总数"`
+}
+
+type KnowledgeUnitListReq struct {
+	KnowledgeID int64 `json:"knowledge_id" validate:"required" label:"知识库ID"`
+	Page        int   `json:"page" validate:"required,min=1" label:"页码"`
+	PageSize    int   `json:"page_size" validate:"required,min=1,max=100" label:"每页数量"`
+}
+
+type KnowledgeUnitSwitchReply struct {
+}
+
+type KnowledgeUnitSwitchReq struct {
+	ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
+}
+
+type KnowledgeUpdateReply struct {
+}
+
+type KnowledgeUpdateReq struct {
+	ID     int64  `json:"id" validate:"required" label:"知识库ID"`
+	Name   string `json:"name" validate:"required,max=50" label:"知识库名称"`
+	Avatar string `json:"avatar" validate:"max=255" label:"知识库头像"`
+	Desc   string `json:"desc,optional" validate:"max=255" label:"知识库描述"`
+}
+
 type UserDetailReply struct {
 	ID    int64  `json:"id" label:"用户id"`
 	Email string `json:"email" label:"邮箱"`

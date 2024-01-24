@@ -115,6 +115,61 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/knowledge/create",
+					Handler: KnowledgeCreateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/delete",
+					Handler: KnowledgeDeleteHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/list",
+					Handler: KnowledgeListHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/segments/create",
+					Handler: KnowledgeSegmentsCreateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/segments/delete",
+					Handler: KnowledgeSegmentsDeleteHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/segments/update",
+					Handler: KnowledgeSegmentsUpdateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/unit/create",
+					Handler: KnowledgeUnitCreateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/unit/delete",
+					Handler: KnowledgeUnitDeleteHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/unit/list",
+					Handler: KnowledgeUnitListHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/unit/switch",
+					Handler: KnowledgeUnitSwitchHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/update",
+					Handler: KnowledgeUpdateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/msg/customer/push",
 					Handler: CustomerChatHandler(serverCtx),
 				},
