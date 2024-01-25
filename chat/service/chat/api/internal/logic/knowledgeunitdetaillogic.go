@@ -11,21 +11,21 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type KnowledgeUnitDeleteLogic struct {
+type KnowledgeUnitDetailLogic struct {
 	logx.Logger
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 }
 
-func NewKnowledgeUnitDeleteLogic(ctx context.Context, svcCtx *svc.ServiceContext) *KnowledgeUnitDeleteLogic {
-	return &KnowledgeUnitDeleteLogic{
+func NewKnowledgeUnitDetailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *KnowledgeUnitDetailLogic {
+	return &KnowledgeUnitDetailLogic{
 		Logger: logx.WithContext(ctx),
 		ctx:    ctx,
 		svcCtx: svcCtx,
 	}
 }
 
-func (l *KnowledgeUnitDeleteLogic) KnowledgeUnitDelete(req *types.KnowledgeUnitDeleteReq) (resp *types.KnowledgeUnitDeleteReply, err error) {
+func (l *KnowledgeUnitDetailLogic) KnowledgeUnitDetail(req *types.KnowledgeUnitDetailReq) (resp *types.KnowledgeUnitDetailReply, err error) {
 	value := l.ctx.Value("userId")
 	var userId int64
 	if userIdNumber, ok := value.(json.Number); ok {
@@ -35,7 +35,6 @@ func (l *KnowledgeUnitDeleteLogic) KnowledgeUnitDelete(req *types.KnowledgeUnitD
 		}
 	}
 	table := l.svcCtx.Knowledge.KnowledgeUnit
-
 	// FIRST
 	res, err := table.WithContext(l.ctx).Where(table.ID.Eq(req.ID)).First()
 	if err != nil {
@@ -51,10 +50,14 @@ func (l *KnowledgeUnitDeleteLogic) KnowledgeUnitDelete(req *types.KnowledgeUnitD
 		return nil, errors.New("您无权限访问此知识单元")
 	}
 	// THIRD
-	_, err = table.WithContext(l.ctx).Where(table.ID.Eq(req.ID)).Delete()
-	if err != nil {
-		return nil, errors.New("删除失败")
-	}
-
-	return &types.KnowledgeUnitDeleteReply{}, nil
+	return &types.KnowledgeUnitDetailReply{
+		ID:          res.ID,
+		KnowledgeID: res.KnowledgeID,
+		Name:        res.Name,
+		Type:        res.Type,
+		Source:      res.Source,
+		Enable:      res.Enable,
+		CreateTime:  res.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdateTime:  res.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}, nil
 }

@@ -20,7 +20,7 @@ type (
         ID int64 `json:"id" label:"知识库ID"`
     }
 
-        // 知识库修改
+    // 知识库修改
     KnowledgeUpdateReq {
         ID int64 `json:"id" validate:"required" label:"知识库ID"`
         Name string `json:"name" validate:"required,max=50" label:"知识库名称"`
@@ -30,14 +30,14 @@ type (
     KnowledgeUpdateReply {
     }
 
-        // 知识库删除
+    // 知识库删除
     KnowledgeDeleteReq {
         ID int64 `json:"id" validate:"required" label:"知识库ID"`
     }
     KnowledgeDeleteReply {
     }
 
-        // 知识库列表
+    // 知识库列表
     KnowledgeListReq {
         Page int `json:"page" validate:"required,min=1" label:"页码"`
         PageSize int `json:"page_size" validate:"required,min=1,max=100" label:"每页数量"`
@@ -55,7 +55,7 @@ type (
         UpdateTime string `json:"update_time" label:"更新时间"`
     }
 
-        // 知识库单元新增
+    // 知识库单元新增
     KnowledgeUnitCreateReq {
         KnowledgeID int64 `json:"knowledge_id" validate:"required" label:"知识库ID"`
         Name string `json:"name" validate:"required,max=191" label:"知识库单元名称"`
@@ -63,19 +63,33 @@ type (
     KnowledgeUnitCreateReply {
         ID int64 `json:"id" label:"知识库单元ID"`
     }
-        // 知识库单元开启关闭
+    // 知识库单元详情
+    KnowledgeUnitDetailReq {
+        ID int64 `json:"id" label:"知识库单元ID"`
+    }
+    KnowledgeUnitDetailReply {
+        ID int64 `json:"id" label:"知识库单元ID"`
+        KnowledgeID int64 `json:"knowledge_id" label:"知识库ID"`
+        Name string `json:"name" label:"知识库单元名称"`
+        Type string `json:"type" label:"知识库单元类型"`
+        Source string `json:"source" label:"知识库单元来源"`
+        Enable bool `json:"enable" label:"知识库单元开关"`
+        CreateTime string `json:"create_time" label:"创建时间"`
+        UpdateTime string `json:"update_time" label:"更新时间"`
+    }
+    // 知识库单元开启关闭
     KnowledgeUnitSwitchReq {
         ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
     }
     KnowledgeUnitSwitchReply {
     }
-        // 知识库单元删除
+    // 知识库单元删除
     KnowledgeUnitDeleteReq {
         ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
     }
     KnowledgeUnitDeleteReply {
     }
-        // 知识库单元列表
+    // 知识库单元列表
     KnowledgeUnitListReq {
         KnowledgeID int64 `json:"knowledge_id" validate:"required" label:"知识库ID"`
         Page int `json:"page" validate:"required,min=1" label:"页码"`
@@ -117,5 +131,24 @@ type (
         ID int64 `json:"id" validate:"required" label:"知识点ID"`
     }
     KnowledgeSegmentsDeleteReply {
+    }
+    // 知识库单元-知识点列表
+    KnowledgeSegmentsListReq {
+        KnowledgeID int64 `json:"knowledge_id" validate:"required" label:"知识库ID"`
+        KnowledgeUnitID int64 `json:"knowledge_unit_id" validate:"required" label:"知识库单元ID"`
+        Page int `json:"page" validate:"required,min=1" label:"页码"`
+        PageSize int `json:"page_size" validate:"required,min=1,max=100" label:"每页数量"`
+    }
+    KnowledgeSegmentsListReply {
+        List []KnowledgeSegment `json:"list" label:"知识点列表"`
+        Total int `json:"total" label:"总数"`
+    }
+    KnowledgeSegment {
+        ID int64 `json:"id" label:"知识点ID"`
+        KnowledgeID int64 `json:"knowledge_id" label:"知识库ID"`
+        KnowledgeUnitID int64 `json:"knowledge_unit_id" label:"知识库单元ID"`
+        Value string `json:"value" label:"知识点内容"`
+        CreateTime string `json:"create_time" label:"创建时间"`
+        UpdateTime string `json:"update_time" label:"更新时间"`
     }
 )

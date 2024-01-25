@@ -241,6 +241,15 @@ type KnowledgeListReq struct {
 	PageSize int `json:"page_size" validate:"required,min=1,max=100" label:"每页数量"`
 }
 
+type KnowledgeSegment struct {
+	ID              int64  `json:"id" label:"知识点ID"`
+	KnowledgeID     int64  `json:"knowledge_id" label:"知识库ID"`
+	KnowledgeUnitID int64  `json:"knowledge_unit_id" label:"知识库单元ID"`
+	Value           string `json:"value" label:"知识点内容"`
+	CreateTime      string `json:"create_time" label:"创建时间"`
+	UpdateTime      string `json:"update_time" label:"更新时间"`
+}
+
 type KnowledgeSegmentsCreateReply struct {
 	ID int64 `json:"id" label:"知识点ID"`
 }
@@ -256,6 +265,18 @@ type KnowledgeSegmentsDeleteReply struct {
 
 type KnowledgeSegmentsDeleteReq struct {
 	ID int64 `json:"id" validate:"required" label:"知识点ID"`
+}
+
+type KnowledgeSegmentsListReply struct {
+	List  []KnowledgeSegment `json:"list" label:"知识点列表"`
+	Total int                `json:"total" label:"总数"`
+}
+
+type KnowledgeSegmentsListReq struct {
+	KnowledgeID     int64 `json:"knowledge_id" validate:"required" label:"知识库ID"`
+	KnowledgeUnitID int64 `json:"knowledge_unit_id" validate:"required" label:"知识库单元ID"`
+	Page            int   `json:"page" validate:"required,min=1" label:"页码"`
+	PageSize        int   `json:"page_size" validate:"required,min=1,max=100" label:"每页数量"`
 }
 
 type KnowledgeSegmentsUpdateReply struct {
@@ -291,6 +312,21 @@ type KnowledgeUnitDeleteReply struct {
 
 type KnowledgeUnitDeleteReq struct {
 	ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
+}
+
+type KnowledgeUnitDetailReply struct {
+	ID          int64  `json:"id" label:"知识库单元ID"`
+	KnowledgeID int64  `json:"knowledge_id" label:"知识库ID"`
+	Name        string `json:"name" label:"知识库单元名称"`
+	Type        string `json:"type" label:"知识库单元类型"`
+	Source      string `json:"source" label:"知识库单元来源"`
+	Enable      bool   `json:"enable" label:"知识库单元开关"`
+	CreateTime  string `json:"create_time" label:"创建时间"`
+	UpdateTime  string `json:"update_time" label:"更新时间"`
+}
+
+type KnowledgeUnitDetailReq struct {
+	ID int64 `json:"id" label:"知识库单元ID"`
 }
 
 type KnowledgeUnitListReply struct {

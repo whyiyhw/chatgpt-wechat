@@ -140,6 +140,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/knowledge/segments/list",
+					Handler: KnowledgeSegmentsListHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/knowledge/segments/update",
 					Handler: KnowledgeSegmentsUpdateHandler(serverCtx),
 				},
@@ -152,6 +157,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Method:  http.MethodPost,
 					Path:    "/knowledge/unit/delete",
 					Handler: KnowledgeUnitDeleteHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/knowledge/unit/detail",
+					Handler: KnowledgeUnitDetailHandler(serverCtx),
 				},
 				{
 					Method:  http.MethodPost,

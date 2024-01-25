@@ -48,7 +48,7 @@ func (l *KnowledgeUnitListLogic) KnowledgeUnitList(req *types.KnowledgeUnitListR
 		Order(table.ID.Desc()).FindByPage(offset, req.PageSize)
 
 	if err != nil {
-		return nil, errors.New("知识库不存在")
+		return nil, errors.New("知识库单元不存在")
 	}
 	reply := &types.KnowledgeUnitListReply{
 		List:  make([]types.KnowledgeUnit, 0),

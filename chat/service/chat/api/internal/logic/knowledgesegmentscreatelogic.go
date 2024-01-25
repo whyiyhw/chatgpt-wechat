@@ -67,7 +67,7 @@ func (l *KnowledgeSegmentsCreateLogic) KnowledgeSegmentsCreate(req *types.Knowle
 		return nil, errors.New("gemini embedding 接口调用失败")
 	}
 	// 四
-	embed, err := json.Marshal(embeddingResp.Embedding)
+	embed, err := json.Marshal(embeddingResp.Embedding.Values)
 	if err != nil {
 		return nil, err
 	}

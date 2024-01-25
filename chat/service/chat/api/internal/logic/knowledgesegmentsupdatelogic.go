@@ -71,7 +71,7 @@ func (l *KnowledgeSegmentsUpdateLogic) KnowledgeSegmentsUpdate(req *types.Knowle
 		return nil, errors.New("gemini embedding 接口调用失败")
 	}
 	// 更新
-	embed, err := json.Marshal(embeddingResp.Embedding)
+	embed, err := json.Marshal(embeddingResp.Embedding.Values)
 	if err != nil {
 		return nil, errors.New("gemini embedding json encode 调用失败")
 	}
