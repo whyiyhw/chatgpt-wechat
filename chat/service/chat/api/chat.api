@@ -123,6 +123,10 @@ service chat-api {
 	@handler KnowledgeUnitCreateHandler
 	post /knowledge/unit/create (KnowledgeUnitCreateReq) returns (KnowledgeUnitCreateReply)
 
+	// KnowledgeUnit 更新
+	@handler KnowledgeUnitUpdateHandler
+	post /knowledge/unit/update (KnowledgeUnitUpdateReq) returns (KnowledgeUnitUpdateReply)
+
 	// KnowledgeUnit 详情
 	@handler KnowledgeUnitDetailHandler
 	post /knowledge/unit/detail (KnowledgeUnitDetailReq) returns (KnowledgeUnitDetailReply)

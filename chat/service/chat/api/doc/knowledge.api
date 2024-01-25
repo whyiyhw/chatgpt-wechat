@@ -63,6 +63,13 @@ type (
     KnowledgeUnitCreateReply {
         ID int64 `json:"id" label:"知识库单元ID"`
     }
+    // 知识库单元修改
+    KnowledgeUnitUpdateReq {
+        ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
+        Name string `json:"name" validate:"required,max=191" label:"知识库单元名称"`
+    }
+    KnowledgeUnitUpdateReply {
+    }
     // 知识库单元详情
     KnowledgeUnitDetailReq {
         ID int64 `json:"id" label:"知识库单元ID"`

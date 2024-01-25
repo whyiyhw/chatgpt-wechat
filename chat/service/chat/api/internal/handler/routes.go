@@ -175,6 +175,11 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				},
 				{
 					Method:  http.MethodPost,
+					Path:    "/knowledge/unit/update",
+					Handler: KnowledgeUnitUpdateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
 					Path:    "/knowledge/update",
 					Handler: KnowledgeUpdateHandler(serverCtx),
 				},

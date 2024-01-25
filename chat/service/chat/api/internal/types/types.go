@@ -347,6 +347,14 @@ type KnowledgeUnitSwitchReq struct {
 	ID int64 `json:"id" validate:"required" label:"知识库单元ID"`
 }
 
+type KnowledgeUnitUpdateReply struct {
+}
+
+type KnowledgeUnitUpdateReq struct {
+	ID   int64  `json:"id" validate:"required" label:"知识库单元ID"`
+	Name string `json:"name" validate:"required,max=191" label:"知识库单元名称"`
+}
+
 type KnowledgeUpdateReply struct {
 }
 
