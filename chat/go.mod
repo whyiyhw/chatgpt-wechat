@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.0.5
 	github.com/alibabacloud-go/ocr-api-20210707 v1.2.0
-	github.com/alibabacloud-go/tea v1.2.1
+	github.com/alibabacloud-go/tea v1.2.2
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.4
 	github.com/disintegration/imaging v1.6.2
 	github.com/dlclark/regexp2 v1.10.0
@@ -13,11 +13,12 @@ require (
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.17.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/milvus-io/milvus-sdk-go/v2 v2.3.5
+	github.com/pgvector/pgvector-go v0.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.4.0
-	github.com/sashabaranov/go-openai v1.18.3
+	github.com/sashabaranov/go-openai v1.19.1
 	github.com/whyiyhw/go-workwx v0.0.9
 	github.com/whyiyhw/gws v0.0.4
 	github.com/zeromicro/go-zero v1.6.1
@@ -25,7 +26,7 @@ require (
 	golang.org/x/net v0.20.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gen v0.3.25
-	gorm.io/gorm v1.25.5
+	gorm.io/gorm v1.25.6
 	gorm.io/plugin/dbresolver v1.5.0
 )
 

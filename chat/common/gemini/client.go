@@ -37,8 +37,9 @@ var Temperature = 0.8
 var DefaultHost = "https://generativelanguage.googleapis.com"
 
 type ChatModelMessage struct {
-	Role    string      `json:"role"`
-	Content ChatContent `json:"content"`
+	MessageId string      `json:"message_id"`
+	Role      string      `json:"role"`
+	Content   ChatContent `json:"content"`
 }
 
 func NewChatContent(data ...string) ChatContent {

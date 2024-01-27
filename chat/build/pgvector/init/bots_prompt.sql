@@ -41,14 +41,14 @@ create index bots_with_custom_idx_kf_id_bot_id on bots_with_custom (open_kf_id, 
 -- auto-generated definition bots_with_model
 create table bots_with_model
 (
-    id         bigserial
+    id          bigserial
         primary key,
-    bot_id     bigint    default 0 not null,
-    model_type varchar             not null,
-    model_name varchar             not null,
-    temperature numeric(10, 2)     default 0.00 not null,
-    created_at timestamp default CURRENT_TIMESTAMP,
-    updated_at timestamp default CURRENT_TIMESTAMP
+    bot_id      bigint         default 0    not null,
+    model_type  varchar                     not null,
+    model_name  varchar                     not null,
+    temperature numeric(10, 2) default 0.00 not null,
+    created_at  timestamp      default CURRENT_TIMESTAMP,
+    updated_at  timestamp      default CURRENT_TIMESTAMP
 );
 
 comment on table bots_with_model is '机器人关联模型设置表';
@@ -60,3 +60,20 @@ comment on column bots_with_model.temperature is '温度';
 comment on column bots_with_model.created_at is '创建时间';
 comment on column bots_with_model.updated_at is '更新时间';
 
+create table bots_with_knowledge
+(
+    id           bigserial
+        primary key,
+    bot_id       bigint    default 0 not null,
+    knowledge_id bigint    default 0 not null,
+    created_at   timestamp default CURRENT_TIMESTAMP,
+    updated_at   timestamp default CURRENT_TIMESTAMP
+);
+
+comment on table bots_with_knowledge is '机器人关联知识库设置表';
+comment on column bots_with_knowledge.id is '机器人初始设置ID';
+comment on column bots_with_knowledge.bot_id is '机器人ID 关联 bots.id';
+comment on column bots_with_knowledge.knowledge_id is '知识库ID 关联 knowledge.id';
+comment on column bots_with_knowledge.created_at is '创建时间';
+comment on column bots_with_knowledge.updated_at is '更新时间';
+create index bots_with_knowledge_idx_knowledge_id_bot_id on bots_with_knowledge (knowledge_id, bot_id);

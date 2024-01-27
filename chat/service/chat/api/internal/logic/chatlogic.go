@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"regexp"
 	"strconv"
@@ -48,6 +49,12 @@ func NewChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ChatLogic {
 
 func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) {
 
+	uuidObj, err := uuid.NewUUID()
+	if err != nil {
+		go sendToUser(req.AgentID, req.UserID, "系统错误 会话唯一标识生成失败", l.svcCtx.Config)
+	}
+	conversationId := uuidObj.String()
+
 	// 去 gemini 获取数据
 	if req.Channel == "gemini" {
 
@@ -77,7 +84,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			WithPrompt(l.svcCtx.Config.Gemini.Prompt).
 			WithClient(c).
 			WithImage(req.AgentID, req.UserID). // 为后续版本做准备，Gemini 暂时不支持图文问答展示
-			Set(gemini.NewChatContent(req.MSG), "", false)
+			Set(gemini.NewChatContent(req.MSG), "", conversationId, false)
 
 		prompts := collection.GetChatSummary()
 
@@ -98,7 +105,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
 						return
 					}
-					collection.Set(gemini.NewChatContent(), messageText, true)
+					collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
 					// 再去插入数据
 					table := l.svcCtx.ChatModel.Chat
 					_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -155,7 +162,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				// 把数据 发给微信用户
 				go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
 
-				collection.Set(gemini.NewChatContent(), messageText, true)
+				collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
 
 				// 再去插入数据
 				table := l.svcCtx.ChatModel.Chat
@@ -329,7 +336,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 							req.MSG, runPluginInfo.PluginName, runPluginInfo.Input, runPluginInfo.Output, runPluginInfo.PluginName,
 						)
 						// 插件处理成功，存入上下文
-						collection.Set(q, "ok", false)
+						collection.Set(openai.NewChatContent(q), "ok", conversationId, false)
 						if l.svcCtx.Config.Plugins.Debug {
 							// 通知用户正在使用插件并响应结果
 							go sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
@@ -344,9 +351,9 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			// 基于 summary 进行补充
 			messageText := ""
 			for _, chat := range embeddingData {
-				collection.Set(chat.Q, chat.A, false)
+				collection.Set(openai.NewChatContent(chat.Q), chat.A, conversationId, false)
 			}
-			collection.Set(req.MSG, "", false)
+			collection.Set(openai.NewChatContent(req.MSG), "", conversationId, false)
 			prompts := collection.GetChatSummary()
 
 			// 分段响应
@@ -367,7 +374,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
 						return
 					}
-					collection.Set("", messageText, true)
+					collection.Set(openai.NewChatContent(), messageText, conversationId, true)
 					// 再去插入数据
 					table := l.svcCtx.ChatModel.Chat
 					_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -404,7 +411,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 			// 一次性响应
 			if l.model == openai.TextModel {
-				messageText, err = c.Completion(collection.GetCompletionSummary())
+				messageText, err = c.Completion(prompts)
 			} else {
 				messageText, err = c.Chat(prompts)
 			}
@@ -420,7 +427,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 			// 把数据 发给微信用户
 			go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
 
-			collection.Set("", messageText, true)
+			collection.Set(openai.NewChatContent(), messageText, conversationId, true)
 
 			// 再去插入数据
 			table := l.svcCtx.ChatModel.Chat
@@ -767,7 +774,13 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 	).WithModel(c.Model).
 		WithPrompt(l.svcCtx.Config.Gemini.Prompt).
 		WithClient(c).
-		Set(gemini.NewChatContent("我向你描述一副图片的内容如下：\n\n"+result), "收到,我了解了您的图片！", true)
+		Set(
+			gemini.NewChatContent(
+				"我向你描述一副图片的内容如下：\n\n"+result),
+			"收到,我理解了您的图片！",
+			"",
+			true,
+		)
 	return false
 	//vi := reflect.ValueOf(l.svcCtx.Config.OCR)
 	//if vi.Kind() == reflect.Ptr && vi.IsNil() {
@@ -1032,7 +1045,12 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 					} else {
 						translatePrompt = fmt.Sprintf(draw.TranslatePrompt, prompt)
 					}
-					changedPrompt, err := c.Completion(translatePrompt)
+					changedPrompt, err := c.Completion([]openai.ChatModelMessage{
+						{
+							Role:    openai.UserRole,
+							Content: openai.NewChatContent(translatePrompt),
+						},
+					})
 					if err != nil {
 						sendToUser(req.AgentID, req.UserID, "系统错误:关键词转为绘画 prompt 失败"+err.Error(), l.svcCtx.Config)
 						return

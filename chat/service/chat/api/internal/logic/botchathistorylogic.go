@@ -75,11 +75,14 @@ func (l *BotChatHistoryLogic) BotChatHistory(req *types.BotChatHistoryReq) (resp
 		List: make([]*types.BotChatWholeReply, 0),
 	}
 	for _, message := range collection {
+		if message.Role == openai.SystemRole {
+			continue
+		}
 		response.List = append(response.List, &types.BotChatWholeReply{
 			Role: message.Role,
 			Content: types.BotChatContent{
-				MimeType: "text/plain",
-				Data:     message.Content,
+				MimeType: message.Content.MIMEType,
+				Data:     message.Content.Data,
 			},
 		})
 	}

@@ -10,11 +10,15 @@ import (
 	"chat/common/gemini"
 	"chat/common/http2websocket"
 	"chat/common/openai"
+	"chat/common/ps"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
+	"chat/service/chat/model"
 
 	"github.com/google/uuid"
+	"github.com/pgvector/pgvector-go"
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm/clause"
 )
 
 type BotChatLogic struct {
@@ -84,6 +88,22 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 			Temperature = l.svcCtx.Config.Gemini.Temperature
 		}
 	}
+	// 去找到 bot 机器人对应的 knowledge 配置
+	botWithKnowledgeTable := l.svcCtx.ChatModel.BotsWithKnowledge
+	// 找到第一个配置
+	withKnowledge, selectKnowledgeErr := botWithKnowledgeTable.WithContext(l.ctx).
+		Where(botWithKnowledgeTable.BotID.Eq(req.BotID)).
+		First()
+	enableKnowledge := false
+	knowledgeModel := &model.Knowledge{}
+	if selectKnowledgeErr == nil {
+		enableKnowledge = true
+		// 去找到 knowledge
+		knowledgeTable := l.svcCtx.ChatModel.Knowledge
+		knowledgeModel, _ = knowledgeTable.WithContext(l.ctx).
+			Where(knowledgeTable.ID.Eq(withKnowledge.KnowledgeID)).
+			First()
+	}
 
 	// 根据 bot 机器人 找到对应的配置进行回复
 	if company == "gemini" {
@@ -100,9 +120,44 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 		).WithModel(modelName).
 			WithPrompt(basePrompt).
 			WithClient(c).
-			Set(gemini.NewChatContent(req.MSG), "", false)
+			Set(gemini.NewChatContent(req.MSG), "", conversationId, false)
 
 		prompts := collection.GetChatSummary()
+
+		if enableKnowledge && knowledgeModel != nil {
+			// 去调用 model 判断是否需要调用 knowledge
+			collection.WithPrompt(ps.KnowledgePrompt(knowledgeModel.Name, knowledgeModel.Desc))
+			enableKnowledgeMessageText, err := c.Chat(collection.GetChatSummary())
+			if err == nil {
+				res := ps.KnowledgeResponseParse(enableKnowledgeMessageText)
+				if res.IsNeedFindKnowledge {
+					// 先去 embedding
+					embeddingResp, err := c.CreateEmbedding(req.MSG)
+					if err == nil {
+						// 再 去 knowledgeUnitSegment 通过 embeddingResp 进行查询
+						//	db.Clauses(clause.OrderBy{
+						//		Expression: clause.Expr{SQL: "embedding <-> ?", Vars: []interface{}{pgvector.NewVector([]float32{1, 1, 1})}},
+						//	}).Limit(5).Find(&items)
+						db := l.svcCtx.DbEngin
+						var ls []model.KnowledgeUnitSegment
+						db.Table(l.svcCtx.Knowledge.KnowledgeUnitSegment.TableName()).Clauses(clause.OrderBy{
+							Expression: clause.Expr{SQL: "embedding <-> ?", Vars: []interface{}{pgvector.NewVector(embeddingResp.Embedding.Values)}},
+						}).Limit(2).Find(&ls)
+						contextString := ""
+						for _, segment := range ls {
+							fmt.Println("embedding 匹配结果为：", segment.Value)
+							contextString = contextString + segment.Value + "\n"
+						}
+						if contextString != "" {
+							// 更改 最后一个 prompts 的值
+							prompts[len(prompts)-1].Content.Data = contextString + prompts[len(prompts)-1].Content.Data
+						}
+					}
+				}
+			}
+			// 还原
+			collection.WithPrompt(basePrompt)
+		}
 
 		fmt.Println("上下文请求信息： collection.Prompt" + collection.Prompt)
 		fmt.Println(prompts)
@@ -127,7 +182,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 						})
 						return
 					}
-					collection.Set(gemini.NewChatContent(), messageText, true)
+					collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
 					//// 再去插入数据
 					//table := l.svcCtx.ChatModel.Chat
 					//_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -192,7 +247,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 					MsgToUserID: strconv.FormatInt(userId, 10),
 				})
 
-				collection.Set(gemini.NewChatContent(), messageText, true)
+				collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
 
 				// 再去插入数据
 				//table := l.svcCtx.ChatModel.Chat
@@ -225,9 +280,51 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 		collection := openai.NewUserContext(
 			openai.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10)),
 		).WithModel(openai.ChatModel4).WithPrompt(basePrompt).WithClient(c).WithTimeOut(l.svcCtx.Config.Session.TimeOut).
-			Set(req.MSG, "", false)
+			Set(openai.NewChatContent(req.MSG), "", conversationId, false)
 
 		prompts := collection.GetChatSummary()
+
+		if enableKnowledge && knowledgeModel != nil {
+			// 去调用 model 判断是否需要调用 knowledge
+			collection.WithPrompt(ps.KnowledgePrompt(knowledgeModel.Name, knowledgeModel.Desc))
+			enableKnowledgeMessageText, err := c.Chat(collection.GetChatSummary())
+			if err == nil {
+				res := ps.KnowledgeResponseParse(enableKnowledgeMessageText)
+				if res.IsNeedFindKnowledge {
+					// 先去 embedding
+					cs := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
+						WithTemperature(Temperature)
+					if l.svcCtx.Config.Gemini.EnableProxy {
+						cs = cs.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+							WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+							WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+					}
+					embeddingResp, err := cs.CreateEmbedding(req.MSG)
+					if err == nil {
+						// 再 去 knowledgeUnitSegment 通过 embeddingResp 进行查询
+						//	db.Clauses(clause.OrderBy{
+						//		Expression: clause.Expr{SQL: "embedding <-> ?", Vars: []interface{}{pgvector.NewVector([]float32{1, 1, 1})}},
+						//	}).Limit(5).Find(&items)
+						db := l.svcCtx.DbEngin
+						var ls []model.KnowledgeUnitSegment
+						db.Table(l.svcCtx.Knowledge.KnowledgeUnitSegment.TableName()).Clauses(clause.OrderBy{
+							Expression: clause.Expr{SQL: "embedding <-> ?", Vars: []interface{}{pgvector.NewVector(embeddingResp.Embedding.Values)}},
+						}).Limit(2).Find(&ls)
+						contextString := ""
+						for _, segment := range ls {
+							fmt.Println("embedding 匹配结果为：", segment.Value)
+							contextString = contextString + segment.Value + "\n"
+						}
+						if contextString != "" {
+							// 更改 最后一个 prompts 的值
+							prompts[len(prompts)-1].Content.Data = contextString + prompts[len(prompts)-1].Content.Data
+						}
+					}
+				}
+			}
+			// 还原
+			collection.WithPrompt(basePrompt)
+		}
 
 		fmt.Println("上下文请求信息： collection.Prompt" + collection.Prompt)
 		fmt.Println(prompts)
@@ -253,7 +350,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 						})
 						return
 					}
-					collection.Set("", messageText, true)
+					collection.Set(openai.NewChatContent(), messageText, conversationId, true)
 					//// 再去插入数据
 					//table := l.svcCtx.ChatModel.Chat
 					//_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -318,7 +415,7 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 					MsgToUserID: strconv.FormatInt(userId, 10),
 				})
 
-				collection.Set("", messageText, true)
+				collection.Set(openai.NewChatContent(), messageText, conversationId, true)
 
 				// 再去插入数据
 				//table := l.svcCtx.ChatModel.Chat

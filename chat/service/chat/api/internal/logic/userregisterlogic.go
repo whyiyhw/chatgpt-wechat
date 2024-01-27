@@ -29,7 +29,6 @@ func NewUserRegisterLogic(ctx context.Context, svcCtx *svc.ServiceContext) *User
 }
 
 func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *types.UserRegisterReply, err error) {
-	// 判断用户是否已经注册
 	userModel := l.svcCtx.UserModel.User
 	exist, selectErr := userModel.WithContext(l.ctx).Where(userModel.Email.Eq(req.Email)).First()
 	switch {
@@ -48,10 +47,16 @@ func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *type
 	}
 
 	// 未注册的用户进行注册操作
+	count, _ := userModel.WithContext(l.ctx).Count()
+	isAdmin := false
+	if count == 0 {
+		isAdmin = true
+	}
 	if err := userModel.WithContext(l.ctx).Create(&model.User{
 		Email:    req.Email,
 		Name:     req.Name,
 		Password: string(hashedPassword),
+		IsAdmin:  isAdmin,
 	}); err != nil {
 		return nil, errors.Wrapf(xerr.NewErrMsg("用户注册失败"), "用户注册失败 %v", err)
 	}

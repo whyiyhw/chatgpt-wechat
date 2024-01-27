@@ -44,7 +44,7 @@ CREATE INDEX knowledge_id_idx ON knowledge_unit ("knowledge_id");
 
 
 -- 开启向量索引
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE knowledge_unit_segments
 (
@@ -66,3 +66,4 @@ comment on column knowledge_unit_segments.embedding is '知识单元分段内容
 
 -- 加入索引 knowledge_id_idx
 CREATE INDEX knowledge_id_unit_id_idx ON knowledge_unit_segments ("knowledge_id", "knowledge_unit_id");
+CREATE INDEX ON knowledge_unit_segments USING hnsw(embedding vector_l2_ops);

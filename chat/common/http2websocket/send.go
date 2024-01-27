@@ -14,6 +14,7 @@ var MsgTypeStop MessageType = "stop"
 
 type MessageType string
 
+// SendData 发送给用户数据
 type SendData struct {
 	MsgID       string      `json:"msg_id"`
 	Msg         string      `json:"msg"`
@@ -21,7 +22,8 @@ type SendData struct {
 	MsgToUserID string      `json:"msg_to_user_id"`
 }
 
-type SendMsg struct {
+// RealSendMsg 实际上发送给websocket的数据
+type RealSendMsg struct {
 	Msg    string `json:"msg"`
 	ToUser string `json:"to_user"`
 	Data   struct {
@@ -34,7 +36,7 @@ type SendMsg struct {
 // Http2websocket 给(全体/指定)用户推送消息
 func Http2websocket(send SendData) {
 
-	newSendMsg := SendMsg{
+	newSendMsg := RealSendMsg{
 		Msg:    send.Msg,
 		ToUser: send.MsgToUserID,
 		Data: struct {

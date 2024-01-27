@@ -101,6 +101,10 @@ service chat-api {
 	@handler BotModelDetailHandler
 	post /bot/model/detail (BotModelDetailReq) returns (BotModelDetailReply)
 
+	// bot 关联 knowledge
+	@handler BotKnowledgeUpdateHandler
+	post /bot/knowledge/update (BotKnowledgeUpdateReq) returns (BotKnowledgeUpdateReply)
+
 	// Knowledge 相关业务
 	// Knowledge 新增
 	@handler KnowledgeCreateHandler

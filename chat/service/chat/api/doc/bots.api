@@ -182,4 +182,13 @@ type (
         ModelName string `json:"model_name" " label:"模型名称"`
         Temperature float64 `json:"temperature" label:"温度"`
     }
+
+    // bot 关联知识库
+    BotKnowledgeUpdateReq {
+        BotID int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+        KnowledgeID int64 `json:"knowledge_id" validate:"required,min=1" label:"知识库ID"`
+    }
+    BotKnowledgeUpdateReply {
+    }
+
 )

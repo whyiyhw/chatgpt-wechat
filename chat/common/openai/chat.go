@@ -14,56 +14,7 @@ import (
 // ChatStream 数据流式传输
 func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (string, error) {
 
-	config := c.buildConfig()
-
-	cli := copenai.NewClientWithConfig(config)
-
-	// 打印请求信息
-	logx.Info("Chat stream req: ", req)
-	first := 0
-	var system ChatModelMessage
-	for i, msg := range req {
-		if msg.Role == "system" {
-			system = msg
-		}
-		if i%2 == 0 {
-			continue
-		}
-		//估算长度
-		if NumTokensFromMessages(req[len(req)-i-1:], ChatModel) < (c.TotalToken - c.MaxToken) {
-			first = len(req) - i - 1
-		} else {
-			break
-		}
-	}
-
-	var messages []copenai.ChatCompletionMessage
-
-	if first != 0 {
-		messages = append(messages, copenai.ChatCompletionMessage{
-			Role:    system.Role,
-			Content: system.Content,
-		})
-	}
-
-	for _, message := range req[first:] {
-		messages = append(messages, copenai.ChatCompletionMessage{
-			Role:    message.Role,
-			Content: message.Content,
-		})
-	}
-	fmt.Println("before model:", c.Model)
-	if _, ok := Models[c.Model]; !ok {
-		c.Model = ChatModel
-	}
-	request := copenai.ChatCompletionRequest{
-		Model:       c.Model,
-		Messages:    messages,
-		MaxTokens:   c.MaxToken,
-		Temperature: c.Temperature,
-		TopP:        1,
-	}
-	fmt.Println("current request:", request)
+	config, cli, request := c.commonChat(req)
 	stream, err := cli.CreateChatCompletionStream(context.Background(), request)
 
 	if err != nil {
@@ -103,14 +54,13 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 	}
 }
 
-func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
-
+func (c *ChatClient) commonChat(req []ChatModelMessage) (copenai.ClientConfig, *copenai.Client, copenai.ChatCompletionRequest) {
 	config := c.buildConfig()
+
 	cli := copenai.NewClientWithConfig(config)
 
 	// 打印请求信息
-	logx.Info("Chat req: ", req)
-
+	logx.Info("Chat stream req: ", req)
 	first := 0
 	var system ChatModelMessage
 	for i, msg := range req {
@@ -132,20 +82,27 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 
 	if first != 0 {
 		messages = append(messages, copenai.ChatCompletionMessage{
-			Role:    system.Role,
-			Content: system.Content,
+			Role:    SystemRole,
+			Content: system.Content.Data,
 		})
 	}
 
 	for _, message := range req[first:] {
 		messages = append(messages, copenai.ChatCompletionMessage{
 			Role:    message.Role,
-			Content: message.Content,
+			Content: message.Content.Data,
 		})
 	}
+	for i, message := range messages {
+		if message.Role != SystemRole && message.Role != UserRole {
+			messages[i].Role = ModelRole
+		}
+	}
+	fmt.Println("before model:", c.Model)
 	if _, ok := Models[c.Model]; !ok {
 		c.Model = ChatModel
 	}
+	fmt.Println("after model:", c.Model)
 	request := copenai.ChatCompletionRequest{
 		Model:       c.Model,
 		Messages:    messages,
@@ -153,6 +110,12 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 		Temperature: c.Temperature,
 		TopP:        1,
 	}
+	fmt.Println("current request:", request)
+	return config, cli, request
+}
+
+func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
+	config, cli, request := c.commonChat(req)
 	chat, err := cli.CreateChatCompletion(context.Background(), request)
 	if err != nil {
 		fmt.Println("req chat params:", config)
