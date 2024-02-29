@@ -5,8 +5,6 @@
 基础模块🕹️
 #help       查看所有指令
 #system 查看会话系统信息
-#usage 查看额度使用情况
-#usage:sk-xxx 查看指定 key 的使用情况
 #clear 清空当前会话的数据
 
 会话设置🦄
@@ -35,12 +33,6 @@
 ![image41.png](image41.png)
 ### `#system` 获取当前对话系统信息的基本信息，可用于判定配置是否正确加载 
 ![image42.png](image42.png)
-### `#usage` 获取当前默认 key 的额度使用情况
-![img_5.png](img_5.png)
-- //TODO 其它待完善（每日账单、账单发送到邮箱/本地、每个用户使用情况...）
-### `#usage:sk-xxx` 查看指定 key 的使用情况
-![img_6.png](img_6.png)
-- 在应用消息中 发送 `#usage:sk-P8OUnFOUJ8xxxxxxxxxxxxxh1b6sEQgbru1` 查询其它 key 的使用额度
 ### `#clear` 清空当前会话的上下文数据
 ![image43.png](image43.png)
 - 因为默认会加载上下文，之前的话题可能会影响到当前的对话，这个时候可以通过 `#clear` 清空上下文，重新开始对话
