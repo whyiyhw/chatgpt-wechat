@@ -117,6 +117,8 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					if !ok {
 						// 数据接受完成
 						if len(rs) > 0 {
+							// fixed #109 延时 100ms 发送消息,避免顺序错乱
+							time.Sleep(100 * time.Millisecond)
 							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
 						}
 						return
@@ -385,6 +387,8 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 					if !ok {
 						// 数据接受完成
 						if len(rs) > 0 {
+							// fixed #109 延时 100ms 发送消息,避免顺序错乱
+							time.Sleep(100 * time.Millisecond)
 							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
 						}
 						return
