@@ -103,6 +103,14 @@ type BotExploreListReq struct {
 	PageSize int `json:"page_size" validate:"required,min=1" label:"每页数量"`
 }
 
+type BotKnowledgeUpdateReply struct {
+}
+
+type BotKnowledgeUpdateReq struct {
+	BotID       int64 `json:"bot_id" validate:"required,min=1" label:"机器人ID"`
+	KnowledgeID int64 `json:"knowledge_id" validate:"required,min=1" label:"知识库ID"`
+}
+
 type BotListDetail struct {
 	ID     int64  `json:"id" label:"机器人ID"`
 	Name   string `json:"name" label:"机器人名称"`
@@ -366,9 +374,10 @@ type KnowledgeUpdateReq struct {
 }
 
 type UserDetailReply struct {
-	ID    int64  `json:"id" label:"用户id"`
-	Email string `json:"email" label:"邮箱"`
-	Name  string `json:"name" label:"用户名"`
+	ID      int64  `json:"id" label:"用户id"`
+	Email   string `json:"email" label:"邮箱"`
+	Name    string `json:"name" label:"用户名"`
+	IsAdmin bool   `json:"is_admin" label:"是否是管理员"`
 }
 
 type UserDetailReq struct {
@@ -388,7 +397,7 @@ type UserRegisterReply struct {
 }
 
 type UserRegisterReq struct {
-	Avatar   string `json:"avatar,optional" validate:"required" label:"头像"`
+	Avatar   string `json:"avatar,optional"  label:"头像"`
 	Email    string `json:"email,optional" validate:"required,email" label:"邮箱"`
 	Name     string `json:"name,optional" validate:"required,max=50" label:"用户名"`
 	Password string `json:"password,optional" validate:"required" label:"密码"`

@@ -82,12 +82,12 @@ func GetChatPluginPromptInfo(req string, l []Plugin) (res []openai.ChatModelMess
 	reqStr, _ := json.Marshal(t)
 
 	res = append(res, openai.ChatModelMessage{
-		Role:    "system",
-		Content: basePrompt,
+		Role:    openai.SystemRole,
+		Content: openai.NewChatContent(basePrompt),
 	})
 	res = append(res, openai.ChatModelMessage{
-		Role:    "user",
-		Content: string(reqStr),
+		Role:    openai.UserRole,
+		Content: openai.NewChatContent(string(reqStr)),
 	})
 	return res
 }

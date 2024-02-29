@@ -12,7 +12,7 @@ import (
 
 type (
 	Embed struct {
-		Values []float64 `json:"values"`
+		Values []float32 `json:"values"`
 	}
 
 	EmbeddingRequest struct {

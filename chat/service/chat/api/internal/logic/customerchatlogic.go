@@ -19,6 +19,7 @@ import (
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
 
+	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )
@@ -94,6 +95,12 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		}
 	}
 
+	uuidObj, uuidErr := uuid.NewUUID()
+	if uuidErr != nil {
+		go sendToUser(req.OpenKfID, req.CustomerID, "系统错误 会话唯一标识生成失败", l.svcCtx.Config)
+	}
+	conversationId := uuidObj.String()
+
 	// gemini api
 	if company == "gemini" {
 		// gemini client
@@ -125,7 +132,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			gemini.GetUserUniqueID(req.CustomerID, req.OpenKfID),
 		).WithModel(modelName).WithPrompt(l.svcCtx.Config.Gemini.Prompt).WithClient(c).
 			//WithImage(req.OpenKfID, req.CustomerID). // 为后续版本做准备，Gemini 暂时不支持图文问答展示
-			Set(gemini.NewChatContent(req.Msg), "", false)
+			Set(gemini.NewChatContent(req.Msg), "", conversationId, false)
 
 		prompts := collection.GetChatSummary()
 
@@ -146,7 +153,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 						sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error(), l.svcCtx.Config)
 						return
 					}
-					collection.Set(gemini.NewChatContent(), messageText, true)
+					collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
 					// 再去插入数据
 					table := l.svcCtx.ChatModel.Chat
 					_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -208,7 +215,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 				// 把数据 发给微信用户
 				go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
 
-				collection.Set(gemini.NewChatContent(), messageText, true)
+				collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
 
 				// 再去插入数据
 				table := l.svcCtx.ChatModel.Chat
@@ -365,7 +372,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 							req.Msg, runPluginInfo.PluginName, runPluginInfo.Input, runPluginInfo.Output, runPluginInfo.PluginName,
 						)
 						// 插件处理成功，存入上下文
-						collection.Set(q, "ok", false)
+						collection.Set(openai.NewChatContent(q), "ok", conversationId, false)
 						// 客服消息不开启 debug 模式，因为响应条数 5条的限制
 					}
 				}
@@ -374,9 +381,9 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			// 基于 summary 进行补充
 			messageText := ""
 			for _, chat := range embeddingData {
-				collection.Set(chat.Q, chat.A, false)
+				collection.Set(openai.NewChatContent(chat.Q), chat.A, conversationId, false)
 			}
-			collection.Set(req.Msg, "", false)
+			collection.Set(openai.NewChatContent(req.Msg), "", conversationId, false)
 
 			prompts := collection.GetChatSummary()
 			if l.svcCtx.Config.Response.Stream {
@@ -392,7 +399,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 						sendToUser(req.OpenKfID, req.CustomerID, "系统拥挤，稍后再试~"+err.Error(), l.svcCtx.Config)
 						return
 					}
-					collection.Set("", messageText, true)
+					collection.Set(openai.NewChatContent(), messageText, conversationId, true)
 					// 再去插入数据
 					table := l.svcCtx.ChatModel.Chat
 					_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -436,7 +443,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 
 			// 一次性响应
 			if l.model == openai.TextModel {
-				messageText, err = c.Completion(collection.GetCompletionSummary())
+				messageText, err = c.Completion(prompts)
 			} else {
 				messageText, err = c.Chat(prompts)
 			}
@@ -447,7 +454,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 
 			// 然后把数据 发给对应的客户
 			go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
-			collection.Set("", messageText, true)
+			collection.Set(openai.NewChatContent(), messageText, conversationId, true)
 			table := l.svcCtx.ChatModel.Chat
 			_ = table.WithContext(context.Background()).Create(&model.Chat{
 				User:       req.CustomerID,
@@ -464,7 +471,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 }
 
 func (l *CustomerChatLogic) setModelName() (ls *CustomerChatLogic) {
-	m := "gpt-3.5-turbo"
+	m := openai.ChatModel
 	for _, s := range l.svcCtx.Config.WeCom.MultipleApplication {
 		if s.ManageAllKFSession {
 			m = s.Model
@@ -721,6 +728,11 @@ func (p CustomerCommendImage) customerExec(l *CustomerChatLogic, req *types.Cust
 	).WithModel(c.Model).
 		WithPrompt(l.svcCtx.Config.Gemini.Prompt).
 		WithClient(c).
-		Set(gemini.NewChatContent("我向你描述一副图片的内容如下：\n\n"+result), "收到,我了解了您的图片！", true)
+		Set(
+			gemini.NewChatContent("我向你描述一副图片的内容如下：\n\n"+result),
+			"收到,我了解了您的图片！",
+			"",
+			true,
+		)
 	return false
 }

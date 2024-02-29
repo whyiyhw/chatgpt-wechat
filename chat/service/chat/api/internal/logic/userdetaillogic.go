@@ -41,9 +41,10 @@ func (l *UserDetailLogic) UserDetail(req *types.UserDetailReq) (resp *types.User
 			return nil, errors.Wrapf(xerr.NewErrMsg("您无权限访问"), "您无权限访问")
 		}
 		return &types.UserDetailReply{
-			ID:    first.ID,
-			Name:  first.Name,
-			Email: first.Email,
+			ID:      first.ID,
+			Name:    first.Name,
+			Email:   first.Email,
+			IsAdmin: first.IsAdmin,
 		}, nil
 	}
 

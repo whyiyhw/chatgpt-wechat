@@ -19,45 +19,7 @@ import (
 )
 
 func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error) {
-	cs := c.buildConfig()
-	client := cs.HTTPClient
-	start := 0
-	reqBody := new(RequestBody)
-	for i := range chatRequest {
-		//估算长度
-		if (NumTokensFromMessages(chatRequest[len(chatRequest)-i-1:], "gpt-4") < (ChatModelInputTokenLimit[cs.Model])) &&
-			chatRequest[len(chatRequest)-i-1].Role == ModelRole {
-			start = len(chatRequest) - i - 1
-		} else {
-			break
-		}
-	}
-	var messages []Contents
-	var pervParts []Part
-	for _, message := range chatRequest[start:] {
-		if message.Content.MIMEType == MimetypeTextPlain {
-			contents := new(Contents)
-			contents.Role = message.Role
-			contents.Parts = append(contents.Parts, Part{
-				Text: message.Content.Data,
-			})
-			if len(pervParts) > 0 {
-				contents.Parts = append(contents.Parts, pervParts...)
-			}
-			// 清空 pervParts
-			pervParts = []Part{}
-			messages = append(messages, *contents)
-			reqBody.Contents = append(reqBody.Contents, *contents)
-		} else {
-			pervParts = append(pervParts, Part{
-				InlineData: &InlineData{
-					MimeType: message.Content.MIMEType,
-					Data:     message.Content.Data,
-				},
-			})
-			cs.WithModel(VisionModel)
-		}
-	}
+	client, reqBody := c.commonChat(chatRequest)
 
 	s, _ := json.Marshal(reqBody)
 
@@ -126,9 +88,6 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 		)
 		return txt, errors.New(result.Message)
 	}
-	//for _, part := range content.Content.Parts {
-	//	messageText = fmt.Sprintf("%s%v", messageText, part.Text)
-	//}
 	for _, candidate := range result.Candidates {
 		if len(candidate.Content.Parts) > 0 {
 			txt += candidate.Content.Parts[0].Text
@@ -138,7 +97,7 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 	return txt, nil
 }
 
-func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan string) (txt string, err error) {
+func (c *ChatClient) commonChat(chatRequest []ChatModelMessage) (*http.Client, *RequestBody) {
 	cs := c.buildConfig()
 	client := cs.HTTPClient
 	start := 0
@@ -152,7 +111,6 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 			break
 		}
 	}
-	fmt.Println("start:", start)
 	var messages []Contents
 	var pervParts []Part
 	for _, message := range chatRequest[start:] {
@@ -164,9 +122,9 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 			})
 			if len(pervParts) > 0 {
 				contents.Parts = append(contents.Parts, pervParts...)
-				// 清空 pervParts
-				pervParts = []Part{}
 			}
+			// 清空 pervParts
+			pervParts = []Part{}
 			messages = append(messages, *contents)
 			reqBody.Contents = append(reqBody.Contents, *contents)
 		} else {
@@ -179,7 +137,16 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 			cs.WithModel(VisionModel)
 		}
 	}
+	for i, content := range reqBody.Contents {
+		if content.Role != UserRole {
+			reqBody.Contents[i].Role = ModelRole
+		}
+	}
+	return client, reqBody
+}
 
+func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan string) (txt string, err error) {
+	client, reqBody := c.commonChat(chatRequest)
 	s, _ := json.Marshal(reqBody)
 
 	fmt.Println("body" + string(s))
@@ -351,7 +318,7 @@ func GetImageContent(url string) (string, string, error) {
 	// get mime type of body
 	mime := http.DetectContentType(body)
 
-	//MIME type must be image/png, image/jpeg, image/webp, image/heic, or image/heif.\n
+	//MIME type must be `image/png`, image/jpeg, image/webp, image/heir, or image/heif.\n
 	if mime == "image/gif" {
 		gifImage, err := gif.Decode(bytes.NewReader(body))
 		if err != nil {

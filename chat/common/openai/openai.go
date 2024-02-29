@@ -12,6 +12,10 @@ import (
 	"golang.org/x/net/proxy"
 )
 
+const SystemRole = "system"
+const UserRole = "user"
+const ModelRole = "assistant"
+
 const TextModel = "text-davinci-003"
 const ChatModel = "gpt-3.5-turbo"
 const ChatModelTurboInstruct = "gpt-3.5-turbo-instruct"
@@ -53,9 +57,33 @@ var TotalToken = 3900
 var MaxToken = 2000
 var Temperature = 0.8
 
+const MimetypeTextPlain = "text/plain"
+
 type ChatModelMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	MessageId string      `json:"message_id"`
+	Role      string      `json:"role"`
+	Content   ChatContent `json:"content"`
+}
+
+func NewChatContent(data ...string) ChatContent {
+	if len(data) == 0 {
+		return ChatContent{}
+	}
+	if len(data) == 1 {
+		return ChatContent{
+			MIMEType: MimetypeTextPlain,
+			Data:     data[0],
+		}
+	}
+	return ChatContent{
+		Data:     data[0],
+		MIMEType: data[1],
+	}
+}
+
+type ChatContent struct {
+	MIMEType string `json:"mime_type"`
+	Data     string `json:"data"`
 }
 
 type ChatClient struct {

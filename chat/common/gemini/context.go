@@ -37,18 +37,20 @@ func getSessionKey(sessionKey string) string {
 	return fmt.Sprintf(redis.SessionKey, sessionKey)
 }
 
-func (c *UserContext) Set(q ChatContent, a string, save bool) *UserContext {
+func (c *UserContext) Set(q ChatContent, a, conversationId string, save bool) *UserContext {
 
 	if q.Data != "" {
 		c.Messages = append(c.Messages, ChatModelMessage{
-			Role: UserRole,
+			MessageId: conversationId,
+			Role:      UserRole,
 			Content: ChatContent{
 				MIMEType: q.MIMEType,
 				Data:     q.Data,
 			},
 		})
 		c.Summary = append(c.Summary, ChatModelMessage{
-			Role: UserRole,
+			MessageId: conversationId,
+			Role:      UserRole,
 			Content: ChatContent{
 				MIMEType: q.MIMEType,
 				Data:     q.Data,
@@ -58,14 +60,16 @@ func (c *UserContext) Set(q ChatContent, a string, save bool) *UserContext {
 
 	if a != "" {
 		c.Messages = append(c.Messages, ChatModelMessage{
-			Role: ModelRole,
+			MessageId: conversationId,
+			Role:      ModelRole,
 			Content: ChatContent{
 				MIMEType: MimetypeTextPlain,
 				Data:     a,
 			},
 		})
 		c.Summary = append(c.Summary, ChatModelMessage{
-			Role: ModelRole,
+			MessageId: conversationId,
+			Role:      ModelRole,
 			Content: ChatContent{
 				MIMEType: MimetypeTextPlain,
 				Data:     a,
@@ -191,7 +195,7 @@ func (c *UserContext) WithImage(agentID int64, userID string) *UserContext {
 				//sendToUser(req.AgentID, req.UserID, "读取图片文件失败:"+err.Error(), l.svcCtx.Config)
 				return c
 			}
-			c.Set(NewChatContent(content, mime), "", false)
+			c.Set(NewChatContent(content, mime), "", "", false)
 		}
 		// 清理图片信息
 		redis.Rdb.Del(context.Background(), cacheKey)

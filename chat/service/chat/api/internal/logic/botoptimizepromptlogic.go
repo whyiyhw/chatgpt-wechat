@@ -66,30 +66,32 @@ func (l *BotOptimizePromptLogic) BotOptimizePrompt(req *types.BotOptimizePromptR
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
 				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
 		}
-		var prompts []gemini.ChatModelMessage
-		prompts = append([]gemini.ChatModelMessage{
+		prompts := []gemini.ChatModelMessage{
 			{
-				Role: gemini.UserRole,
+				MessageId: conversationId,
+				Role:      gemini.UserRole,
 				Content: gemini.ChatContent{
 					MIMEType: gemini.MimetypeTextPlain,
 					Data:     basePrompt,
 				},
 			},
 			{
-				Role: gemini.ModelRole,
+				MessageId: conversationId,
+				Role:      gemini.ModelRole,
 				Content: gemini.ChatContent{
 					MIMEType: gemini.MimetypeTextPlain,
 					Data:     "好的，收到！",
 				},
 			},
 			{
-				Role: gemini.UserRole,
+				MessageId: conversationId,
+				Role:      gemini.UserRole,
 				Content: gemini.ChatContent{
 					MIMEType: gemini.MimetypeTextPlain,
 					Data:     req.OriginPrompt,
 				},
 			},
-		}, prompts...)
+		}
 
 		fmt.Println(prompts)
 		go func() {
@@ -191,7 +193,7 @@ func (l *BotOptimizePromptLogic) BotOptimizePrompt(req *types.BotOptimizePromptR
 		collection := openai.NewUserContext(
 			openai.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10)),
 		).WithModel(openai.ChatModel4).WithPrompt(basePrompt).WithClient(c).WithTimeOut(l.svcCtx.Config.Session.TimeOut).
-			Set(req.OriginPrompt, "", false)
+			Set(openai.NewChatContent(req.OriginPrompt), "", conversationId, false)
 
 		prompts := collection.GetChatSummary()
 

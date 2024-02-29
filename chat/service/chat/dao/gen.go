@@ -21,6 +21,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Bot:                  newBot(db, opts...),
 		BotsPrompt:           newBotsPrompt(db, opts...),
 		BotsWithCustom:       newBotsWithCustom(db, opts...),
+		BotsWithKnowledge:    newBotsWithKnowledge(db, opts...),
 		BotsWithModel:        newBotsWithModel(db, opts...),
 		Chat:                 newChat(db, opts...),
 		ChatConfig:           newChatConfig(db, opts...),
@@ -38,6 +39,7 @@ type Query struct {
 	Bot                  bot
 	BotsPrompt           botsPrompt
 	BotsWithCustom       botsWithCustom
+	BotsWithKnowledge    botsWithKnowledge
 	BotsWithModel        botsWithModel
 	Chat                 chat
 	ChatConfig           chatConfig
@@ -56,6 +58,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Bot:                  q.Bot.clone(db),
 		BotsPrompt:           q.BotsPrompt.clone(db),
 		BotsWithCustom:       q.BotsWithCustom.clone(db),
+		BotsWithKnowledge:    q.BotsWithKnowledge.clone(db),
 		BotsWithModel:        q.BotsWithModel.clone(db),
 		Chat:                 q.Chat.clone(db),
 		ChatConfig:           q.ChatConfig.clone(db),
@@ -81,6 +84,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Bot:                  q.Bot.replaceDB(db),
 		BotsPrompt:           q.BotsPrompt.replaceDB(db),
 		BotsWithCustom:       q.BotsWithCustom.replaceDB(db),
+		BotsWithKnowledge:    q.BotsWithKnowledge.replaceDB(db),
 		BotsWithModel:        q.BotsWithModel.replaceDB(db),
 		Chat:                 q.Chat.replaceDB(db),
 		ChatConfig:           q.ChatConfig.replaceDB(db),
@@ -96,6 +100,7 @@ type queryCtx struct {
 	Bot                  *botDo
 	BotsPrompt           *botsPromptDo
 	BotsWithCustom       *botsWithCustomDo
+	BotsWithKnowledge    *botsWithKnowledgeDo
 	BotsWithModel        *botsWithModelDo
 	Chat                 *chatDo
 	ChatConfig           *chatConfigDo
@@ -111,6 +116,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Bot:                  q.Bot.WithContext(ctx),
 		BotsPrompt:           q.BotsPrompt.WithContext(ctx),
 		BotsWithCustom:       q.BotsWithCustom.WithContext(ctx),
+		BotsWithKnowledge:    q.BotsWithKnowledge.WithContext(ctx),
 		BotsWithModel:        q.BotsWithModel.WithContext(ctx),
 		Chat:                 q.Chat.WithContext(ctx),
 		ChatConfig:           q.ChatConfig.WithContext(ctx),

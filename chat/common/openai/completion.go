@@ -10,19 +10,9 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-func (c *ChatClient) Completion(req string) (string, error) {
-	config := c.buildConfig()
-	cli := copenai.NewClientWithConfig(config)
+func (c *ChatClient) Completion(req []ChatModelMessage) (string, error) {
+	config, cli, request := c.commonCompletion(req)
 
-	// 打印请求信息
-	logx.Info("Completion req: ", req)
-	request := copenai.CompletionRequest{
-		Model:       copenai.GPT3Dot5TurboInstruct,
-		Prompt:      req,
-		MaxTokens:   c.MaxToken,
-		Temperature: c.Temperature,
-		TopP:        1,
-	}
 	completion, err := cli.CreateCompletion(context.Background(), request)
 	if err != nil {
 		fmt.Println("req completion params:", config)
@@ -38,71 +28,7 @@ func (c *ChatClient) Completion(req string) (string, error) {
 
 func (c *ChatClient) CompletionStream(req []ChatModelMessage, channel chan string) (string, error) {
 
-	config := c.buildConfig()
-
-	cli := copenai.NewClientWithConfig(config)
-
-	// 打印请求信息
-	logx.Info("req: ", req)
-	first := 0
-	var system ChatModelMessage
-	for i, msg := range req {
-		if msg.Role == "system" {
-			system = msg
-		}
-		if i%2 == 0 {
-			continue
-		}
-		//估算长度
-		if NumTokensFromMessages(req[len(req)-i-1:], TextModel) < (c.TotalToken - c.MaxToken) {
-			first = len(req) - i - 1
-		} else {
-			break
-		}
-	}
-
-	var messages []copenai.ChatCompletionMessage
-
-	if first != 0 {
-		messages = append(messages, copenai.ChatCompletionMessage{
-			Role:    system.Role,
-			Content: system.Content,
-		})
-	}
-
-	for _, message := range req[first:] {
-		messages = append(messages, copenai.ChatCompletionMessage{
-			Role:    message.Role,
-			Content: message.Content,
-		})
-	}
-	fmt.Println("current", c.Model)
-	if _, ok := Models[c.Model]; !ok {
-		c.Model = TextModel
-	}
-	lastPrompt := ""
-	request := copenai.CompletionRequest{
-		Model:       c.Model,
-		MaxTokens:   c.MaxToken,
-		Temperature: c.Temperature,
-		TopP:        1,
-	}
-	if first != 0 {
-		lastPrompt = system.Content + "\n"
-	}
-	l := len(req[first:])
-	for k, val := range req[first:] {
-		switch val.Role {
-		case "user":
-			lastPrompt += "Q: " + val.Content + "\n"
-			if l == k+1 {
-				lastPrompt += "A: "
-			}
-		case "assistant":
-			lastPrompt += "A: " + val.Content + "\n"
-		}
-	}
-	request.Prompt = lastPrompt
+	config, cli, request := c.commonCompletion(req)
 
 	stream, err := cli.CreateCompletionStream(context.Background(), request)
 
@@ -140,4 +66,77 @@ func (c *ChatClient) CompletionStream(req []ChatModelMessage, channel chan strin
 
 		logx.Info("Stream response:", response)
 	}
+}
+
+func (c *ChatClient) commonCompletion(req []ChatModelMessage) (copenai.ClientConfig, *copenai.Client, copenai.CompletionRequest) {
+	config := c.buildConfig()
+
+	cli := copenai.NewClientWithConfig(config)
+
+	// 打印请求信息
+	logx.Info("req: ", req)
+	first := 0
+	var system ChatModelMessage
+	for i, msg := range req {
+		if msg.Role == SystemRole {
+			system = msg
+		}
+		if i%2 == 0 {
+			continue
+		}
+		//估算长度
+		if NumTokensFromMessages(req[len(req)-i-1:], TextModel) < (c.TotalToken - c.MaxToken) {
+			first = len(req) - i - 1
+		} else {
+			break
+		}
+	}
+
+	var messages []copenai.ChatCompletionMessage
+
+	if first != 0 {
+		messages = append(messages, copenai.ChatCompletionMessage{
+			Role:    system.Role,
+			Content: system.Content.Data,
+		})
+	}
+
+	for _, message := range req[first:] {
+		messages = append(messages, copenai.ChatCompletionMessage{
+			Role:    message.Role,
+			Content: message.Content.Data,
+		})
+	}
+	if _, ok := Models[c.Model]; !ok {
+		c.Model = TextModel
+	}
+	for i, message := range messages {
+		if message.Role != SystemRole && message.Role != UserRole {
+			messages[i].Role = ModelRole
+		}
+	}
+	lastPrompt := ""
+	request := copenai.CompletionRequest{
+		Model:       c.Model,
+		MaxTokens:   c.MaxToken,
+		Temperature: c.Temperature,
+		TopP:        1,
+	}
+	if first != 0 {
+		lastPrompt = system.Content.Data + "\n"
+	}
+	l := len(req[first:])
+	for k, val := range req[first:] {
+		switch val.Role {
+		case UserRole:
+			lastPrompt += "Q: " + val.Content.Data + "\n"
+			if l == k+1 {
+				lastPrompt += "A: "
+			}
+		case ModelRole:
+			lastPrompt += "A: " + val.Content.Data + "\n"
+		}
+	}
+	request.Prompt = lastPrompt
+	return config, cli, request
 }

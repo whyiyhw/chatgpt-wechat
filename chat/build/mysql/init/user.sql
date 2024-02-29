@@ -6,6 +6,7 @@ CREATE TABLE `user`
     `email`      varchar(121) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '用户邮箱',
     `password`   varchar(255) COLLATE utf8mb4_unicode_ci                       NOT NULL DEFAULT '' COMMENT '用户密码',
     `avatar`     varchar(255) COLLATE utf8mb4_unicode_ci                       NOT NULL DEFAULT '' COMMENT '用户头像',
+    `is_admin`   boolean                                                       DEFAULT false       COMMENT '是否为管理员',
     `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`)
