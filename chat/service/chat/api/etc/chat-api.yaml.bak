@@ -31,7 +31,7 @@ ModelProvider:                                      # 服务提供者 可选择 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key
   MaxToken: 4000                                    # 一次会话能响应内容的最大 token
-  TotalToken: 8192                                  # 一次对话 openai 能处理的最大 token 数量 gpt3-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
+  TotalToken: 8192                                  # 一次对话 openai 能处理的最大 token 数量 gpt-3.5-turbo:4096 gpt-3.5-turbo-16k:16384 / gpt-4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
   EnableProxy: false                                #（可选）是否开启代理，默认为 false
 

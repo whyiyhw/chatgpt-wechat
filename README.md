@@ -9,7 +9,7 @@
 - 原始功能基本不受影响，但数据库切换到 `pgsql` 方便 向量化查询
 - 支持了 Google 的 Gemini-pro 每个 token 60/m 的调用还是很香
 - 支持了 web bot 设置，同时支持将 bot 发布到客服
-- web 项目地址 [https://github.com/whyiyhw/agent-web](https://github.com/whyiyhw/agent-web) 前端苦手，全靠 Gemini 配合写的页面
+- web 项目地址 [https://github.com/whyiyhw/agent-web](https://github.com/whyiyhw/agent-web) 前端苦手，全靠 GPT4 配合写的页面
 - 支持了最新的企业微信客服协议
 - 项目小助手，有问题可以先问它哦 ➡️➡️➡️ ![img.png](doc/imgv101.png)
 

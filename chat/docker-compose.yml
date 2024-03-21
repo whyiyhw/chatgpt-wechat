@@ -61,7 +61,7 @@ services:
 #    command: --default-authentication-plugin=caching_sha2_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
   pgvector:
     container_name: pgvector
-    image: ankane/pgvector:v0.5.1
+    image: pgvector/pgvector:0.6.2-pg15
     environment:
       TZ: Asia/Shanghai
       PGTZ: Asia/Shanghai

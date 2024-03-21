@@ -56,14 +56,8 @@ Proxy:                                              # （可选）代理配置
     Username: ""                                    # （可选）代理用户名
     Password: ""                                    # （可选）代理密码
 
-OCR:                                                # （可选）OCR配置 ,开启图片识别
-  Company: "ali"                                    # （可选）识别公司，目前支持阿里云
-  AliYun:                                           # （可选）阿里云配置
-    AccessKeyId: ""                                 # （可选）阿里云 key
-    AccessKeySecret: ""                             # （可选）阿里云 secret
-
 Embeddings:
-  Enable: true
+  Enable: false
   Mlvus:
     Host: "192.168.1.202:19530"
     KeyWords:
@@ -113,10 +107,9 @@ Draw:                                               # 绘画配置
   OpenAi:
     Key: "xxxxxx"                                   # openai key
     Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
-    Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理
-    Auth:                                           # （可选）代理认证
-      Username: ""                                  # （可选）代理用户名 默认为空
-      Password: ""                                  # （可选）代理密码 默认为空
+    EnableProxy: false                              # （可选）是否开启代理，默认为 false
+    Origin: "open_ai"                               # （可选）默认为 open_ai 也支持 azure , azure_ad
+    Engine: ""                                      # （可选）默认为空 "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
 
 Session:                                            # 会话相关配置
   Timeout: -1                                       # 会话超时时间（m）分钟，如果在（x）分钟内，未进行对话，本次会话内容会被销毁，-1为永不超时（可选）

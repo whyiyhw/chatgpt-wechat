@@ -17,21 +17,19 @@ Auth:                                               # jwt配置（可选）自�
 
 WeCom:                                              # 企业微信配置
   Port:                                             # 企业微信回调监听端口（可选）默认为8887
-  CustomerServiceSecret: "xxxx-xxxx-xxxx"           # 企业微信客服消息 Secret
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
-  DefaultAgentSecret: "55sO-xxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
-  BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型， 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"                                  # openai 基础设定（可选）
-  Model: "text-davinci-003"                                                                                                                     # openai 模型（可选）默认为 gpt-3.5-turbo-0301
-  Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语（可选）
   Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
   EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
   MultipleApplication:                              # 多应用配置（可选）
     - AgentID: 1000002                                # 企业微信应用ID
       AgentSecret: "55sO-xxxxxxxxxxxxxxxxxxxxxxx"     # 企业微信应用 Secret
       ManageAllKFSession: true                        # manage_all_kf_session 为 true 时，管理所有客服会话
-      Model: "gpt-3.5-turbo"                          # openai 模型（可选）默认为 gpt-3.5-turbo-0301
+      Model: "gpt-3.5-turbo"                          # openai 模型（可选）默认为 gpt-3.5-turbo
       BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # openai 基础设定（可选）
       Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语
+
+ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
+  Company: "openai"                                 # openai / gemini
 
 OpenAi:                                             # openai配置
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # openai key
@@ -42,28 +40,22 @@ OpenAi:                                             # openai配置
   TotalToken: 3900                                  # 一次对话 openai 能处理的最大 token 数量 gpt3:4096 /gpt4:8192 /gpt-4-32k:32768
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
 
-Proxy:                                              # 代理配置 （可选）
-  Enable: false                                     # 是否启用代理，默认为 false（可选）
-  Socket5: "127.0.0.1:1080"                         # 代理地址 默认为 127.0.0.1:1080（可选）
-  Http: "http://127.0.0.1:1080"                     # 代理地址 默认为空（可选）
-
-OCR:                                                # OCR配置 ,开启图片识别（可选）
-  Company: "ali"                                    # 识别公司，目前支持阿里云（可选）
-  AliYun:                                           # 阿里云配置
-    AccessKeyId: ""                                 # 阿里云 key
-    AccessKeySecret: ""                             # 阿里云 secret
-
-Response:                                           # 回复配置
-  Stream: true                                      # 是否开启流式回复,自动断句推荐（可选）
-  
-ModelProvider:                                      # 服务提供者 可选择 openai 与 gemini  默认为 openai
-  Company: "openai"                                 # openai / gemini
-
 Gemini:
   Key: "AIzaxxxxx-xxxxx"                            # gemini key
   Temperature: 0.8                                  # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于1时，其对话更加符有跳跃与创造力
   Prompt: "xxxx"                                    # model 角色背景
-  
+
+Proxy:                                              # 代理配置 （可选）
+  Enable: false                                     # 是否启用代理，默认为 false（可选）
+  Socket5: "127.0.0.1:1080"                         # 代理地址 默认为 127.0.0.1:1080（可选）
+  Http: "http://127.0.0.1:1080"                     # 代理地址 默认为空（可选）
+  Auth:                                             # 代理认证（可选）
+    Username: "xxxx"                                # 代理用户名（可选）
+    Password: "xxxx"                                # 代理密码（可选）
+
+Response:                                           # 回复配置
+  Stream: true                                      # 是否开启流式回复,自动断句推荐（可选）
+
 Plugins:
   Enable: true
   Debug: false
@@ -104,5 +96,7 @@ Draw:                                               # 绘画配置
   OpenAi:
     Key: "xxxxxx"                                   # openai key
     Host: "https://api.openai.com"                  # （可选）默认为 https://api.openai.com
-    Proxy: "http://127.0.0.1:1080"                  # （可选）http/socks5 代理（可选）
+    EnableProxy: false                              # （可选）是否开启代理，默认为 false
+    Origin: "open_ai"                               # （可选）默认为 open_ai 也支持 azure , azure_ad
+    Engine: ""                                      # （可选）默认为空 "deployment_name"(当 Origin 为 azure, azure_ad  时必填)
 ```

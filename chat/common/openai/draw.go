@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -19,22 +20,56 @@ import (
 )
 
 type Draw struct {
-	Host   string
-	APIKey string
-	Proxy  string
+	Host          string `json:"host"`
+	APIKey        string `json:"APIKey"`
+	Origin        string `json:"origin"`
+	Engine        string `json:"engine"`
+	HttpProxy     string `json:"http_proxy"`
+	Socks5Proxy   string `json:"socks5_proxy"`
+	ProxyUserName string `json:"proxyUserName"`
+	ProxyPassword string `json:"proxyPassword"`
 }
 
-func NewOpenaiDraw(host, key, proxy string) *Draw {
+func NewOpenaiDraw(host, key string) *Draw {
 	return &Draw{
 		Host:   host,
 		APIKey: key,
-		Proxy:  proxy,
 	}
 }
 
-// WithProxy 设置代理
-func (od *Draw) WithProxy(proxy string) *Draw {
-	od.Proxy = proxy
+// WithOrigin 设置origin
+func (od *Draw) WithOrigin(origin string) *Draw {
+	od.Origin = origin
+	return od
+}
+
+// WithEngine 设置engine
+func (od *Draw) WithEngine(engine string) *Draw {
+	od.Engine = engine
+	return od
+}
+
+// WithHttpProxy 设置代理
+func (od *Draw) WithHttpProxy(proxy string) *Draw {
+	od.HttpProxy = proxy
+	return od
+}
+
+// WithSocks5Proxy 设置socks5代理
+func (od *Draw) WithSocks5Proxy(proxy string) *Draw {
+	od.Socks5Proxy = proxy
+	return od
+}
+
+// WithProxyUserName 设置代理用户名
+func (od *Draw) WithProxyUserName(userName string) *Draw {
+	od.ProxyUserName = userName
+	return od
+}
+
+// WithProxyPassword 设置代理密码
+func (od *Draw) WithProxyPassword(password string) *Draw {
+	od.ProxyPassword = password
 	return od
 }
 
@@ -96,31 +131,46 @@ func (od *Draw) Txt2Img(prompt string, ch chan string) error {
 
 func (od *Draw) buildConfig() copenai.ClientConfig {
 	config := copenai.DefaultConfig(od.APIKey)
-	if od.Proxy != "" {
-		if strings.HasPrefix(od.Proxy, "http") {
-			proxyUrl, err := url.Parse(od.Proxy)
-			if err != nil {
-				logx.Error("proxy parse error", err)
-			}
-			transport := &http.Transport{
-				Proxy: http.ProxyURL(proxyUrl),
-			}
-			config.HTTPClient = &http.Client{
-				Transport: transport,
-			}
-		} else {
-			socks5Transport := &http.Transport{}
-			dialer, _ := proxy.SOCKS5("tcp", od.Proxy, nil, proxy.Direct)
-			socks5Transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dialer.Dial(network, addr)
-			}
-			config.HTTPClient = &http.Client{
-				Transport: socks5Transport,
-			}
+	if od.Origin == "azure" || od.Origin == "azure_ad" {
+		config = copenai.DefaultAzureConfig(od.APIKey, od.Host)
+		// 默认只使用 一个部署的模型
+		config.AzureModelMapperFunc = func(model string) string {
+			return od.Engine
 		}
 	}
-	// trim last slash
-	config.BaseURL = strings.TrimRight(od.Host, "/") + "/v1"
 
+	if od.HttpProxy != "" {
+		proxyUrl, _ := url.Parse(od.HttpProxy)
+		if od.ProxyUserName != "" && od.ProxyPassword != "" {
+			proxyUrl.User = url.UserPassword(od.ProxyUserName, od.ProxyPassword)
+		}
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyUrl),
+		}
+		config.HTTPClient = &http.Client{
+			Transport: transport,
+			Timeout:   300 * time.Second,
+		}
+	} else if od.Socks5Proxy != "" {
+		socks5Transport := &http.Transport{}
+		auth := proxy.Auth{}
+		if od.ProxyUserName != "" && od.ProxyPassword != "" {
+			auth.Password = od.ProxyPassword
+			auth.User = od.ProxyUserName
+		}
+		dialer, _ := proxy.SOCKS5("tcp", od.Socks5Proxy, &auth, proxy.Direct)
+		socks5Transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(network, addr)
+		}
+		config.HTTPClient = &http.Client{
+			Transport: socks5Transport,
+			Timeout:   300 * time.Second,
+		}
+	}
+
+	if od.Host != "" && od.Origin == "open_ai" {
+		// trim last slash
+		config.BaseURL = strings.TrimRight(od.Host, "/") + "/v1"
+	}
 	return config
 }

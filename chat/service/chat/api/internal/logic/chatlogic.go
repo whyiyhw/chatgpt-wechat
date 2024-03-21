@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"regexp"
 	"strconv"
@@ -25,6 +24,7 @@ import (
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
 
+	"github.com/google/uuid"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )
@@ -908,7 +908,6 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		logx.Info("使用openai音频转换")
 		cli = c
 	case "ali":
-		//logx.Info("使用阿里云音频转换")
 		//s, err := voice.NewSpeakClient(
 		//	l.svcCtx.Config.Speaker.AliYun.AccessKeyId,
 		//	l.svcCtx.Config.Speaker.AliYun.AccessKeySecret,
@@ -1014,11 +1013,17 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 						l.svcCtx.Config.Draw.StableDiffusion.Auth.Password,
 					)
 				} else if l.svcCtx.Config.Draw.Company == draw.OPENAI {
-					d = openai.NewOpenaiDraw(
-						l.svcCtx.Config.Draw.OpenAi.Host,
-						l.svcCtx.Config.Draw.OpenAi.Key,
-						l.svcCtx.Config.Draw.OpenAi.Proxy,
-					)
+					openaiDraw := openai.NewOpenaiDraw(
+						l.svcCtx.Config.Draw.OpenAi.Host, l.svcCtx.Config.Draw.OpenAi.Key).
+						WithOrigin(l.svcCtx.Config.Draw.OpenAi.Origin).
+						WithEngine(l.svcCtx.Config.Draw.OpenAi.Engine)
+					if l.svcCtx.Config.Draw.OpenAi.EnableProxy {
+						openaiDraw.WithHttpProxy(l.svcCtx.Config.Proxy.Http).
+							WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+							WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+							WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+					}
+					d = openaiDraw
 				} else {
 					sendToUser(req.AgentID, req.UserID, "系统错误:未知的绘画服务商", l.svcCtx.Config)
 					return
@@ -1100,55 +1105,6 @@ func (p CommendDraw) exec(l *ChatLogic, req *types.ChatReq) bool {
 	sendToUser(req.AgentID, req.UserID, "未知的命令，您可以通过 \n#help \n查看帮助", l.svcCtx.Config)
 	return false
 }
-
-//type CommendUsage struct{}
-//func (p CommendUsage) exec(l *ChatLogic, req *types.ChatReq) bool {
-//	if strings.HasPrefix(req.MSG, "#usage") {
-//		// 查询自己key的使用情况
-//		key := l.svcCtx.Config.OpenAi.Key
-//		if strings.HasPrefix(req.MSG, "#usage:") {
-//			key = strings.Replace(req.MSG, "#usage:", "", -1)
-//		}
-//		// 查询使用情况
-//
-//		usage, err := openai.GetUsageByKey(
-//			key, l.baseHost, l.svcCtx.Config.Proxy.Enable, l.svcCtx.Config.Proxy.Http, l.svcCtx.Config.Proxy.Socket5,
-//			l.svcCtx.Config.Proxy.Auth.Username, l.svcCtx.Config.Proxy.Auth.Password,
-//		)
-//
-//		if err != nil {
-//			logx.Info("get usage fail", err)
-//			sendToUser(req.AgentID, req.UserID, "查询使用情况失败，请重新尝试~", l.svcCtx.Config)
-//			return false
-//		}
-//		// openai client
-//		c := openai.NewChatClient(key).
-//			WithModel(l.model).
-//			WithBaseHost(l.baseHost).
-//			WithOrigin(l.svcCtx.Config.OpenAi.Origin).
-//			WithEngine(l.svcCtx.Config.OpenAi.Engine).
-//			WithMaxToken(l.svcCtx.Config.OpenAi.MaxToken).
-//			WithTemperature(l.svcCtx.Config.OpenAi.Temperature).
-//			WithTotalToken(l.svcCtx.Config.OpenAi.TotalToken)
-//
-//		if l.svcCtx.Config.Proxy.Enable {
-//			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
-//				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
-//				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
-//		}
-//		hasGpt4Msg := "否"
-//		if c.HasGpt4() {
-//			hasGpt4Msg = "是"
-//		}
-//		sendToUser(req.AgentID, req.UserID, fmt.Sprintf(
-//			"当前key的使用情况：\n到期时间：%s\n总计可用金额：%f$\n账户名称：%s\n已使用金额：%f$\n剩余可用金额：%f$\n是否绑卡：%s\n是否有gpt4权限：%s\n",
-//			usage.AccessUntil, usage.HardLimitUsd, usage.AccountName, usage.UsedAmountUsd, usage.RemainingAmountUsd,
-//			usage.HasPaymentMethod, hasGpt4Msg,
-//		), l.svcCtx.Config)
-//		return false
-//	}
-//	return true
-//}
 
 type CommendPlugin struct{}
 

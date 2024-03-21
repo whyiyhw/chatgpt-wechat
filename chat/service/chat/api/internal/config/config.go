@@ -61,15 +61,6 @@ type Config struct {
 		} `json:",optional"`
 	} `json:",optional"`
 
-	// ocr 配置
-	OCR struct {
-		Company string `json:",optional"`
-		AliYun  struct {
-			AccessKeyId     string
-			AccessKeySecret string
-		} `json:",optional"`
-	} `json:",optional"`
-
 	// embeddings 配置
 	Embeddings struct {
 		Enable bool `json:",optional,default=false"`
@@ -126,13 +117,11 @@ type Config struct {
 			}
 		} `json:",optional"`
 		OpenAi struct {
-			Key   string `json:",optional"`
-			Host  string `json:",optional,default=https://api.openai.com"`
-			Proxy string `json:",optional,default="`
-			Auth  struct {
-				Username string `json:",optional,default="`
-				Password string `json:",optional,default="`
-			} `json:",optional"`
+			Key         string `json:",optional"`
+			Host        string `json:",optional,default=https://api.openai.com"`
+			Origin      string `json:",optional,default=open_ai"`
+			Engine      string `json:",optional,default="`
+			EnableProxy bool   `json:",optional,default=false"`
 		}
 	} `json:",optional"`
 
