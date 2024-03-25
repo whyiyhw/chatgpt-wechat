@@ -394,7 +394,7 @@ func DealUserVoiceMessageByMediaID(mediaID string, agentID int64) (string, error
 	app := workwx.New(WeCom.CorpID, workwx.WithQYAPIHost(WeCom.QYAPIHost)).WithApp(defaultAgentSecret, agentID)
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
-	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
+	url := fmt.Sprintf("%s/cgi-bin/media/get?access_token=%s&media_id=%s", WeCom.QYAPIHost, token, mediaID)
 
 	fmt.Println("req voice url:", url)
 
@@ -536,7 +536,7 @@ func DealCustomerVoiceMessageByMediaID(mediaID string) (string, error) {
 	}
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
-	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
+	url := fmt.Sprintf("%s/cgi-bin/media/get?access_token=%s&media_id=%s", WeCom.QYAPIHost, token, mediaID)
 
 	fmt.Println("req voice url:", url)
 
@@ -554,7 +554,7 @@ func DealCustomerImageMessageByMediaID(mediaID string) (string, error) {
 	}
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
-	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
+	url := fmt.Sprintf("%s/cgi-bin/media/get?access_token=%s&media_id=%s", WeCom.QYAPIHost, token, mediaID)
 
 	return url, nil
 }
@@ -575,7 +575,7 @@ func GetCustomerList(page, limit int) ([]CustomAccount, error) {
 	//}
 
 	// http get
-	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/kf/account/list?access_token=%s", token)
+	url := fmt.Sprintf("%s/cgi-bin/kf/account/list?access_token=%s", WeCom.QYAPIHost, token)
 	fmt.Println("req url:", url)
 	type CustomReq struct {
 		Offset int `json:"offset"`
