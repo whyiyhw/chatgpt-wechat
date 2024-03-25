@@ -19,6 +19,7 @@ Auth:                                               # jwt配置（可选）自�
 WeCom:                                              # 企业微信配置
   Port: 8887                                        # 企业微信回调监听端口（可选）默认为8887
   CorpID: "wwxxxxxxxxxxxxxxxxxxxx"                  # 企业微信 CorpID
+  QYAPIHost: "https://qyapi.weixin.qq.com"          # 企业微信 API Host（可选）默认为 https://qyapi.weixin.qq.com
   Token: "xxxxxxxxxx"                               # 企业微信应用/客服消息 Token
   EncodingAESKey: "xxxxxxxxxxxxxxxx"                # 企业微信应用/客服消息 EncodingAESKey
   MultipleApplication:                              # 多应用配置

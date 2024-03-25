@@ -26,6 +26,7 @@ type Config struct {
 	WeCom struct {
 		Port                int `json:",optional,default=8887"`
 		CorpID              string
+		QYAPIHost           string `json:",optional,default=https://qyapi.weixin.qq.com"`
 		Token               string `json:",optional"`
 		EncodingAESKey      string `json:",optional"`
 		MultipleApplication []struct {

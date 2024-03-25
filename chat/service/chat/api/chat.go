@@ -51,6 +51,7 @@ func main() {
 	wecom.WeCom.RestPort = c.RestConf.Port
 	wecom.WeCom.Port = c.WeCom.Port
 	wecom.WeCom.CorpID = c.WeCom.CorpID
+	wecom.WeCom.QYAPIHost = c.WeCom.QYAPIHost
 	wecom.WeCom.Token = c.WeCom.Token
 	wecom.WeCom.EncodingAESKey = c.WeCom.EncodingAESKey
 	wecom.WeCom.Auth.AccessSecret = c.Auth.AccessSecret

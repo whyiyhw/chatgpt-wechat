@@ -27,6 +27,7 @@ var (
 		Port                int
 		RestPort            int
 		CorpID              string
+		QYAPIHost           string
 		Token               string
 		EncodingAESKey      string
 		MultipleApplication []Application
@@ -53,7 +54,8 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...str
 
 	if len(files) > 0 {
 		go func() {
-			app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
+			app := workwx.New(WeCom.CorpID, workwx.WithQYAPIHost(WeCom.QYAPIHost)).WithApp(corpSecret, agentID)
+
 			recipient := workwx.Recipient{
 				UserIDs: []string{userID},
 			}
@@ -126,7 +128,7 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...str
 	}
 
 	go func() {
-		app := workwx.New(WeCom.CorpID).WithApp(corpSecret, agentID)
+		app := workwx.New(WeCom.CorpID, workwx.WithQYAPIHost(WeCom.QYAPIHost)).WithApp(corpSecret, agentID)
 		recipient := workwx.Recipient{
 			UserIDs: []string{userID},
 		}
@@ -389,7 +391,7 @@ func DealUserVoiceMessageByMediaID(mediaID string, agentID int64) (string, error
 	if defaultAgentSecret == "" {
 		return "", fmt.Errorf("应用密钥不匹配")
 	}
-	app := workwx.New(WeCom.CorpID).WithApp(defaultAgentSecret, agentID)
+	app := workwx.New(WeCom.CorpID, workwx.WithQYAPIHost(WeCom.QYAPIHost)).WithApp(defaultAgentSecret, agentID)
 	token := app.GetAccessToken()
 	// https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=ACCESS_TOKEN&media_id=MEDIA_ID
 	url := fmt.Sprintf("https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=%s&media_id=%s", token, mediaID)
@@ -642,6 +644,6 @@ func getCustomerApp() (*workwx.WorkwxApp, bool) {
 		return nil, false
 	}
 	// 然后把数据 发给微信用户
-	app := workwx.New(WeCom.CorpID).WithApp(defaultAgentSecret, defaultAgentId)
+	app := workwx.New(WeCom.CorpID, workwx.WithQYAPIHost(WeCom.QYAPIHost)).WithApp(defaultAgentSecret, defaultAgentId)
 	return app, true
 }

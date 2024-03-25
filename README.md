@@ -11,6 +11,7 @@
 - 支持了 web bot 设置，同时支持将 bot 发布到客服
 - web 项目地址 [https://github.com/whyiyhw/agent-web](https://github.com/whyiyhw/agent-web) 前端苦手，全靠 GPT4 配合写的页面
 - 支持了最新的企业微信客服协议
+- 企业微信api支持自定义域名
 - 项目小助手，有问题可以先问它哦 ➡️➡️➡️ ![img.png](doc/imgv101.png)
 
 ## 主要能力（[点击查看详情](./doc/ability.md)）
