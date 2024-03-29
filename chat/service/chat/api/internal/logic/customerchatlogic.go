@@ -173,8 +173,8 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 					if !ok {
 						// 数据接受完成
 						if len(rs) > 0 {
-							// fixed #109 延时 100ms 发送消息,避免顺序错乱
-							time.Sleep(100 * time.Millisecond)
+							// fixed #109 延时 200ms 发送消息,避免顺序错乱
+							time.Sleep(200 * time.Millisecond)
 							go sendToUser(req.OpenKfID, req.CustomerID, string(rs)+
 								"\n--------------------------------\n"+req.Msg, l.svcCtx.Config,
 							)
@@ -419,8 +419,8 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 					if !ok {
 						// 数据接受完成
 						if len(rs) > 0 {
-							// fixed #109 延时 100ms 发送消息,避免顺序错乱
-							time.Sleep(100 * time.Millisecond)
+							// fixed #109 延时 200ms 发送消息,避免顺序错乱
+							time.Sleep(200 * time.Millisecond)
 							go sendToUser(req.OpenKfID, req.CustomerID,
 								string(rs)+"\n--------------------------------\n"+req.Msg,
 								l.svcCtx.Config,
