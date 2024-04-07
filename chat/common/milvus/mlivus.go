@@ -106,9 +106,15 @@ func Search(films []float64, addr string) []QA {
 			if err != nil {
 				log.Fatal(err.Error())
 			}
+			if qColumn == nil {
+				continue
+			}
 			q, err := qColumn.ValueByIdx(i)
 			if err != nil {
 				log.Fatal(err.Error())
+			}
+			if aColumn == nil {
+				continue
 			}
 			a, err := aColumn.ValueByIdx(i)
 			if err != nil {

@@ -5,14 +5,14 @@ import (
 	"gorm.io/gorm"
 	"time"
 
+	"chat/common/xerr"
+	"chat/service/chat/api/internal/svc"
+	"chat/service/chat/api/internal/types"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"
-
-	"chat/common/xerr"
-	"chat/service/chat/api/internal/svc"
-	"chat/service/chat/api/internal/types"
 )
 
 type UserLoginLogic struct {

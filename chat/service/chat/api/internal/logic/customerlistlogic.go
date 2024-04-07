@@ -1,10 +1,10 @@
 package logic
 
 import (
-	"chat/common/wecom"
 	"context"
 	"encoding/json"
 
+	"chat/common/wecom"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
 

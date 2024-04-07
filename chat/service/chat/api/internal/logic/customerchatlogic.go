@@ -98,6 +98,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	uuidObj, uuidErr := uuid.NewUUID()
 	if uuidErr != nil {
 		go sendToUser(req.OpenKfID, req.CustomerID, "系统错误 会话唯一标识生成失败", l.svcCtx.Config)
+		return nil, uuidErr
 	}
 	conversationId := uuidObj.String()
 
@@ -566,28 +567,20 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 	case "openai":
 		logx.Info("使用openai音频转换")
 		cli = c
-	case "ali":
-		logx.Info("使用阿里云音频转换")
-		//s, err := voice.NewSpeakClient(
-		//	l.svcCtx.Config.Speaker.AliYun.AccessKeyId,
-		//	l.svcCtx.Config.Speaker.AliYun.AccessKeySecret,
-		//	l.svcCtx.Config.Speaker.AliYun.AppKey,
-		//)
-		//if err != nil {
-		//	wecom.SendCustomerChatMessage(req.OpenKfID, req.CustomerID, "阿里云音频转换初始化失败:"+err.Error())
-		//	return false
-		//}
-		//msg = strings.Replace(msg, ".mp3", ".amr", -1)
-		//cli = s
 	default:
 		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:未知的音频转换服务商", l.svcCtx.Config)
 		return false
 	}
 
 	txt, err := cli.SpeakToTxt(msg)
-	if txt == "" || err != nil {
-		logx.Info("openai转换错误", err.Error())
+	if err != nil {
+		logx.Info("系统错误:音频信息转换错误", err.Error())
 		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:音频信息转换错误", l.svcCtx.Config)
+		return false
+	}
+	if txt == "" {
+		logx.Info("系统错误:音频信息转换为空")
+		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:音频信息转换为空", l.svcCtx.Config)
 		return false
 	}
 	// 语音识别成功

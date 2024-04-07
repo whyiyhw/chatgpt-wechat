@@ -36,7 +36,9 @@ func (c *ChatClient) CompletionStream(req []ChatModelMessage, channel chan strin
 		fmt.Println("req completion stream params:", config)
 		return "", err
 	}
-	defer stream.Close()
+	defer func(stream *copenai.CompletionStream) {
+		_ = stream.Close()
+	}(stream)
 
 	messageText := ""
 	for {

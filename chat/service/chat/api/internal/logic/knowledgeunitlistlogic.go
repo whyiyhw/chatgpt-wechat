@@ -1,12 +1,13 @@
 package logic
 
 import (
-	"chat/service/chat/api/internal/svc"
-	"chat/service/chat/api/internal/types"
 	"context"
 	"encoding/json"
-	"github.com/pkg/errors"
 
+	"chat/service/chat/api/internal/svc"
+	"chat/service/chat/api/internal/types"
+
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

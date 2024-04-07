@@ -1,12 +1,14 @@
 package logic
 
 import (
+	"context"
+	"testing"
+
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
-	"context"
+
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
-	"testing"
 )
 
 func TestUserLoginLogic_UserLogin(t *testing.T) {

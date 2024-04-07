@@ -1,15 +1,17 @@
 package logic
 
 import (
+	"context"
+	"flag"
+	"reflect"
+	"testing"
+
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
-	"context"
-	"flag"
+
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"
-	"reflect"
-	"testing"
 )
 
 var configFile = flag.String("f", "../../etc/chat-test-api.yaml", "the config file")

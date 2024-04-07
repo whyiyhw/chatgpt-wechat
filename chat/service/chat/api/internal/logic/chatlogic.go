@@ -52,6 +52,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 	uuidObj, err := uuid.NewUUID()
 	if err != nil {
 		go sendToUser(req.AgentID, req.UserID, "系统错误 会话唯一标识生成失败", l.svcCtx.Config)
+		return nil, err
 	}
 	conversationId := uuidObj.String()
 
@@ -873,7 +874,7 @@ func (p CommendPromptSet) exec(l *ChatLogic, req *types.ChatReq) bool {
 		}
 		sendToUser(req.AgentID, req.UserID, "设置成功，您目前的对话配置如下：\n prompt: "+prompt.Value+"\n model: "+l.model, l.svcCtx.Config)
 	default:
-		sendToUser(req.AgentID, req.UserID, "设置失败, prompt 查询失败"+err.Error(), l.svcCtx.Config)
+		sendToUser(req.AgentID, req.UserID, "设置失败, prompt 查询失败"+_err.Error(), l.svcCtx.Config)
 	}
 	return false
 }
@@ -907,26 +908,18 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 	case "openai":
 		logx.Info("使用openai音频转换")
 		cli = c
-	case "ali":
-		//s, err := voice.NewSpeakClient(
-		//	l.svcCtx.Config.Speaker.AliYun.AccessKeyId,
-		//	l.svcCtx.Config.Speaker.AliYun.AccessKeySecret,
-		//	l.svcCtx.Config.Speaker.AliYun.AppKey,
-		//)
-		//if err != nil {
-		//	sendToUser(req.AgentID, req.UserID, "阿里云音频转换初始化失败:"+err.Error(), l.svcCtx.Config)
-		//	return false
-		//}
-		//msg = strings.Replace(msg, ".mp3", ".amr", -1)
-		//cli = s
 	default:
 		sendToUser(req.AgentID, req.UserID, "系统错误:未知的音频转换服务商", l.svcCtx.Config)
 		return false
 	}
 	fmt.Println(cli)
 	txt, err := cli.SpeakToTxt(msg)
-	if txt == "" {
+	if err != nil {
 		sendToUser(req.AgentID, req.UserID, "音频信息转换错误:"+err.Error(), l.svcCtx.Config)
+		return false
+	}
+	if txt == "" {
+		sendToUser(req.AgentID, req.UserID, "音频信息转换为空", l.svcCtx.Config)
 		return false
 	}
 	// 语音识别成功

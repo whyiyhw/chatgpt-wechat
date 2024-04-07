@@ -1,14 +1,16 @@
 package logic
 
 import (
-	"chat/service/chat/api/internal/svc"
-	"chat/service/chat/api/internal/types"
 	"context"
 	"encoding/json"
-	"github.com/zeromicro/go-zero/core/conf"
-	"github.com/zeromicro/go-zero/core/logx"
 	"reflect"
 	"testing"
+
+	"chat/service/chat/api/internal/svc"
+	"chat/service/chat/api/internal/types"
+
+	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 func TestBotDeleteLogic_BotDelete(t *testing.T) {

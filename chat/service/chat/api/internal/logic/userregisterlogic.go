@@ -42,7 +42,7 @@ func (l *UserRegisterLogic) UserRegister(req *types.UserRegisterReq) (resp *type
 	// 加密密码
 	password := []byte(req.Password)
 	hashedPassword, err2 := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	if err != nil {
+	if err2 != nil {
 		return nil, errors.Wrapf(xerr.NewErrMsg("密码加密失败"), "密码加密失败 %v", err2)
 	}
 

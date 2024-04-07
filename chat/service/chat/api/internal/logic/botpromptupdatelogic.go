@@ -1,15 +1,16 @@
 package logic
 
 import (
+	"context"
+	"encoding/json"
+
 	"chat/service/chat/api/internal/svc"
 	"chat/service/chat/api/internal/types"
 	"chat/service/chat/model"
-	"context"
-	"encoding/json"
-	"github.com/pkg/errors"
-	"gorm.io/gorm"
 
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
+	"gorm.io/gorm"
 )
 
 type BotPromptUpdateLogic struct {
