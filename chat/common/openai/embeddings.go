@@ -38,7 +38,8 @@ func (c *ChatClient) CreateOpenAIEmbeddings(input string) (EmbeddingResponse, er
 	res, err := cli.CreateEmbeddings(context.Background(), requestBody)
 
 	if err != nil {
-		fmt.Println("req chat params:", config)
+		fmt.Printf("req chat embedding params: %v\n", config)
+		fmt.Println("resp chat embedding error:", err.Error())
 		return EmbeddingResponse{}, err
 	}
 

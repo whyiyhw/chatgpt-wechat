@@ -399,10 +399,8 @@ func NumTokensFromMessages(messages []ChatModelMessage, model string) (numTokens
 	}
 
 	var tokensPerMessage int
-	if model == ChatModel0301 || model == ChatModel {
+	if model == ChatModel {
 		tokensPerMessage = 4
-	} else if model == ChatModel40314 || model == ChatModel4 {
-		tokensPerMessage = 3
 	} else {
 		//fmt.Println("Warning: model not found. Using cl100k_base encoding.")
 		tokensPerMessage = 3

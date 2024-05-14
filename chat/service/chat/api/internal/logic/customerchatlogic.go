@@ -478,11 +478,7 @@ func (l *CustomerChatLogic) setModelName() (ls *CustomerChatLogic) {
 			m = s.Model
 		}
 	}
-	m = strings.ToLower(m)
-	if _, ok := openai.Models[m]; !ok {
-		m = openai.ChatModel
-	}
-	l.model = m
+	l.model = strings.ToLower(m)
 	return l
 }
 

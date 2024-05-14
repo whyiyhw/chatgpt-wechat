@@ -463,18 +463,14 @@ func (l *ChatLogic) setBaseHost() (ls *ChatLogic) {
 }
 
 func (l *ChatLogic) setModelName(agentID int64) (ls *ChatLogic) {
-	m := "gpt-3.5-turbo"
+	m := openai.ChatModel
 	for _, application := range l.svcCtx.Config.WeCom.MultipleApplication {
 		if application.AgentID == agentID {
 			m = application.Model
 		}
 	}
 	// 兼容大小写问题 #issues/66
-	m = strings.ToLower(m)
-	if _, ok := openai.Models[m]; !ok {
-		m = openai.ChatModel
-	}
-	l.model = m
+	l.model = strings.ToLower(m)
 	return l
 }
 
@@ -644,17 +640,6 @@ func (p CommendConfigModel) exec(l *ChatLogic, req *types.ChatReq) bool {
 
 	if msg == "" {
 		sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：\n#config_model:gpt-3.5-turbo", l.svcCtx.Config)
-		return false
-	}
-
-	if _, ok := openai.Models[msg]; !ok {
-		tips := fmt.Sprintf("目前只支持以下%d种模型：\n", len(openai.Models))
-		for s, b := range openai.Models {
-			if b {
-				tips += s + "\n"
-			}
-		}
-		sendToUser(req.AgentID, req.UserID, tips, l.svcCtx.Config)
 		return false
 	}
 

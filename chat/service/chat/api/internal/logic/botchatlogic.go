@@ -279,7 +279,11 @@ func (l *BotChatLogic) BotChat(req *types.BotChatReq) (resp *types.BotChatReply,
 		// context
 		collection := openai.NewUserContext(
 			openai.GetUserUniqueID(strconv.FormatInt(userId, 10), strconv.FormatInt(req.BotID, 10)),
-		).WithModel(openai.ChatModel4).WithPrompt(basePrompt).WithClient(c).WithTimeOut(l.svcCtx.Config.Session.TimeOut).
+		).
+			WithModel(openai.ChatModel4).
+			WithPrompt(basePrompt).
+			WithClient(c).
+			WithTimeOut(l.svcCtx.Config.Session.TimeOut).
 			Set(openai.NewChatContent(req.MSG), "", conversationId, false)
 
 		prompts := collection.GetChatSummary()

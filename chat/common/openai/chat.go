@@ -16,9 +16,9 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 
 	config, cli, request := c.commonChat(req)
 	stream, err := cli.CreateChatCompletionStream(context.Background(), request)
-
 	if err != nil {
-		fmt.Println("req chat stream params:", config)
+		fmt.Printf("Chat Stream req params: %v\n", config)
+		fmt.Println("Chat Stream resp error:", err.Error())
 		return "", err
 	}
 	defer func(stream *copenai.ChatCompletionStream) {
@@ -100,11 +100,6 @@ func (c *ChatClient) commonChat(req []ChatModelMessage) (copenai.ClientConfig, *
 			messages[i].Role = ModelRole
 		}
 	}
-	fmt.Println("before model:", c.Model)
-	if _, ok := Models[c.Model]; !ok {
-		c.Model = ChatModel
-	}
-	fmt.Println("after model:", c.Model)
 	request := copenai.ChatCompletionRequest{
 		Model:       c.Model,
 		Messages:    messages,
@@ -120,7 +115,8 @@ func (c *ChatClient) Chat(req []ChatModelMessage) (string, error) {
 	config, cli, request := c.commonChat(req)
 	chat, err := cli.CreateChatCompletion(context.Background(), request)
 	if err != nil {
-		fmt.Println("req chat params:", config)
+		fmt.Printf("Chat req params: %v\n", config)
+		fmt.Println("Chat resp error:", err.Error())
 		return "", err
 	}
 	txt := ""

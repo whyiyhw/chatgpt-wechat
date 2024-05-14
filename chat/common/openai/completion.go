@@ -15,7 +15,8 @@ func (c *ChatClient) Completion(req []ChatModelMessage) (string, error) {
 
 	completion, err := cli.CreateCompletion(context.Background(), request)
 	if err != nil {
-		fmt.Println("req completion params:", config)
+		fmt.Printf("Completion req params: %v\n", config)
+		fmt.Println("Completion resp error:", err.Error())
 		return "", err
 	}
 	txt := ""
@@ -33,7 +34,8 @@ func (c *ChatClient) CompletionStream(req []ChatModelMessage, channel chan strin
 	stream, err := cli.CreateCompletionStream(context.Background(), request)
 
 	if err != nil {
-		fmt.Println("req completion stream params:", config)
+		fmt.Printf("Completion Stream req params: %v\n", config)
+		fmt.Println("Completion Stream resp error:", err.Error())
 		return "", err
 	}
 	defer func(stream *copenai.CompletionStream) {
@@ -108,9 +110,6 @@ func (c *ChatClient) commonCompletion(req []ChatModelMessage) (copenai.ClientCon
 			Role:    message.Role,
 			Content: message.Content.Data,
 		})
-	}
-	if _, ok := Models[c.Model]; !ok {
-		c.Model = TextModel
 	}
 	for i, message := range messages {
 		if message.Role != SystemRole && message.Role != UserRole {
