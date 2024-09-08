@@ -4,6 +4,7 @@ import (
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/middleware"
 	"chat/service/chat/dao"
+
 	"github.com/zeromicro/go-zero/rest"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

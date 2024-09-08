@@ -53,7 +53,6 @@ type Config struct {
 
 	// http proxy 设置
 	Proxy struct {
-		Enable  bool   `json:",optional,default=false"`
 		Socket5 string `json:",optional,default="`
 		Http    string `json:",optional,default="`
 		Auth    struct {
