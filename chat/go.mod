@@ -8,7 +8,8 @@ require (
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.25.0
-	github.com/golang-jwt/jwt/v4 v4.5.1
+	github.com/go-resty/resty/v2 v2.16.5
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
 	github.com/milvus-io/milvus-sdk-go/v2 v2.4.2
 	github.com/pgvector/pgvector-go v0.3.0
@@ -16,7 +17,7 @@ require (
 	github.com/redis/go-redis/v9 v9.7.3
 	github.com/sashabaranov/go-openai v1.38.1
 	github.com/whyiyhw/go-workwx v0.0.9
-	github.com/whyiyhw/gws v0.0.4
+	github.com/whyiyhw/gws v0.0.5
 	github.com/zeromicro/go-zero v1.8.1
 	golang.org/x/crypto v0.36.0
 	golang.org/x/net v0.37.0

@@ -42,7 +42,7 @@ Gemini:
   EnableProxy: false                                #（可选）是否开启代理，默认为 false
 
 Dify:
-    Key: "xxxxxxxxxxxxxxxxxxxxx"                    # dify flow key
+    Key: "app-xxxxxxxxxxxxxxxxx"                    # dify flow key
     Host: "https://api.dify.ai"                     # dify host (可选)
     Inputs:                                         # dify 输入配置 (可选)
           - Key: "exampleKey1"

@@ -78,13 +78,36 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...str
 					fileName = uuidStr + ".txt"
 					prefix = "文件"
 				}
+				//如果文件是mp3 转为 amr
+				if strings.Contains(path, ".mp3") {
+					// amr 格式
+					// path 是 mp3 文件路径 / 文件名
+					amrFileName, err := Mp3ToAmr(path, uuidStr)
+					if err != nil {
+						logx.Error("应用语音消息-转换失败 err:", err)
+						_ = app.SendTextMessage(&recipient, "语音转换失败", false)
+						return
+					}
+					path = amrFileName
+					fileName = uuidStr + ".amr"
+					prefix = "语音"
+				}
 
-				buf, _ := os.ReadFile(path) //读取文件
+				buf, err := os.ReadFile(path) //读取文件
+				if err != nil {
+					logx.Error("应用"+prefix+"消息-读取文件失败 err:", err)
+					//发送给用户失败信息
+					_ = app.SendTextMessage(&recipient, "发送"+prefix+"失败", false)
+					return
+				}
+
+				logx.Info("读取文件大小:", len(buf), "文件名:", fileName, "文件路径:", path)
+
 				media, err := workwx.NewMediaFromBuffer(fileName, buf)
 				if err != nil {
 					logx.Error("应用"+prefix+"消息-读取文件失败 err:", err)
 					//发送给用户失败信息
-					err = app.SendTextMessage(&recipient, "发送"+prefix+"失败", false)
+					_ = app.SendTextMessage(&recipient, "发送"+prefix+"失败", false)
 					return
 				}
 
@@ -95,6 +118,7 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...str
 						logx.Error("应用图片消息-上传图片失败 err:", err)
 						//发送给用户失败信息
 						err = app.SendTextMessage(&recipient, "发送图片失败", false)
+						logx.Error("应用图片消息-上传图片失败 err:", err)
 						return
 					}
 
@@ -111,6 +135,7 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...str
 						logx.Error("应用文件消息-上传文件失败 err:", err)
 						//发送给用户失败信息
 						err = app.SendTextMessage(&recipient, "发送文件失败", false)
+						logx.Error("应用文件消息-上传文件失败 err:", err)
 						return
 					}
 
@@ -120,11 +145,27 @@ func SendToWeComUser(agentID int64, userID, msg, corpSecret string, files ...str
 					}
 				}
 
+				if prefix == "语音" {
+					// 上传语音
+					mediaID, err := app.UploadTempVoiceMedia(media)
+					if err != nil {
+						logx.Error("应用语音消息-上传语音失败 err:", err)
+						// 发送给用户失败信息
+						err = app.SendTextMessage(&recipient, "发送语音失败", false)
+						logx.Error("应用语音消息-上传语音失败 err:", err)
+						return
+					}
+
+					err = app.SendVoiceMessage(&recipient, mediaID.MediaID, false)
+					if err != nil {
+						logx.Error("应用语音消息-发送失败 err:", err)
+					}
+				}
+
 				// 删除本地图片
 				_ = os.Remove(path)
 			}
 		}()
-		return
 	}
 
 	go func() {
@@ -459,9 +500,10 @@ func DownloadFile(fileDir, filepath, fileMime string, url string) error {
 	}
 	fmt.Println("文件大小:", w)
 
-	fmt.Println("/bin/ffmpeg", "-i", filepath+"."+fileMime, filepath+".mp3")
+	//-acodec libmp3lame
+	fmt.Println("/bin/ffmpeg", "-y", "-i", filepath+"."+fileMime, filepath+".mp3")
 	// golang  arm 格式转 mp3
-	cmd := exec.Command("/bin/ffmpeg", "-i", filepath+"."+fileMime, filepath+".mp3")
+	cmd := exec.Command("/bin/ffmpeg", "-y", "-i", filepath+"."+fileMime, filepath+".mp3")
 
 	err = cmd.Start()
 	if err != nil {
@@ -475,6 +517,44 @@ func DownloadFile(fileDir, filepath, fileMime string, url string) error {
 	}
 
 	return nil
+}
+
+func Mp3ToAmr(mp3FilePath, targetFileName string) (string, error) {
+	// Get the directory from mp3FilePath
+	fileDir := mp3FilePath[:strings.LastIndex(mp3FilePath, "/")]
+	if fileDir == "" {
+		fileDir = "."
+	}
+
+	// 判断目录是否存在
+	_, err := os.Stat(fileDir)
+	if err != nil {
+		err := os.MkdirAll(fileDir, os.ModePerm)
+		if err != nil {
+			fmt.Println("mkdir err:", err)
+			return "", err
+		}
+	}
+
+	// Target AMR file path
+	amrFilePath := fmt.Sprintf("%s/%s.amr", fileDir, targetFileName)
+
+	// Convert MP3 to AMR using ffmpeg
+	cmd := exec.Command("/bin/ffmpeg", "-i", mp3FilePath, amrFilePath)
+
+	err = cmd.Start()
+	if err != nil {
+		fmt.Println("cmd start err:", err)
+		return "", err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Println("cmd wait err:", err)
+		return "", err
+	}
+
+	return amrFilePath, nil
 }
 
 // CustomerCallLogic 发送客服消息
