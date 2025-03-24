@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -472,6 +473,15 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				request.Inputs[v.Key] = v.Value
 			}
 		}
+
+		// 从 redis 中获取会话 ID
+		cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+		conversationId, err := redis.Rdb.Get(context.Background(), cacheKey).Result()
+		if err == nil && conversationId != "" {
+			// 如果有会话ID，使用已有的会话ID
+			request.ConversationId = conversationId
+		}
+
 		go func() {
 			ctx := context.Background()
 			// 设置超时时间为 200 秒
@@ -497,17 +507,12 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 						var textContent string
 						if resp.Event == dify.EventWorkflowStarted {
 							go sendToUser(req.AgentID, req.UserID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
+							// 去将 conversation_id 存入 redis
+							if resp.ConversationID != "" {
+								cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+								redis.Rdb.Set(context.Background(), cacheKey, resp.ConversationID, 24*time.Hour)
+							}
 						}
-						//if resp.Event == "node_running" || resp.Event == "node_finished" {
-						//	// 从outputs中获取文本内容
-						//	if resp.Data.Outputs != nil {
-						//		if textVal, ok := resp.Data.Outputs["text"]; ok {
-						//			if text, ok := textVal.(string); ok {
-						//				textContent = text
-						//			}
-						//		}
-						//	}
-						//}
 						if resp.Event == dify.EventNodeFinished {
 							if resp.Data.Outputs != nil {
 								if textVal, ok := resp.Data.Outputs["answer"]; ok {
@@ -546,6 +551,25 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
 
 							messageText = strBuilder.String()
+							if l.svcCtx.Config.Dify.ResponseWithVoice {
+								// 生成语音
+								go func() {
+									response, err := c.API().TextToAudio(context.Background(), messageText)
+									if err == nil {
+										// build file path
+										filePath := fmt.Sprintf("%s/%d-%s", os.TempDir(), req.AgentID, uuidObj.String())
+										// save voice
+										filePath, err = dify.SaveAudioToFile(response.Audio, filePath, response.ContentType)
+										if err == nil {
+											go sendToUser(req.AgentID, req.UserID, "", l.svcCtx.Config, filePath)
+										} else {
+											l.Logger.Error("dify 生成语音失败: ", err)
+										}
+									} else {
+										l.Logger.Error("dify 生成语音失败: ", err)
+									}
+								}()
+							}
 							// 将对话记录存储到数据库
 							table := l.svcCtx.ChatModel.Chat
 							_ = table.WithContext(context.Background()).Create(&model.Chat{
@@ -716,6 +740,10 @@ func (p CommendClear) exec(l *ChatLogic, req *types.ChatReq) bool {
 	openai.NewUserContext(
 		openai.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
 	).Clear()
+	if req.Channel == "dify" {
+		cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+		redis.Rdb.Del(context.Background(), cacheKey)
+	}
 	sendToUser(req.AgentID, req.UserID, "当前会话清理完成，来开始新一轮的chat吧", l.svcCtx.Config)
 	return false
 }

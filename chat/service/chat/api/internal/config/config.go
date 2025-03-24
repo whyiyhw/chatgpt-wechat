@@ -147,9 +147,10 @@ type Config struct {
 
 	// Dify
 	Dify struct {
-		Key    string `json:",optional"`
-		Host   string `json:",optional,default=https://api.dify.ai"`
-		Inputs []struct {
+		Key               string `json:",optional"`
+		Host              string `json:",optional,default=https://api.dify.ai"`
+		ResponseWithVoice bool   `json:",optional,default=false"`
+		Inputs            []struct {
 			Key   string `json:",optional"`
 			Value string `json:",optional"`
 		} `json:",optional"`

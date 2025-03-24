@@ -67,6 +67,7 @@ Embeddings:
 Dify:
     Key: "app-xxxxxxxxxxxxxxxxx"                    # dify flow key
     Host: "https://api.dify.ai"                     # dify host (可选)
+    ResponseWithVoice: false                        # 是否返回语音 (可选)
     Inputs:                                         # dify 输入配置 (可选)
           - Key: "exampleKey1"
             Value: "exampleValue1"

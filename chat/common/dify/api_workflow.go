@@ -61,6 +61,8 @@ type WorkflowResponse struct {
 type StreamingResponse struct {
 	Event          string `json:"event"`
 	TaskID         string `json:"task_id"`
+	ConversationID string `json:"conversation_id"`
+	MessageID      string `json:"message_id"`
 	WorkflowRunID  string `json:"workflow_run_id"`
 	SequenceNumber int    `json:"sequence_number"`
 	Data           struct {

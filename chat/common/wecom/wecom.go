@@ -539,8 +539,9 @@ func Mp3ToAmr(mp3FilePath, targetFileName string) (string, error) {
 	// Target AMR file path
 	amrFilePath := fmt.Sprintf("%s/%s.amr", fileDir, targetFileName)
 
+	fmt.Println("/bin/ffmpeg", "-y", "-i", mp3FilePath, "-ar", "8000", "-ac", "1", amrFilePath)
 	// Convert MP3 to AMR using ffmpeg
-	cmd := exec.Command("/bin/ffmpeg", "-i", mp3FilePath, amrFilePath)
+	cmd := exec.Command("/bin/ffmpeg", "-y", "-i", mp3FilePath, "-ar", "8000", "-ac", "1", amrFilePath)
 
 	err = cmd.Start()
 	if err != nil {

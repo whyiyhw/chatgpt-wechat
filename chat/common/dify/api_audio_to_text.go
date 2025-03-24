@@ -28,10 +28,6 @@ func (api *API) AudioToText(ctx context.Context, filePath string) (string, error
 		SetHeader("Authorization", "Bearer "+api.getSecret()).
 		SetHeader("Cache-Control", "no-cache").
 		SetFile("file", filePath).
-		SetFormData(map[string]string{
-			"model":           "whisper",
-			"response_format": "text",
-		}).
 		Post(api.c.getHost() + "/v1/audio-to-text")
 
 	if err != nil {

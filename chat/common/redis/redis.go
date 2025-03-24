@@ -13,6 +13,9 @@ const UserSessionAgentDefaultKey = "session_agent:default:%s:%s"
 const UserSessionListKey = "user:session:list:%s"
 const SessionKey = "session:%s"
 
+// DifyConversationKey Dify会话ID存储
+const DifyConversationKey = "dify:conversation:%d:%s"
+
 // ImageTemporaryKey 图片临时存储
 const ImageTemporaryKey = "chat:image:temporary:%d-%s"
 

@@ -40,6 +40,7 @@ COPY --from=builder /usr/local/bin/ffmpeg /bin/ffmpeg
 COPY --from=builder /usr/share/zoneinfo/Asia/Shanghai /usr/share/zoneinfo/Asia/Shanghai
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /build/service/chat/api/etc /etc
+COPY --from=builder /tmp /tmp
 ENV TZ Asia/Shanghai
 
 # 从builder镜像中把/build/app 拷贝到当前目录
