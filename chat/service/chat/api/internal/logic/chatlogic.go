@@ -725,7 +725,7 @@ func sendToUser(agentID any, userID, msg string, config config.Config, file ...s
 		}
 		wecom.SendToWeComUser(agentID.(int64), userID, msg, corpSecret, file...)
 	case string:
-		wecom.SendCustomerChatMessage(agentID.(string), userID, msg)
+		wecom.SendCustomerChatMessage(agentID.(string), userID, msg, file...)
 	}
 }
 

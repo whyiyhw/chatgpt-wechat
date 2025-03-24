@@ -7,9 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
+	"chat/common/dify"
 	"chat/common/gemini"
 	"chat/common/milvus"
 	"chat/common/openai"
@@ -26,19 +28,21 @@ import (
 
 type CustomerChatLogic struct {
 	logx.Logger
-	ctx        context.Context
-	svcCtx     *svc.ServiceContext
-	model      string
-	baseHost   string
-	basePrompt string
-	message    string
+	ctx            context.Context
+	svcCtx         *svc.ServiceContext
+	model          string
+	baseHost       string
+	basePrompt     string
+	message        string
+	isVoiceRequest bool // 标识原始请求是否为语音
 }
 
 func NewCustomerChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CustomerChatLogic {
 	return &CustomerChatLogic{
-		Logger: logx.WithContext(ctx),
-		ctx:    ctx,
-		svcCtx: svcCtx,
+		Logger:         logx.WithContext(ctx),
+		ctx:            ctx,
+		svcCtx:         svcCtx,
+		isVoiceRequest: false, // 初始化为非语音请求
 	}
 }
 
@@ -67,6 +71,186 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	if l.message != "" {
 		req.Msg = l.message
 	}
+
+	// dify 处理
+	if l.svcCtx.Config.ModelProvider.Company == "dify" {
+		c := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key)
+
+		request := dify.WorkflowRequest{
+			Query:        req.Msg,
+			User:         req.CustomerID,
+			ResponseMode: "streaming",
+			Inputs:       map[string]any{},
+		}
+		if len(l.svcCtx.Config.Dify.Inputs) > 0 {
+			for _, v := range l.svcCtx.Config.Dify.Inputs {
+				request.Inputs[v.Key] = v.Value
+			}
+		}
+
+		// 从 redis 中获取会话 ID
+		cacheKey := fmt.Sprintf(redis.DifyCustomerConversationKey, req.OpenKfID, req.CustomerID)
+		conversationId, err := redis.Rdb.Get(context.Background(), cacheKey).Result()
+		if err == nil && conversationId != "" {
+			// 如果有会话ID，使用已有的会话ID
+			request.ConversationId = conversationId
+		}
+
+		go func() {
+			ctx := context.Background()
+			// 设置超时时间为 200 秒
+			ctx, cancel := context.WithTimeout(ctx, 200*time.Second)
+			defer cancel()
+
+			// 分段响应
+			if l.svcCtx.Config.Response.Stream {
+				var (
+					messageText string
+					rs          []rune
+				)
+
+				// 创建自定义的 EventHandler
+				handler := &difyCustomerEventHandler{
+					logger: l.Logger,
+					onStreamingResponse: func(resp dify.StreamingResponse) {
+						l.Logger.Debug("Received streaming response:", resp)
+
+						// 获取文本内容，通常在outputs中的text字段
+						var textContent string
+						if resp.Event == dify.EventWorkflowStarted {
+							go sendToUser(req.OpenKfID, req.CustomerID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
+							// 去将 conversation_id 存入 redis
+							if resp.ConversationID != "" {
+								cacheKey := fmt.Sprintf(redis.DifyCustomerConversationKey, req.OpenKfID, req.CustomerID)
+								redis.Rdb.Set(context.Background(), cacheKey, resp.ConversationID, 24*time.Hour)
+							}
+						}
+
+						if resp.Event == dify.EventWorkflowFinished {
+							if resp.Data.Outputs != nil {
+								if textVal, ok := resp.Data.Outputs["answer"]; ok {
+									if text, ok := textVal.(string); ok {
+										textContent = text
+									}
+								}
+							}
+							rs = []rune(textContent)
+							messageText = textContent
+
+							// 根据原始请求类型决定响应方式
+							if l.isVoiceRequest {
+								// 语音请求，需要对文本进行分段处理
+								go func() {
+									// 将文本按照自然段落分割
+									segments := splitTextIntoSegments(messageText, 160)
+									for _, segment := range segments {
+										response, err := c.API().TextToAudio(context.Background(), segment)
+										if err != nil {
+											l.Logger.Error("dify 生成语音失败: ", err)
+											continue
+										}
+
+										uuidObj, _ := uuid.NewUUID()
+										// build file path
+										filePath := fmt.Sprintf("%s/%s-%s", os.TempDir(), req.OpenKfID, uuidObj.String())
+										// save voice
+										filePath, err = dify.SaveAudioToFile(response.Audio, filePath, response.ContentType)
+										if err != nil {
+											l.Logger.Error("dify 保存语音文件失败: ", err)
+											continue
+										}
+
+										// 发送语音消息
+										sendToUser(req.OpenKfID, req.CustomerID, "", l.svcCtx.Config, filePath)
+
+										// 添加短暂延迟，避免消息发送太快
+										time.Sleep(200 * time.Millisecond)
+									}
+
+									// 最后发送完整文本作为备份
+									if len(segments) <= 0 {
+										sendToUser(req.OpenKfID, req.CustomerID, messageText+"\n--------------------------------\n"+req.Msg, l.svcCtx.Config)
+									}
+								}()
+							} else {
+								// 文本请求，发送文本回复
+								go sendToUser(req.OpenKfID, req.CustomerID, string(rs)+"\n--------------------------------\n"+req.Msg, l.svcCtx.Config)
+							}
+
+							// 将对话记录存储到数据库
+							table := l.svcCtx.ChatModel.Chat
+							_ = table.WithContext(context.Background()).Create(&model.Chat{
+								User:       req.CustomerID,
+								OpenKfID:   req.OpenKfID,
+								MessageID:  req.MsgID,
+								ReqContent: req.Msg,
+								ResContent: messageText,
+							})
+						}
+					},
+					onTTSMessage: func(msg dify.TTSMessage) {
+						l.Logger.Debug("Received TTS message:", msg)
+					},
+					onError: func(err error) {
+						errInfo := err.Error()
+						if strings.Contains(errInfo, "maximum context length") {
+							errInfo += "\n 请使用 #clear 清理所有上下文"
+						}
+						sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+					},
+				}
+
+				err := c.API().RunStreamWorkflowWithHandler(ctx, request, handler)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+				}
+			} else {
+				l.Logger.Debug("dify 处理 非流式响应: ", request)
+				// 非流式响应 - 需要将 WorkflowRequest 转换为 ChatMessageRequest
+				chatRequest := &dify.ChatMessageRequest{
+					Query:        request.Query,
+					User:         request.User,
+					ResponseMode: "blocking",
+					Inputs:       request.Inputs,
+				}
+
+				resp, err := c.API().ChatMessages(ctx, chatRequest)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+					return
+				}
+
+				messageText := resp.Answer
+
+				// 把数据发给微信用户
+				go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
+
+				// 再去插入数据
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					User:       req.CustomerID,
+					OpenKfID:   req.OpenKfID,
+					MessageID:  req.MsgID,
+					ReqContent: req.Msg,
+					ResContent: messageText,
+				})
+				l.Logger.Debug("dify 处理完成: ", messageText)
+			}
+		}()
+
+		return &types.CustomerChatReply{
+			Message: "ok",
+		}, nil
+	}
+
 	company := l.svcCtx.Config.ModelProvider.Company
 	modelName := ""
 	var temperature float32
@@ -512,7 +696,7 @@ func (l *CustomerChatLogic) FactoryCommend(req *types.CustomerChatReq) (proceed 
 	}
 
 	template["#direct"] = CustomerCommendDirect{}
-	//template["#voice"] = CustomerCommendVoice{}
+	template["#voice"] = CustomerCommendVoice{}
 	template["#help"] = CustomerCommendHelp{}
 	template["#system"] = CustomerCommendSystem{}
 	template["#clear"] = CustomerCommendClear{}
@@ -541,6 +725,27 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 	if msg == "" {
 		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:未能读取到音频信息", l.svcCtx.Config)
 		return false
+	}
+
+	// 设置标志，表示这是一个语音请求
+	l.isVoiceRequest = true
+
+	// 使用dify处理语音
+	if l.svcCtx.Config.ModelProvider.Company == "dify" {
+		text, err := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key).API().AudioToText(context.Background(), msg)
+		if err != nil {
+			sendToUser(req.OpenKfID, req.CustomerID, "音频信息转换错误:"+err.Error(), l.svcCtx.Config, msg)
+			return false
+		}
+		if text == "" {
+			sendToUser(req.OpenKfID, req.CustomerID, "音频信息转换为空", l.svcCtx.Config)
+			return false
+		}
+		// 语音识别成功
+		sendToUser(req.OpenKfID, req.CustomerID, "语音识别成功:\n\n"+text, l.svcCtx.Config)
+
+		l.message = text
+		return true
 	}
 
 	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
@@ -592,6 +797,13 @@ func (p CustomerCommendClear) customerExec(l *CustomerChatLogic, req *types.Cust
 	openai.NewUserContext(
 		openai.GetUserUniqueID(req.CustomerID, req.OpenKfID),
 	).Clear()
+
+	// 清理dify会话
+	if l.svcCtx.Config.ModelProvider.Company == "dify" {
+		cacheKey := fmt.Sprintf(redis.DifyCustomerConversationKey, req.OpenKfID, req.CustomerID)
+		redis.Rdb.Del(context.Background(), cacheKey)
+	}
+
 	sendToUser(req.OpenKfID, req.CustomerID, "记忆清除完成:来开始新一轮的chat吧", l.svcCtx.Config)
 	return false
 }
@@ -724,4 +936,69 @@ func (p CustomerCommendImage) customerExec(l *CustomerChatLogic, req *types.Cust
 			true,
 		)
 	return false
+}
+
+// difyEventHandler 实现 EventHandler 接口
+type difyCustomerEventHandler struct {
+	logger              logx.Logger
+	onStreamingResponse func(dify.StreamingResponse)
+	onTTSMessage        func(dify.TTSMessage)
+	onError             func(error)
+}
+
+func (h *difyCustomerEventHandler) HandleStreamingResponse(resp dify.StreamingResponse) {
+	if h.onStreamingResponse != nil {
+		h.onStreamingResponse(resp)
+	}
+}
+
+func (h *difyCustomerEventHandler) HandleTTSMessage(msg dify.TTSMessage) {
+	if h.onTTSMessage != nil {
+		h.onTTSMessage(msg)
+	}
+}
+
+func (h *difyCustomerEventHandler) HandleError(err error) {
+	if h.onError != nil {
+		h.onError(err)
+	}
+}
+
+// 将文本分割成适合语音转换的片段
+func splitTextIntoSegments(text string, maxLength int) []string {
+	if len(text) <= maxLength {
+		return []string{text}
+	}
+
+	var segments []string
+	runes := []rune(text)
+	length := len(runes)
+
+	start := 0
+	for start < length {
+		end := start + maxLength
+		if end >= length {
+			segments = append(segments, string(runes[start:]))
+			break
+		}
+
+		// 寻找分割点，优先在句号、问号、感叹号、换行符处分割
+		splitPos := -1
+		for i := end; i > start; i-- {
+			if i < length && (runes[i] == '。' || runes[i] == '？' || runes[i] == '!' || runes[i] == '\n' || runes[i] == '，' || runes[i] == '；' || runes[i] == ',' || runes[i] == '.') {
+				splitPos = i + 1
+				break
+			}
+		}
+
+		// 如果找不到合适的分割点，就在当前位置分割
+		if splitPos == -1 || splitPos <= start {
+			splitPos = end
+		}
+
+		segments = append(segments, string(runes[start:splitPos]))
+		start = splitPos
+	}
+
+	return segments
 }

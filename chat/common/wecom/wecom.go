@@ -255,7 +255,128 @@ func DealUserLastMessageByToken(token, openKfID string) {
 }
 
 // SendCustomerChatMessage 发送客服消息
-func SendCustomerChatMessage(openKfID, customerID, msg string) {
+func SendCustomerChatMessage(openKfID, customerID, msg string, files ...string) {
+
+	if len(files) > 0 {
+		go func() {
+			app, ok := getCustomerApp()
+			if !ok {
+				logx.Info("客服消息-获取 app 失败")
+				return
+			}
+
+			recipient := workwx.Recipient{
+				UserIDs:  []string{customerID},
+				OpenKfID: openKfID,
+			}
+			for _, path := range files {
+				fileName := ""
+				prefix := ""
+				uuidStr := uuid.New().String()
+				//如果文件是图片
+
+				if strings.Contains(path, ".png") || strings.Contains(path, ".jpg") || strings.Contains(path, ".jpeg") {
+					fileName = uuidStr + ".png"
+					prefix = "图片"
+				}
+				//如果文件是json / txt
+				if strings.Contains(path, ".json") {
+					fileName = uuidStr + ".json"
+					prefix = "文件"
+				}
+				if strings.Contains(path, ".txt") {
+					fileName = uuidStr + ".txt"
+					prefix = "文件"
+				}
+				//如果文件是mp3 转为 amr
+				if strings.Contains(path, ".mp3") {
+					// amr 格式
+					// path 是 mp3 文件路径 / 文件名
+					amrFileName, err := Mp3ToAmr(path, uuidStr)
+					if err != nil {
+						logx.Error("客服语音消息-转换失败 err:", err)
+						_ = app.SendTextMessage(&recipient, "语音转换失败", false)
+						return
+					}
+					path = amrFileName
+					fileName = uuidStr + ".amr"
+					prefix = "语音"
+				}
+
+				buf, err := os.ReadFile(path) //读取文件
+				if err != nil {
+					logx.Error("客服"+prefix+"消息-读取文件失败 err:", err)
+					//发送给用户失败信息
+					_ = app.SendTextMessage(&recipient, "发送"+prefix+"失败", false)
+					return
+				}
+
+				logx.Info("读取文件大小:", len(buf), "文件名:", fileName, "文件路径:", path)
+
+				media, err := workwx.NewMediaFromBuffer(fileName, buf)
+				if err != nil {
+					logx.Error("客服"+prefix+"消息-读取文件失败 err:", err)
+					//发送给用户失败信息
+					_ = app.SendTextMessage(&recipient, "发送"+prefix+"失败", false)
+					return
+				}
+
+				if prefix == "图片" {
+					// 上传图片
+					mediaID, err := app.UploadTempImageMedia(media)
+					if err != nil {
+						logx.Error("客服图片消息-上传图片失败 err:", err)
+						//发送给用户失败信息
+						err = app.SendTextMessage(&recipient, "发送图片失败", false)
+						logx.Error("客服图片消息-上传图片失败 err:", err)
+						return
+					}
+
+					err = app.SendImageMessage(&recipient, mediaID.MediaID, false)
+					if err != nil {
+						logx.Error("客服图片消息-发送失败 err:", err)
+					}
+				}
+
+				if prefix == "文件" {
+					// 上传文件
+					mediaID, err := app.UploadTempFileMedia(media)
+					if err != nil {
+						logx.Error("客服文件消息-上传文件失败 err:", err)
+						//发送给用户失败信息
+						err = app.SendTextMessage(&recipient, "发送文件失败", false)
+						logx.Error("客服文件消息-上传文件失败 err:", err)
+						return
+					}
+
+					err = app.SendFileMessage(&recipient, mediaID.MediaID, false)
+					if err != nil {
+						logx.Error("客服文件消息-发送失败 err:", err)
+					}
+				}
+
+				if prefix == "语音" {
+					// 上传语音
+					mediaID, err := app.UploadTempVoiceMedia(media)
+					if err != nil {
+						logx.Error("客服语音消息-上传语音失败 err:", err)
+						// 发送给用户失败信息
+						err = app.SendTextMessage(&recipient, "发送语音失败", false)
+						logx.Error("客服语音消息-上传语音失败 err:", err)
+						return
+					}
+
+					err = app.SendVoiceMessage(&recipient, mediaID.MediaID, false)
+					if err != nil {
+						logx.Error("客服语音消息-发送失败 err:", err)
+					}
+				}
+
+				// 删除本地文件
+				_ = os.Remove(path)
+			}
+		}()
+	}
 
 	go func() {
 		// 然后把数据 发给微信用户
