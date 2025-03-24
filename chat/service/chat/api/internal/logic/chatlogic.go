@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"chat/common/dify"
 	"chat/common/draw"
 	"chat/common/gemini"
 	"chat/common/milvus"
@@ -445,6 +447,194 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 		}()
 	}
 
+	// dify 处理
+	if req.Channel == "dify" {
+		c := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key)
+
+		// 指令匹配， 根据响应值判定是否需要调用 dify 接口
+		proceed, _ := l.FactoryCommend(req)
+		if !proceed {
+			return &types.ChatReply{
+				Message: "ok",
+			}, nil
+		}
+		if l.message != "" {
+			req.MSG = l.message
+		}
+
+		request := dify.WorkflowRequest{
+			Query:        req.MSG,
+			User:         req.UserID,
+			ResponseMode: "streaming",
+			Inputs:       map[string]any{},
+		}
+		if len(l.svcCtx.Config.Dify.Inputs) > 0 {
+			for _, v := range l.svcCtx.Config.Dify.Inputs {
+				request.Inputs[v.Key] = v.Value
+			}
+		}
+
+		// 从 redis 中获取会话 ID
+		cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+		conversationId, err := redis.Rdb.Get(context.Background(), cacheKey).Result()
+		if err == nil && conversationId != "" {
+			// 如果有会话ID，使用已有的会话ID
+			request.ConversationId = conversationId
+		}
+
+		go func() {
+			ctx := context.Background()
+			// 设置超时时间为 200 秒
+			ctx, cancel := context.WithTimeout(ctx, 200*time.Second)
+			defer cancel()
+
+			// 分段响应
+			if l.svcCtx.Config.Response.Stream {
+				var (
+					strBuilder  strings.Builder
+					messageText string
+					rs          []rune
+					first       = true
+				)
+
+				// 创建自定义的 EventHandler
+				handler := &difyEventHandler{
+					logger: l.Logger,
+					onStreamingResponse: func(resp dify.StreamingResponse) {
+						l.Logger.Debug("Received streaming response:", resp)
+
+						// 获取文本内容，通常在outputs中的text字段
+						var textContent string
+						if resp.Event == dify.EventWorkflowStarted {
+							go sendToUser(req.AgentID, req.UserID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
+							// 去将 conversation_id 存入 redis
+							if resp.ConversationID != "" {
+								cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+								redis.Rdb.Set(context.Background(), cacheKey, resp.ConversationID, 24*time.Hour)
+							}
+						}
+						if resp.Event == dify.EventNodeFinished {
+							if resp.Data.Outputs != nil {
+								if textVal, ok := resp.Data.Outputs["answer"]; ok {
+									if text, ok := textVal.(string); ok {
+										textContent = text
+									}
+								}
+							}
+						}
+
+						if textContent != "" {
+							rs = append(rs, []rune(textContent)...)
+							strBuilder.WriteString(textContent)
+
+							if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+								lastIndex := strings.LastIndex(string(rs), "\n")
+								firstPart := string(rs)[:lastIndex]
+								secondPart := string(rs)[lastIndex+1:]
+								// 发送数据
+								go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+								rs = []rune(secondPart)
+								first = false
+							} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+								lastIndex := strings.LastIndex(string(rs), "\n")
+								firstPart := string(rs)[:lastIndex]
+								secondPart := string(rs)[lastIndex+1:]
+								go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+								rs = []rune(secondPart)
+							}
+						}
+
+						// 如果是工作流结束事件，发送剩余内容
+						if resp.Event == dify.EventWorkflowFinished {
+							// 延时 300ms 发送消息，避免顺序错乱
+							time.Sleep(300 * time.Millisecond)
+							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
+
+							messageText = strBuilder.String()
+							if l.svcCtx.Config.Dify.ResponseWithVoice {
+								// 生成语音
+								go func() {
+									response, err := c.API().TextToAudio(context.Background(), messageText)
+									if err == nil {
+										// build file path
+										filePath := fmt.Sprintf("%s/%d-%s", os.TempDir(), req.AgentID, uuidObj.String())
+										// save voice
+										filePath, err = dify.SaveAudioToFile(response.Audio, filePath, response.ContentType)
+										if err == nil {
+											go sendToUser(req.AgentID, req.UserID, "", l.svcCtx.Config, filePath)
+										} else {
+											l.Logger.Error("dify 生成语音失败: ", err)
+										}
+									} else {
+										l.Logger.Error("dify 生成语音失败: ", err)
+									}
+								}()
+							}
+							// 将对话记录存储到数据库
+							table := l.svcCtx.ChatModel.Chat
+							_ = table.WithContext(context.Background()).Create(&model.Chat{
+								AgentID:    req.AgentID,
+								User:       req.UserID,
+								ReqContent: req.MSG,
+								ResContent: messageText,
+							})
+						}
+					},
+					onError: func(err error) {
+						errInfo := err.Error()
+						if strings.Contains(errInfo, "maximum context length") {
+							errInfo += "\n 请使用 #clear 清理所有上下文"
+						}
+						sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+					},
+				}
+
+				err := c.API().RunStreamWorkflowWithHandler(ctx, request, handler)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+				}
+			} else {
+				l.Logger.Debug("dify 处理 非流式响应: ", request)
+				// 非流式响应 - 需要将 WorkflowRequest 转换为 ChatMessageRequest
+				chatRequest := &dify.ChatMessageRequest{
+					Query:        request.Query,
+					User:         request.User,
+					ResponseMode: "blocking",
+					Inputs:       request.Inputs,
+				}
+
+				resp, err := c.API().ChatMessages(ctx, chatRequest)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+					return
+				}
+
+				messageText := resp.Answer
+
+				// 把数据发给微信用户
+				go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
+
+				// 再去插入数据
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					AgentID:    req.AgentID,
+					User:       req.UserID,
+					ReqContent: req.MSG,
+					ResContent: messageText,
+				})
+				l.Logger.Debug("dify 处理完成: ", messageText)
+			}
+		}()
+	}
+
 	if req.Channel == "wecom" {
 		sendToUser(req.AgentID, req.UserID, req.MSG, l.svcCtx.Config)
 	}
@@ -535,7 +725,7 @@ func sendToUser(agentID any, userID, msg string, config config.Config, file ...s
 		}
 		wecom.SendToWeComUser(agentID.(int64), userID, msg, corpSecret, file...)
 	case string:
-		wecom.SendCustomerChatMessage(agentID.(string), userID, msg)
+		wecom.SendCustomerChatMessage(agentID.(string), userID, msg, file...)
 	}
 }
 
@@ -550,6 +740,10 @@ func (p CommendClear) exec(l *ChatLogic, req *types.ChatReq) bool {
 	openai.NewUserContext(
 		openai.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
 	).Clear()
+	if req.Channel == "dify" {
+		cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+		redis.Rdb.Del(context.Background(), cacheKey)
+	}
 	sendToUser(req.AgentID, req.UserID, "当前会话清理完成，来开始新一轮的chat吧", l.svcCtx.Config)
 	return false
 }
@@ -873,6 +1067,23 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		return false
 	}
 
+	if req.Channel == "dify" {
+		text, err := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key).API().AudioToText(context.Background(), msg)
+		if err != nil {
+			sendToUser(req.AgentID, req.UserID, "音频信息转换错误:"+err.Error(), l.svcCtx.Config, msg)
+			return false
+		}
+		if text == "" {
+			sendToUser(req.AgentID, req.UserID, "音频信息转换为空", l.svcCtx.Config)
+			return false
+		}
+		// 语音识别成功
+		sendToUser(req.AgentID, req.UserID, "语音识别成功:\n\n"+text, l.svcCtx.Config)
+
+		l.message = text
+		return true
+	}
+
 	c := openai.NewChatClient(l.svcCtx.Config.OpenAi.Key).
 		WithModel(l.model).
 		WithBaseHost(l.svcCtx.Config.OpenAi.Host).
@@ -1113,4 +1324,24 @@ func (p CommendPlugin) exec(l *ChatLogic, req *types.ChatReq) bool {
 		}
 	}
 	return true
+}
+
+// difyEventHandler 实现 EventHandler 接口
+type difyEventHandler struct {
+	logger              logx.Logger
+	onStreamingResponse func(dify.StreamingResponse)
+	onTTSMessage        func(dify.TTSMessage)
+	onError             func(error)
+}
+
+func (h *difyEventHandler) HandleStreamingResponse(resp dify.StreamingResponse) {
+	if h.onStreamingResponse != nil {
+		h.onStreamingResponse(resp)
+	}
+}
+
+func (h *difyEventHandler) HandleTTSMessage(msg dify.TTSMessage) {
+	if h.onTTSMessage != nil {
+		h.onTTSMessage(msg)
+	}
 }
