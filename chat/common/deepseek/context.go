@@ -97,13 +97,6 @@ func (c *UserContext) GetChatSummary() []ChatModelMessage {
 					MIMEType: MimetypeTextPlain,
 					Data:     c.Prompt,
 				},
-			},
-			{
-				Role: AssistantRole,
-				Content: ChatContent{
-					MIMEType: MimetypeTextPlain,
-					Data:     "好的，收到！",
-				},
 			}}, summary...)
 	}
 	return summary
@@ -210,13 +203,6 @@ func (c *UserContext) GetNewChatMessage(prompt string) []ChatModelMessage {
 				Content: ChatContent{
 					MIMEType: MimetypeTextPlain,
 					Data:     prompt,
-				},
-			},
-			{
-				Role: AssistantRole,
-				Content: ChatContent{
-					MIMEType: MimetypeTextPlain,
-					Data:     "好的，收到！",
 				},
 			}}, summary...)
 	}

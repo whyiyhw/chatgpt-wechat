@@ -58,7 +58,6 @@ func (c *ChatClient) ChatStream(req []ChatModelMessage, channel chan string) (st
 
 func (c *ChatClient) commonChat(req []ChatModelMessage) (copenai.ClientConfig, *copenai.Client, copenai.ChatCompletionRequest) {
 	config := c.buildConfig()
-
 	cli := copenai.NewClientWithConfig(config)
 
 	// 打印请求信息

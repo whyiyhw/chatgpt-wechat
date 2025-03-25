@@ -191,7 +191,7 @@ type ChatReply struct {
 }
 
 type ChatReq struct {
-	Channel string `json:"channel,optional" validate:"required,oneof=wecom openai gemini dify" label:"渠道"`
+	Channel string `json:"channel,optional" validate:"required,oneof=wecom openai gemini dify deepseek" label:"渠道"`
 	MSG     string `json:"msg,optional" label:"消息"`
 	UserID  string `json:"user_id,optional" validate:"required,max=500" label:"用户标识"`
 	AgentID int64  `json:"agent_id,optional" validate:"required" label:"应用标识"`

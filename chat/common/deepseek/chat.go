@@ -61,13 +61,93 @@ type StreamResponse struct {
 	Usage   *Usage         `json:"usage,omitempty"`
 }
 
+// commonChat 处理消息验证和上下文管理
+func (c *ChatClient) commonChat(chatRequest []ChatModelMessage) ([]ChatModelMessage, error) {
+	// 1. 验证消息顺序
+	var validMessages []ChatModelMessage
+	hasSystem := false
+	lastRole := ""
+
+	for i, msg := range chatRequest {
+		// 检查第一条消息是否为 system
+		if i == 0 && msg.Role == SystemRole {
+			hasSystem = true
+			validMessages = append(validMessages, msg)
+			lastRole = SystemRole
+			continue
+		}
+
+		// 如果不是第一条消息，检查顺序
+		if msg.Role == UserRole && (lastRole == SystemRole || lastRole == AssistantRole || lastRole == "") {
+			validMessages = append(validMessages, msg)
+			lastRole = UserRole
+		} else if msg.Role == AssistantRole && lastRole == UserRole {
+			validMessages = append(validMessages, msg)
+			lastRole = AssistantRole
+		} else {
+			// 如果顺序不对，跳过这条消息
+			logx.Info("Skip invalid message sequence, role: ", msg.Role, " last role: ", lastRole)
+			continue
+		}
+	}
+
+	// 如果最后一条消息不是 user，移除最后一组对话
+	if len(validMessages) > 0 && validMessages[len(validMessages)-1].Role != UserRole {
+		if len(validMessages) >= 2 {
+			validMessages = validMessages[:len(validMessages)-2]
+		} else {
+			validMessages = []ChatModelMessage{}
+		}
+	}
+
+	// 2. 处理上下文长度
+	var finalMessages []ChatModelMessage
+	var systemMsg ChatModelMessage
+
+	// 保存 system 消息
+	if hasSystem {
+		systemMsg = validMessages[0]
+		validMessages = validMessages[1:]
+	}
+
+	// 从后向前计算 token，确保不超过限制
+	currentTokens := 0
+	if hasSystem {
+		currentTokens += NumTokensFromMessages([]ChatModelMessage{systemMsg}, c.Model)
+	}
+
+	// 从最新的消息开始添加
+	for i := len(validMessages) - 1; i >= 0; i-- {
+		tokensForMessage := NumTokensFromMessages([]ChatModelMessage{validMessages[i]}, c.Model)
+		if currentTokens+tokensForMessage < ChatModelInputTokenLimit[c.Model] {
+			finalMessages = append([]ChatModelMessage{validMessages[i]}, finalMessages...)
+			currentTokens += tokensForMessage
+		} else {
+			break
+		}
+	}
+
+	// 添加 system 消息到开头
+	if hasSystem {
+		finalMessages = append([]ChatModelMessage{systemMsg}, finalMessages...)
+	}
+
+	return finalMessages, nil
+}
+
 // Chat 实现聊天功能
 func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error) {
+	// 使用 commonChat 处理消息
+	validMessages, err := c.commonChat(chatRequest)
+	if err != nil {
+		return "", err
+	}
+
 	client := c.buildConfig().HTTPClient
 
 	// 构建请求体
-	messages := make([]map[string]interface{}, 0, len(chatRequest))
-	for _, msg := range chatRequest {
+	messages := make([]map[string]interface{}, 0, len(validMessages))
+	for _, msg := range validMessages {
 		role := msg.Role
 		// 确保角色符合 deepseek API 要求
 		if role == "model" {
@@ -89,7 +169,7 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 
 	// 为 ReasonerModel 添加特定参数
 	if c.Model == ReasonerModel {
-		reqBody["max_tokens"] = 4096 // 可以根据需求调整
+		reqBody["max_tokens"] = 4096
 	}
 
 	reqData, err := json.Marshal(reqBody)
@@ -161,11 +241,18 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 
 // ChatStream 实现流式聊天功能
 func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan string) error {
+	// 使用 commonChat 处理消息
+	validMessages, err := c.commonChat(chatRequest)
+	if err != nil {
+		close(channel)
+		return err
+	}
+
 	client := c.buildConfig().HTTPClient
 
 	// 构建请求体
-	messages := make([]map[string]interface{}, 0, len(chatRequest))
-	for _, msg := range chatRequest {
+	messages := make([]map[string]interface{}, 0, len(validMessages))
+	for _, msg := range validMessages {
 		role := msg.Role
 		// 确保角色符合 deepseek API 要求
 		if role == "model" {
@@ -187,7 +274,7 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 
 	// 为 ReasonerModel 添加特定参数
 	if c.Model == ReasonerModel {
-		reqBody["max_tokens"] = 4096 // 可以根据需求调整
+		reqBody["max_tokens"] = 4096
 	}
 
 	reqData, err := json.Marshal(reqBody)
@@ -277,7 +364,7 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 				// 处理常规文本内容
 				content := streamResp.Choices[0].Delta.Content
 				if content != "" {
-					if !reasonEnd {
+					if c.Model == ReasonerModel && !reasonEnd {
 						content = "\n\n" + content
 						reasonEnd = true
 					}
@@ -292,7 +379,6 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 						if c.Debug {
 							fmt.Println("Reasoning content: " + reasoningContent)
 						}
-						// 你可以选择是否把推理内容也发送到channel
 						channel <- reasoningContent
 						fullResponse += reasoningContent
 					}
@@ -304,7 +390,6 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 			logx.Error("scanner error: " + err.Error())
 		}
 
-		// 可选：发送完整响应作为最后一个消息
 		if c.Debug {
 			fmt.Println("Full response: " + fullResponse)
 		}

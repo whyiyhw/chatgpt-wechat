@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"chat/common/deepseek"
 	"chat/common/dify"
 	"chat/common/draw"
 	"chat/common/gemini"
@@ -170,6 +171,132 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 				go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
 
 				collection.Set(gemini.NewChatContent(), messageText, conversationId, true)
+
+				// 再去插入数据
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					AgentID:    req.AgentID,
+					User:       req.UserID,
+					ReqContent: req.MSG,
+					ResContent: messageText,
+				})
+			}
+		}()
+	}
+
+	if req.Channel == "deepseek" {
+		// deepseek client
+		c := deepseek.NewChatClient(l.svcCtx.Config.DeepSeek.Key).WithHost(l.svcCtx.Config.DeepSeek.Host).
+			WithTemperature(l.svcCtx.Config.DeepSeek.Temperature).WithModel(l.svcCtx.Config.DeepSeek.Model)
+
+		if l.svcCtx.Config.DeepSeek.EnableProxy {
+			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+		}
+		// 指令匹配， 根据响应值判定是否需要调用 deepseek 接口
+		proceed, _ := l.FactoryCommend(req)
+		if !proceed {
+			return &types.ChatReply{
+				Message: "ok",
+			}, nil
+		}
+		if l.message != "" {
+			req.MSG = l.message
+		}
+
+		// 从上下文中取出用户对话数据
+		collection := deepseek.NewUserContext(
+			deepseek.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
+		).WithModel(c.Model).WithClient(c).WithPrompt(l.svcCtx.Config.DeepSeek.Prompt)
+
+		// 将当前问题加入上下文
+		collection.Set(deepseek.NewChatContent(req.MSG), "", conversationId, false)
+
+		// 获取带有上下文的完整对话历史
+		prompts := collection.GetChatSummary()
+
+		fmt.Println("上下文请求信息： collection.Prompt" + collection.Prompt)
+		fmt.Println(prompts)
+		go func() {
+			// 分段响应
+			if l.svcCtx.Config.Response.Stream {
+				channel := make(chan string, 100)
+
+				go func() {
+					err := c.ChatStream(prompts, channel)
+					if err != nil {
+						errInfo := err.Error()
+						if strings.Contains(errInfo, "maximum context length") {
+							errInfo += "\n 请使用 #clear 清理所有上下文"
+						}
+						sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
+						return
+					}
+				}()
+
+				var rs []rune
+				first := true
+				var fullMessage strings.Builder
+				for {
+					s, ok := <-channel
+					if !ok {
+						// 数据接受完成
+						if len(rs) > 0 {
+							// fixed #109 延时 200ms 发送消息,避免顺序错乱
+							time.Sleep(200 * time.Millisecond)
+							go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
+						}
+
+						// 保存完整消息到数据库
+						messageText := fullMessage.String()
+						// 将回复保存到上下文
+						collection.Set(deepseek.NewChatContent(""), messageText, conversationId, true)
+
+						table := l.svcCtx.ChatModel.Chat
+						_ = table.WithContext(context.Background()).Create(&model.Chat{
+							AgentID:    req.AgentID,
+							User:       req.UserID,
+							ReqContent: req.MSG,
+							ResContent: messageText,
+						})
+						return
+					}
+					rs = append(rs, []rune(s)...)
+					fullMessage.WriteString(s)
+
+					if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+						lastIndex := strings.LastIndex(string(rs), "\n")
+						firstPart := string(rs)[:lastIndex]
+						secondPart := string(rs)[lastIndex+1:]
+						// 发送数据
+						go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+						rs = []rune(secondPart)
+						first = false
+					} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+						lastIndex := strings.LastIndex(string(rs), "\n")
+						firstPart := string(rs)[:lastIndex]
+						secondPart := string(rs)[lastIndex+1:]
+						go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+						rs = []rune(secondPart)
+					}
+				}
+			} else {
+				messageText, err := c.Chat(prompts)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.AgentID, req.UserID, "系统错误:"+err.Error(), l.svcCtx.Config)
+					return
+				}
+
+				// 把数据发给微信用户
+				go sendToUser(req.AgentID, req.UserID, messageText, l.svcCtx.Config)
+
+				// 将回复保存到上下文
+				collection.Set(deepseek.NewChatContent(""), messageText, conversationId, true)
 
 				// 再去插入数据
 				table := l.svcCtx.ChatModel.Chat
@@ -957,22 +1084,6 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 		sendToUser(req.AgentID, req.UserID, "请输入完整的设置 如：#image:https://www.google.com/img/bd_logo1.png", l.svcCtx.Config)
 		return false
 	}
-	//// 将 URL 存入memory 中，需要时候，再取出来 进行 base64 暂时不能这么处理 gemini 不支持 带图片文本的多轮对话
-	//cacheKey := fmt.Sprintf(redis.ImageTemporaryKey, req.AgentID, req.UserID)
-	//// 可存入多张图片
-	//res, err := redis.Rdb.HSet(context.Background(), cacheKey, time.Now().Unix(), msg).Result()
-	//if err != nil {
-	//	sendToUser(req.AgentID, req.UserID, "图片保存失败:"+err.Error(), l.svcCtx.Config)
-	//	return false
-	//}
-	//if res == 0 {
-	//	sendToUser(req.AgentID, req.UserID, "图片保存失败，请稍后再试~", l.svcCtx.Config)
-	//	return false
-	//}
-	//sendToUser(req.AgentID, req.UserID, "已收到您的图片，关于图片你想了解什么呢~", l.svcCtx.Config)
-	//
-	//return false
-
 	// 中间思路，请求进行图片识别
 	c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
 		WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(gemini.VisionModel)
@@ -1016,37 +1127,6 @@ func (p CommendImage) exec(l *ChatLogic, req *types.ChatReq) bool {
 			true,
 		)
 	return false
-	//vi := reflect.ValueOf(l.svcCtx.Config.OCR)
-	//if vi.Kind() == reflect.Ptr && vi.IsNil() {
-	//	sendToUser(req.AgentID, req.UserID, "请先配置OCR", l.svcCtx.Config)
-	//	return false
-	//}
-	//if l.svcCtx.Config.OCR.Company != "ali" {
-	//	sendToUser(req.AgentID, req.UserID, "目前只支持阿里OCR", l.svcCtx.Config)
-	//	return false
-	//}
-	//ocrCli, _err := ocr.CreateClient(&l.svcCtx.Config.OCR.AliYun.AccessKeyId, &l.svcCtx.Config.OCR.AliYun.AccessKeySecret)
-	//if _err != nil {
-	//	// 创建失败
-	//	sendToUser(req.AgentID, req.UserID, "图片识别客户端创建失败失败:"+_err.Error(), l.svcCtx.Config)
-	//	return false
-	//}
-	//
-	//// 进行图片识别
-	//txt, err := ocr.Image2Txt(msg, ocrCli)
-	//if err != nil {
-	//	sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
-	//	return false
-	//}
-	//if msg == "" {
-	//	sendToUser(req.AgentID, req.UserID, "图片识别失败:"+err.Error(), l.svcCtx.Config)
-	//	return false
-	//}
-	//// 图片识别成功
-	//sendToUser(req.AgentID, req.UserID, "图片识别成功:\n\n"+txt, l.svcCtx.Config)
-	//
-	//l.message = txt
-	//return true
 }
 
 type CommendPromptList struct{}
