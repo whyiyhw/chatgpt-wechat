@@ -118,7 +118,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 						// 获取文本内容，通常在outputs中的text字段
 						var textContent string
 						if resp.Event == dify.EventWorkflowStarted {
-							go sendToUser(req.OpenKfID, req.CustomerID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
+							//go sendToUser(req.OpenKfID, req.CustomerID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
 							// 去将 conversation_id 存入 redis
 							if resp.ConversationID != "" {
 								cacheKey := fmt.Sprintf(redis.DifyCustomerConversationKey, req.OpenKfID, req.CustomerID)
@@ -138,7 +138,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 							messageText = textContent
 
 							// 根据原始请求类型决定响应方式
-							if l.isVoiceRequest {
+							if l.isVoiceRequest && l.svcCtx.Config.Dify.ResponseWithVoice {
 								// 语音请求，需要对文本进行分段处理
 								go func() {
 									// 将文本按照自然段落分割
@@ -742,7 +742,7 @@ func (p CustomerCommendVoice) customerExec(l *CustomerChatLogic, req *types.Cust
 			return false
 		}
 		// 语音识别成功
-		sendToUser(req.OpenKfID, req.CustomerID, "语音识别成功:\n\n"+text, l.svcCtx.Config)
+		//sendToUser(req.OpenKfID, req.CustomerID, "语音识别成功:\n\n"+text, l.svcCtx.Config)
 
 		l.message = text
 		return true
@@ -985,7 +985,9 @@ func splitTextIntoSegments(text string, maxLength int) []string {
 		// 寻找分割点，优先在句号、问号、感叹号、换行符处分割
 		splitPos := -1
 		for i := end; i > start; i-- {
-			if i < length && (runes[i] == '。' || runes[i] == '？' || runes[i] == '!' || runes[i] == '\n' || runes[i] == '，' || runes[i] == '；' || runes[i] == ',' || runes[i] == '.') {
+			if i < length && (runes[i] == '。' || runes[i] == '？' || runes[i] == '!' || runes[i] == '\n' ||
+				runes[i] == '，' || runes[i] == '；' || runes[i] == ',' || runes[i] == '.' ||
+				runes[i] == '：' || runes[i] == ':' || runes[i] == '）' || runes[i] == ')') {
 				splitPos = i + 1
 				break
 			}
