@@ -33,19 +33,21 @@ import (
 
 type ChatLogic struct {
 	logx.Logger
-	ctx        context.Context
-	svcCtx     *svc.ServiceContext
-	model      string
-	baseHost   string
-	basePrompt string
-	message    string
+	ctx            context.Context
+	svcCtx         *svc.ServiceContext
+	model          string
+	baseHost       string
+	basePrompt     string
+	message        string
+	isVoiceRequest bool // 标识原始请求是否为语音
 }
 
 func NewChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ChatLogic {
 	return &ChatLogic{
-		Logger: logx.WithContext(ctx),
-		ctx:    ctx,
-		svcCtx: svcCtx,
+		Logger:         logx.WithContext(ctx),
+		ctx:            ctx,
+		svcCtx:         svcCtx,
+		isVoiceRequest: false, // 初始化为非语音请求
 	}
 }
 
@@ -725,8 +727,56 @@ func sendToUser(agentID any, userID, msg string, config config.Config, file ...s
 		}
 		wecom.SendToWeComUser(agentID.(int64), userID, msg, corpSecret, file...)
 	case string:
-		wecom.SendCustomerChatMessage(agentID.(string), userID, msg, file...)
+		// 对客户消息格式进行处理
+		processedMsg := processMarkdownText(msg)
+		wecom.SendCustomerChatMessage(agentID.(string), userID, processedMsg, file...)
 	}
+}
+
+// processMarkdownText 处理消息中的Markdown格式
+// 去除markdown标记和调整换行符
+func processMarkdownText(msg string) string {
+	if msg == "" {
+		return msg
+	}
+
+	// 替换连续多个换行为单个换行
+	re := regexp.MustCompile(`\n{2,}`)
+	msg = re.ReplaceAllString(msg, "\n")
+
+	// 去除Markdown加粗标记 **text**
+	boldRe := regexp.MustCompile(`\*\*(.*?)\*\*`)
+	msg = boldRe.ReplaceAllString(msg, "$1")
+
+	// 去除Markdown斜体标记 *text* 或 _text_
+	italicRe := regexp.MustCompile(`([*_])(.*?)([*_])`)
+	msg = italicRe.ReplaceAllString(msg, "$2")
+
+	// 去除Markdown标题标记 # text
+	headerRe := regexp.MustCompile(`(?m)^#+\s+(.*?)$`)
+	msg = headerRe.ReplaceAllString(msg, "$1")
+
+	// 去除Markdown链接标记 [text](url)
+	linkRe := regexp.MustCompile(`\[(.*?)]\(.*?\)`)
+	msg = linkRe.ReplaceAllString(msg, "$1")
+
+	// 去除Markdown代码块标记 ```code```，保留内部内容
+	codeBlockStart := regexp.MustCompile("(?ms)```.*?\n")
+	msg = codeBlockStart.ReplaceAllString(msg, "")
+	codeBlockEnd := regexp.MustCompile("(?ms)```")
+	msg = codeBlockEnd.ReplaceAllString(msg, "")
+
+	// 去除Markdown行内代码标记 `code`
+	inlineCodeRe := regexp.MustCompile("`(.*?)`")
+	msg = inlineCodeRe.ReplaceAllString(msg, "$1")
+
+	// 去除Markdown列表标记 - text 或 * text 或 1. text
+	listRe := regexp.MustCompile(`(?m)^\s*[-*]\s+(.*?)$`)
+	msg = listRe.ReplaceAllString(msg, "$1")
+	orderedListRe := regexp.MustCompile(`(?m)^\s*\d+\.\s+(.*?)$`)
+	msg = orderedListRe.ReplaceAllString(msg, "$1")
+
+	return strings.TrimSpace(msg)
 }
 
 type TemplateData interface {
@@ -1066,6 +1116,9 @@ func (p CommendVoice) exec(l *ChatLogic, req *types.ChatReq) bool {
 		sendToUser(req.AgentID, req.UserID, "未能读取到音频信息", l.svcCtx.Config)
 		return false
 	}
+
+	// 设置标志，表示这是一个语音请求
+	l.isVoiceRequest = true
 
 	if req.Channel == "dify" {
 		text, err := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key).API().AudioToText(context.Background(), msg)
