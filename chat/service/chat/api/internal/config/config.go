@@ -155,4 +155,14 @@ type Config struct {
 			Value string `json:",optional"`
 		} `json:",optional"`
 	}
+
+	// deepseek 配置
+	DeepSeek struct {
+		Key         string  `json:",optional"`
+		Host        string  `json:",optional,default=https://api.deepseek.com"`
+		Model       string  `json:",optional,default=deepseek-chat"`
+		Prompt      string  `json:",optional,default=你是DeepSeek,一个由深度求索公司（DeepSeek）创造的智能AI助手！,你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`
+		Temperature float32 `json:",optional,default=1.0"`
+		EnableProxy bool    `json:",optional,default=false"`
+	}
 }

@@ -25,8 +25,8 @@ WeCom:                                              # 企业微信配置
     BasePrompt: "你是 ChatGPT， 一个由 OpenAI 训练的大型语言模型，你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # openai 基础设定（可选）
     Welcome: "您好！我是 ChatGPT，一个由 OpenAI 训练的大型语言模型，我可以回答您的问题和进行交流。请告诉我您需要了解些什么，我会尽力为您提供答案。发送#help 查看更多功能"  # 进入应用时的欢迎语
 
-ModelProvider:                                      # 服务提供者 可选择 openai / gemini / dify  默认为 openai
-  Company: "openai"                                 # openai / gemini / dify
+ModelProvider:                                      # 服务提供者 可选择 openai / gemini / dify / deepseek  默认为 openai
+  Company: "deepseek"                               # openai / gemini / dify / deepseek
 
 OpenAi:
   Key: "xxxxxxxxxxxxxxxxxxxxx"                      # OpenAi Key
@@ -50,6 +50,14 @@ Dify:
             Value: "exampleValue1"
           - Key: "exampleKey2"
             Value: "exampleValue2"
+
+DeepSeek:
+    Key: "sk-xxxxxxxxxxxxxxxxxxx"                   # deepseek key
+    Host: "https://api.deepseek.com"                # deepseek host (可选)
+    Model: "deepseek-chat"                          # deepseek model (可选) 默认为 deepseek-chat  deepseek-chat/deepseek-reasoner
+    Prompt: "你是 DeepSeek, 一个由深度求索公司（DeepSeek）创造的智能AI助手！, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # deepseek prompt (可选)
+    Temperature: 1.0                                # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于2时，其对话更加符有跳跃与创造力
+    EnableProxy: false                              #（可选）是否开启代理，默认为 false
 
 Response:                                           # 回复配置
     Stream: true                                    # 是否开启流式回复,自动断句（可选）

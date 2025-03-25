@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"chat/common/deepseek"
 	"chat/common/dify"
 	"chat/common/gemini"
 	"chat/common/milvus"
@@ -60,6 +61,14 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 			Message: "ok",
 		}, nil
 	}
+
+	// 生成会话唯一标识
+	uuidObj, err := uuid.NewUUID()
+	if err != nil {
+		go sendToUser(req.OpenKfID, req.CustomerID, "系统错误 会话唯一标识生成失败", l.svcCtx.Config)
+		return nil, err
+	}
+	conversationId := uuidObj.String()
 
 	// 指令匹配， 根据响应值判定是否需要去调用 openai 接口了
 	proceed, _ := l.FactoryCommend(req)
@@ -251,6 +260,129 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		}, nil
 	}
 
+	// deepseek 处理
+	if l.svcCtx.Config.ModelProvider.Company == "deepseek" {
+		// deepseek client
+		c := deepseek.NewChatClient(l.svcCtx.Config.DeepSeek.Key).WithHost(l.svcCtx.Config.DeepSeek.Host).
+			WithTemperature(l.svcCtx.Config.DeepSeek.Temperature).WithModel(l.svcCtx.Config.DeepSeek.Model)
+
+		if l.svcCtx.Config.DeepSeek.EnableProxy {
+			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
+				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
+				WithProxyPassword(l.svcCtx.Config.Proxy.Auth.Password)
+		}
+
+		// 从上下文中取出用户对话数据
+		collection := deepseek.NewUserContext(
+			deepseek.GetUserUniqueID(req.CustomerID, req.OpenKfID),
+		).WithModel(c.Model).WithClient(c).WithPrompt(l.svcCtx.Config.DeepSeek.Prompt)
+
+		// 将当前问题加入上下文
+		collection.Set(deepseek.NewChatContent(req.Msg), "", conversationId, false)
+
+		// 获取带有上下文的完整对话历史
+		prompts := collection.GetChatSummary()
+
+		fmt.Println("上下文请求信息： collection.Prompt" + collection.Prompt)
+		fmt.Println(prompts)
+		go func() {
+			// 分段响应
+			if l.svcCtx.Config.Response.Stream {
+				channel := make(chan string, 100)
+
+				go func() {
+					err := c.ChatStream(prompts, channel)
+					if err != nil {
+						errInfo := err.Error()
+						if strings.Contains(errInfo, "maximum context length") {
+							errInfo += "\n 请使用 #clear 清理所有上下文"
+						}
+						sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error(), l.svcCtx.Config)
+						return
+					}
+				}()
+
+				var rs []rune
+				first := true
+				var fullMessage strings.Builder
+				for {
+					s, ok := <-channel
+					if !ok {
+						// 数据接受完成
+						if len(rs) > 0 {
+							// fixed #109 延时 200ms 发送消息,避免顺序错乱
+							time.Sleep(200 * time.Millisecond)
+							go sendToUser(req.OpenKfID, req.CustomerID, string(rs)+"\n--------------------------------\n"+req.Msg, l.svcCtx.Config)
+						}
+
+						// 保存完整消息到数据库
+						messageText := fullMessage.String()
+						// 将回复保存到上下文
+						collection.Set(deepseek.NewChatContent(""), messageText, conversationId, true)
+
+						table := l.svcCtx.ChatModel.Chat
+						_ = table.WithContext(context.Background()).Create(&model.Chat{
+							User:       req.CustomerID,
+							OpenKfID:   req.OpenKfID,
+							MessageID:  req.MsgID,
+							ReqContent: req.Msg,
+							ResContent: messageText,
+						})
+						return
+					}
+					rs = append(rs, []rune(s)...)
+					fullMessage.WriteString(s)
+
+					if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+						lastIndex := strings.LastIndex(string(rs), "\n")
+						firstPart := string(rs)[:lastIndex]
+						secondPart := string(rs)[lastIndex+1:]
+						// 发送数据
+						go sendToUser(req.OpenKfID, req.CustomerID, firstPart, l.svcCtx.Config)
+						rs = []rune(secondPart)
+						first = false
+					} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+						lastIndex := strings.LastIndex(string(rs), "\n")
+						firstPart := string(rs)[:lastIndex]
+						secondPart := string(rs)[lastIndex+1:]
+						go sendToUser(req.OpenKfID, req.CustomerID, firstPart, l.svcCtx.Config)
+						rs = []rune(secondPart)
+					}
+				}
+			} else {
+				messageText, err := c.Chat(prompts)
+				if err != nil {
+					errInfo := err.Error()
+					if strings.Contains(errInfo, "maximum context length") {
+						errInfo += "\n 请使用 #clear 清理所有上下文"
+					}
+					sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+err.Error(), l.svcCtx.Config)
+					return
+				}
+
+				// 把数据发给微信用户
+				go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
+
+				// 将回复保存到上下文
+				collection.Set(deepseek.NewChatContent(""), messageText, conversationId, true)
+
+				// 再去插入数据
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					User:       req.CustomerID,
+					OpenKfID:   req.OpenKfID,
+					MessageID:  req.MsgID,
+					ReqContent: req.Msg,
+					ResContent: messageText,
+				})
+			}
+		}()
+
+		return &types.CustomerChatReply{
+			Message: "ok",
+		}, nil
+	}
+
 	company := l.svcCtx.Config.ModelProvider.Company
 	modelName := ""
 	var temperature float32
@@ -284,7 +416,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		go sendToUser(req.OpenKfID, req.CustomerID, "系统错误 会话唯一标识生成失败", l.svcCtx.Config)
 		return nil, uuidErr
 	}
-	conversationId := uuidObj.String()
+	conversationId = uuidObj.String()
 
 	// gemini api
 	if company == "gemini" {
