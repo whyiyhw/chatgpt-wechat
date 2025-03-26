@@ -333,7 +333,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 					rs = append(rs, []rune(s)...)
 					fullMessage.WriteString(s)
 
-					if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+					if first && len(rs) > 100 && strings.LastIndex(string(rs), "\n") != -1 {
 						lastIndex := strings.LastIndex(string(rs), "\n")
 						firstPart := string(rs)[:lastIndex]
 						secondPart := string(rs)[lastIndex+1:]
@@ -341,7 +341,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 						go sendToUser(req.OpenKfID, req.CustomerID, firstPart, l.svcCtx.Config)
 						rs = []rune(secondPart)
 						first = false
-					} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+					} else if len(rs) > 550 && strings.LastIndex(string(rs), "\n") != -1 {
 						lastIndex := strings.LastIndex(string(rs), "\n")
 						firstPart := string(rs)[:lastIndex]
 						secondPart := string(rs)[lastIndex+1:]
