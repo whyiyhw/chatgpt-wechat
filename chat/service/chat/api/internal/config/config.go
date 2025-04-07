@@ -164,5 +164,6 @@ type Config struct {
 		Prompt      string  `json:",optional,default=你是DeepSeek,一个由深度求索公司（DeepSeek）创造的智能AI助手！,你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`
 		Temperature float32 `json:",optional,default=1.0"`
 		EnableProxy bool    `json:",optional,default=false"`
+		Debug       bool    `json:",optional,default=false"`
 	}
 }

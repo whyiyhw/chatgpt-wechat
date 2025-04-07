@@ -264,7 +264,8 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 	if l.svcCtx.Config.ModelProvider.Company == "deepseek" {
 		// deepseek client
 		c := deepseek.NewChatClient(l.svcCtx.Config.DeepSeek.Key).WithHost(l.svcCtx.Config.DeepSeek.Host).
-			WithTemperature(l.svcCtx.Config.DeepSeek.Temperature).WithModel(l.svcCtx.Config.DeepSeek.Model)
+			WithTemperature(l.svcCtx.Config.DeepSeek.Temperature).WithModel(l.svcCtx.Config.DeepSeek.Model).
+			WithDebug(l.svcCtx.Config.DeepSeek.Debug)
 
 		if l.svcCtx.Config.DeepSeek.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
@@ -283,7 +284,7 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 		// 获取带有上下文的完整对话历史
 		prompts := collection.GetChatSummary()
 
-		fmt.Println("上下文请求信息： collection.Prompt" + collection.Prompt)
+		fmt.Println("上下文请求信息： collection.Prompt " + collection.Prompt)
 		fmt.Println(prompts)
 		go func() {
 			// 分段响应

@@ -29,7 +29,8 @@ func GetEncoding(encodingName string) (*Tiktoken, error) {
 
 func EncodingForModel(modelName string) (*Tiktoken, error) {
 	if encodingName, ok := ModelToEncoding[modelName]; !ok {
-		return nil, fmt.Errorf("no encoding for model %s", modelName)
+		//return nil, fmt.Errorf("no encoding for model %s", modelName)
+		return GetEncoding("cl100k_base")
 	} else {
 		return GetEncoding(encodingName)
 	}

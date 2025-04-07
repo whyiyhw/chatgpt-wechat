@@ -57,6 +57,7 @@ DeepSeek:
     Prompt: "你是 DeepSeek, 一个由深度求索公司（DeepSeek）创造的智能AI助手！, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。" # deepseek prompt (可选)
     Temperature: 1.0                                # 对话的创造性，当其逼近与0时，其响应的结果更加死板，当其趋近于2时，其对话更加符有跳跃与创造力
     EnableProxy: false                              #（可选）是否开启代理，默认为 false
+    Debug: false                                    #（可选）是否开启调试，默认为 false
 
 Proxy:                                              # （可选）代理配置
   Socket5: "127.0.0.1:1080"                         # （可选）代理地址 默认为空 如 127.0.0.1:1080
