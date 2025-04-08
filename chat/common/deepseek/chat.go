@@ -116,10 +116,15 @@ func (c *ChatClient) commonChat(chatRequest []ChatModelMessage) ([]ChatModelMess
 		currentTokens += NumTokensFromMessages([]ChatModelMessage{systemMsg}, c.Model)
 	}
 
-	// 从最新的消息开始添加
+	maxToken, ok := ChatModelInputTokenLimit[c.Model]
+	if !ok {
+		maxToken = 8192
+	}
+
+	// 从最新的消息开始添加 计算当前消息的 token 数量
 	for i := len(validMessages) - 1; i >= 0; i-- {
 		tokensForMessage := NumTokensFromMessages([]ChatModelMessage{validMessages[i]}, c.Model)
-		if currentTokens+tokensForMessage < ChatModelInputTokenLimit[c.Model] {
+		if currentTokens+tokensForMessage < maxToken {
 			finalMessages = append([]ChatModelMessage{validMessages[i]}, finalMessages...)
 			currentTokens += tokensForMessage
 		} else {
