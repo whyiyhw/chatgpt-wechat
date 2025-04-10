@@ -7,9 +7,8 @@ Port: 8888                                          # 项目监听端口
 Mysql:                                              # mysql配置
   DataSource: chat:123456@tcp(mysql57:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址 自建最好修改下密码
 
-RedisCache:                                         # redis缓存配置
-  - Host: redis7:6379                               # redis缓存地址
-    Pass: "123456"                                  # redis缓存密码 自建最好修改下密码
+RedisCache:
+  RedisURL: rediss://default:password@aaa.com:12345 # redis连接地址 
 
 Auth:                                               # jwt配置（可选）自建最好修改下
   AccessSecret: "xxxxxxxxxxxxxxx"                   # jwt加密密钥(可选) 默认为 xxxxxxxxxxxx

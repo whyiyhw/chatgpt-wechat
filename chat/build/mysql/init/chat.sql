@@ -13,4 +13,4 @@ CREATE TABLE `chat`
     PRIMARY KEY (`id`),
     KEY           `user_idx` (`user`,`agent_id`) USING BTREE,
     KEY           `user_message_idx` (`user`,`message_id`) USING BTREE
-) ENGINE=InnoDB COMMENT="聊天记录表" AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天记录表';

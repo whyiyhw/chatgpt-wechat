@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/rest"
 )
 
@@ -12,7 +11,9 @@ type Config struct {
 		DataSource string
 	}
 
-	RedisCache cache.CacheConf
+	RedisCache struct {
+		RedisURL string
+	}
 
 	SystemVersion string `json:",optional,default=v1.0.0-beat"`
 
