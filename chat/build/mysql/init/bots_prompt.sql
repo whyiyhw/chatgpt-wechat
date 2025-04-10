@@ -8,5 +8,5 @@ CREATE TABLE `bots_prompt`
     `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`)
-) ENGINE=InnoDB COMMENT="机器人prompt设置表" AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-Alter TABLE `bots_prompt` ADD INDEX `idx_bot_id` (`bot_id`) USING BTREE;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='机器人prompt设置表';
+ALTER TABLE `bots_prompt` ADD INDEX `idx_bot_id` (`bot_id`) USING BTREE;

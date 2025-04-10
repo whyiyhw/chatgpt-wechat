@@ -43,7 +43,7 @@ func main() {
 	)
 	defer server.Stop()
 
-	redis.Init(c.RedisCache[0].Host, c.RedisCache[0].Pass)
+	redis.Init(c.RedisCache.RedisURL)
 	defer redis.Close()
 
 	ctx := svc.NewServiceContext(c)
