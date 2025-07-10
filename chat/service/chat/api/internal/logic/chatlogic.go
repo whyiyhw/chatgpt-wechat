@@ -66,7 +66,7 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 		// gemini client
 		c := gemini.NewChatClient(l.svcCtx.Config.Gemini.Key).WithHost(l.svcCtx.Config.Gemini.Host).
-			WithTemperature(l.svcCtx.Config.Gemini.Temperature)
+			WithTemperature(l.svcCtx.Config.Gemini.Temperature).WithModel(l.svcCtx.Config.Gemini.Model)
 		if l.svcCtx.Config.Gemini.EnableProxy {
 			c = c.WithHttpProxy(l.svcCtx.Config.Proxy.Http).WithSocks5Proxy(l.svcCtx.Config.Proxy.Socket5).
 				WithProxyUserName(l.svcCtx.Config.Proxy.Auth.Username).
