@@ -9,7 +9,7 @@
 - 原始功能基本不受影响，但数据库切换到 `pgsql` 方便 向量化查询
 - 支持了 Google 的 Gemini-pro 每个 token 60/m 的调用还是很香
 - 支持了 web bot 设置，同时支持将 bot 发布到客服
-- web 项目地址 [https://github.com/whyiyhw/agent-web](https://github.com/whyiyhw/agent-web) 前端苦手，全靠 GPT4 配合写的页面
+- web 项目地址 [https://github.com/whyiyhw/agent-web](https://github.com/whyiyhw/agent-web) 
 - 支持了最新的企业微信客服协议
 - 企业微信api支持自定义域名
 - 项目小助手，有问题可以先问它哦 ➡️➡️➡️ ![img.png](doc/imgv101.png)
@@ -30,7 +30,7 @@
 - 绘画：
   - 支持`stable diffusion 1.5`作图
   - 支持 `openai` 作图
-- 私有数据：`milvus` 私有化向量知识库支持
+- 私有数据：`dify` 私有化向量知识库支持
 - 插件机制：[支持插件，点击查看](./doc/plugin.md)
   - 目前已支持 `shell`、`search`、`wikipedia`
   - 各位也可按照规则自行开发接入其他能力（summary, 天气 ...）

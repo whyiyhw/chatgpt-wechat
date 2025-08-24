@@ -61,15 +61,6 @@ type Config struct {
 		} `json:",optional"`
 	} `json:",optional"`
 
-	// embeddings 配置
-	Embeddings struct {
-		Enable bool `json:",optional,default=false"`
-		Mlvus  struct {
-			Host     string   `json:",optional,default=127.0.0.1:19530"`
-			Keywords []string `json:",optional"`
-		} `json:",optional"`
-	}
-
 	// 流式传输 加快响应速度
 	Response struct {
 		Stream bool `json:",optional,default=true"`
@@ -163,6 +154,18 @@ type Config struct {
 		Model       string  `json:",optional,default=deepseek-chat"`
 		Prompt      string  `json:",optional,default=你是DeepSeek,一个由深度求索公司（DeepSeek）创造的智能AI助手！,你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`
 		Temperature float32 `json:",optional,default=1.0"`
+		EnableProxy bool    `json:",optional,default=false"`
+		Debug       bool    `json:",optional,default=false"`
+	}
+
+	// sensecore 配置
+	SenseCore struct {
+		Key         string  `json:",optional"`
+		Host        string  `json:",optional,default=https://api.sensenova.cn"`
+		Model       string  `json:",optional,default=SenseChat-5"`
+		Prompt      string  `json:",optional,default=你是一个由商汤科技（SenseTime）创造的智能AI助手！,你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"`
+		MaxTokens   int     `json:",optional,default=4096"`
+		Temperature float32 `json:",optional,default=0.8"`
 		EnableProxy bool    `json:",optional,default=false"`
 		Debug       bool    `json:",optional,default=false"`
 	}
