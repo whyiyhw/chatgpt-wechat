@@ -4,6 +4,7 @@ import (
 	"chat/common/aibackend"
 	_ "chat/common/aibackend/deepseek" // 自注册 "deepseek" Factory 到 aibackend.Registry
 	_ "chat/common/aibackend/dify"     // 自注册 "dify" Factory 到 aibackend.Registry
+	_ "chat/common/aibackend/openai"   // 自注册 "openai" Factory 到 aibackend.Registry
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/middleware"
 	"chat/service/chat/dao"
