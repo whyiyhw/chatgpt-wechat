@@ -9,6 +9,9 @@ import (
 )
 
 func TestChatMessagesStream(t *testing.T) {
+	// 直连 https://api.dify.ai 用占位 key 的集成测试。需真凭据时去掉 t.Skip。
+	t.Skip("integration test: requires real Dify Chat App + API key")
+
 	ctx := context.Background()
 	api := NewClient("https://api.dify.ai", "app-xxxxxxx")
 

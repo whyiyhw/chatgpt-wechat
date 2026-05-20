@@ -83,7 +83,7 @@ func (c *ChatClient) CreateEmbedding(input string) (EmbeddingResponse, error) {
 		for key, val := range resp.Header {
 			logx.Error("CreateEmbedding resp header: ", key, " ", strings.Join(val, ","))
 		}
-		return EmbeddingResponse{}, fmt.Errorf("CreateEmbedding StatusCode error:" + resp.Status)
+		return EmbeddingResponse{}, fmt.Errorf("CreateEmbedding StatusCode error: %s", resp.Status)
 	}
 
 	defer func(Body io.ReadCloser) {
@@ -159,7 +159,7 @@ func (c *ChatClient) CreateBatchEmbedding(input []string) (BatchEmbeddingRespons
 		for key, val := range resp.Header {
 			logx.Error("CreateBatchEmbedding resp header: ", key, " ", strings.Join(val, ","))
 		}
-		return BatchEmbeddingResponse{}, fmt.Errorf("CreateBatchEmbedding StatusCode error:" + resp.Status)
+		return BatchEmbeddingResponse{}, fmt.Errorf("CreateBatchEmbedding StatusCode error: %s", resp.Status)
 	}
 
 	defer func(Body io.ReadCloser) {

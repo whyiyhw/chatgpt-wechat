@@ -1,0 +1,55 @@
+# chat-test-api.yaml 模板：用于跑 service/chat/api/internal/logic 的测试。
+#
+# 用法：
+#   cp chat-test-api.yaml.bak chat-test-api.yaml
+#   # 按需改下面的连接串 / 凭据
+#   go test ./service/chat/api/internal/logic/...
+#
+# 当 chat-test-api.yaml 不存在时，logic 包 TestMain 会整包 skip
+# 而不是 panic，因此本模板是可选的，仅做集成测试时复制。
+
+Name: chat-test-api
+Host: 0.0.0.0
+Port: 8889                                          # 跟主服务 8888 错开
+
+PGSql:
+  DataSource: "host=127.0.0.1 user=chat password=Chat-gpt~wechat dbname=chat_test port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+
+RedisCache:
+  - Host: 127.0.0.1:6379
+    Pass: ""
+
+Auth:
+  AccessSecret: "test-secret-do-not-use-in-prod"
+  AccessExpire: 25920000
+
+WeCom:
+  CorpID: "wwtest"
+  Token: "test"
+  EncodingAESKey: "test"
+  MultipleApplication:
+    - AgentID: 1
+      AgentSecret: "test"
+      ManageAllKFSession: false
+
+ModelProvider:
+  Company: "openai"
+
+OpenAi:
+  Key: "sk-test"
+  MaxToken: 2000
+  TotalToken: 3900
+  Temperature: 0.8
+
+Response:
+  Stream: true
+
+# 可选：让 logic 测试也覆盖 Router 路径时，加 AIBackend 块
+#AIBackend:
+#  Default: dify-main
+#  RolloutPercent: 100
+#  Backends:
+#    - Name: dify-main
+#      Type: dify
+#      BaseURL: https://api.dify.ai
+#      APIKey: app-xxxxxxxxxxxxxxxx

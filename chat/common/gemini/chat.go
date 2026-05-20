@@ -50,7 +50,7 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 
 	// 打印 res 中的所有数据
 	fmt.Printf("response status code: %v \n", res.Status)
-	fmt.Printf("response Proto:  %v \n" + res.Proto)
+	fmt.Printf("response Proto:  %v \n", res.Proto)
 	fmt.Printf("response ProtoMajor:  %v \n", res.ProtoMajor)
 	fmt.Printf("response ProtoMinor:  %v \n", res.ProtoMinor)
 	fmt.Printf("response ContentLength:  %v \n", res.ContentLength)

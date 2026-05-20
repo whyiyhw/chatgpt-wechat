@@ -8,10 +8,9 @@ import (
 )
 
 func TestTextToAudio(t *testing.T) {
-	// 跳过正式测试，除非提供了实际的 API 密钥
-	if testing.Short() {
-		t.Skip("Skipping test in short mode")
-	}
+	// 直连 https://api.dify.ai 用占位 key（"app-xxx"）的集成测试，
+	// 默认就会 401 失败、污染 go test ./... 结果。需真凭据时去掉 t.Skip。
+	t.Skip("integration test: requires real Dify TTS endpoint + API key")
 
 	ctx := context.Background()
 	api := NewClient("https://api.dify.ai", "app-xxxxxxxxxx") // 替换为实际的 API 密钥
