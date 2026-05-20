@@ -1113,7 +1113,7 @@ func (l *CustomerChatLogic) customerChatDifyViaRouter(req *types.CustomerChatReq
 		defer cancel()
 
 		if !l.svcCtx.Config.Response.Stream {
-			l.Logger.Info("customer dify via Router: Stream=false 时本 PR 暂不接管，建议开启 Response.Stream")
+			l.customerChatDifyViaRouterBlocking(ctx, req, backend, cacheKey, inputs, conversationId)
 			return
 		}
 
@@ -1233,6 +1233,93 @@ func (l *CustomerChatLogic) customerChatDifyViaRouter(req *types.CustomerChatReq
 			}
 		}
 	}()
+}
+
+// customerChatDifyViaRouterBlocking 是 customerChatDifyViaRouter 在
+// Config.Response.Stream==false 时的非流式分支：调 backend.Chat 一次拿
+// Answer 写回。语音支路保留：若 isVoiceRequest && Dify.ResponseWithVoice，
+// 按 splitTextIntoSegments 分段做 TTS（与 stream 路径完全一致）。
+func (l *CustomerChatLogic) customerChatDifyViaRouterBlocking(
+	ctx context.Context,
+	req *types.CustomerChatReq,
+	backend aibackend.AIBackend,
+	cacheKey string,
+	inputs map[string]interface{},
+	conversationId string,
+) {
+	startTime := time.Now()
+	resp, err := backend.Chat(ctx, aibackend.ChatReq{
+		Query:          req.Msg,
+		User:           req.CustomerID,
+		ConversationID: conversationId,
+		Inputs:         inputs,
+	})
+	duration := time.Since(startTime)
+	aibackend.MetricObserveRequest(backend.Name(), err)
+	aibackend.MetricObserveDuration(backend.Name(), "chat", duration)
+	if duration > 3*time.Second {
+		logx.WithContext(ctx).Errorw("slow ai_backend request",
+			logx.Field("backend", backend.Name()),
+			logx.Field("backend_type", backend.Type()),
+			logx.Field("entry", "customer"),
+			logx.Field("phase", "chat"),
+			logx.Field("duration_ms", duration.Milliseconds()),
+			logx.Field("status", aibackend.ClassifyStatus(err)),
+			logx.Field("query", truncate(req.Msg, 200)),
+			logx.Field("open_kf_id", req.OpenKfID),
+			logx.Field("customer_id", req.CustomerID))
+	}
+	if err != nil {
+		errInfo := err.Error()
+		if strings.Contains(errInfo, "maximum context length") {
+			errInfo += "\n 请使用 #clear 清理所有上下文"
+		}
+		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+		return
+	}
+
+	if resp.ConversationID != "" {
+		redis.Rdb.Set(context.Background(), cacheKey, resp.ConversationID, 24*time.Hour)
+	}
+
+	messageText := resp.Answer
+
+	if l.isVoiceRequest && l.svcCtx.Config.Dify.ResponseWithVoice {
+		go func(text string) {
+			c := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key)
+			segments := splitTextIntoSegments(text, 160)
+			for _, segment := range segments {
+				resp, err := c.API().TextToAudio(context.Background(), segment)
+				if err != nil {
+					l.Logger.Error("dify 生成语音失败: ", err)
+					continue
+				}
+				uuidObj, _ := uuid.NewUUID()
+				filePath := fmt.Sprintf("%s/%s-%s", os.TempDir(), req.OpenKfID, uuidObj.String())
+				filePath, err = dify.SaveAudioToFile(resp.Audio, filePath, resp.ContentType)
+				if err != nil {
+					l.Logger.Error("dify 保存语音文件失败: ", err)
+					continue
+				}
+				sendToUser(req.OpenKfID, req.CustomerID, "", l.svcCtx.Config, filePath)
+				time.Sleep(200 * time.Millisecond)
+			}
+			if len(segments) <= 0 {
+				sendToUser(req.OpenKfID, req.CustomerID, text+"\n--------------------------------\n"+req.Msg, l.svcCtx.Config)
+			}
+		}(messageText)
+	} else {
+		go sendToUser(req.OpenKfID, req.CustomerID, messageText, l.svcCtx.Config)
+	}
+
+	table := l.svcCtx.ChatModel.Chat
+	_ = table.WithContext(context.Background()).Create(&model.Chat{
+		User:       req.CustomerID,
+		OpenKfID:   req.OpenKfID,
+		MessageID:  req.MsgID,
+		ReqContent: req.Msg,
+		ResContent: messageText,
+	})
 }
 
 type difyCustomerEventHandler struct {

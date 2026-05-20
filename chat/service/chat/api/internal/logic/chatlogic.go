@@ -1543,7 +1543,7 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 		defer cancel()
 
 		if !l.svcCtx.Config.Response.Stream {
-			l.Logger.Info("dify via Router: Stream=false 时本 PR 暂不接管，建议开启 Response.Stream")
+			l.chatDifyViaRouterBlocking(ctx, req, backend, cacheKey, inputs, conversationId)
 			return
 		}
 
@@ -1673,6 +1673,65 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 			}
 		}
 	}()
+}
+
+// chatDifyViaRouterBlocking 是 chatDifyViaRouter 在 Config.Response.Stream==false
+// 时的非流式分支：调 backend.Chat（一次 POST/blocking），拿 Answer 一次性回写。
+//
+// 与 stream 路径相比：
+//   - phase 标签是 "chat" 而非 "stream"，区分 metric 桶
+//   - 没有"处理中"提示 / 分段写回 / 首 chunk 指标
+//   - conversation_id 在 Chat 响应里就有，直接缓存
+func (l *ChatLogic) chatDifyViaRouterBlocking(
+	ctx context.Context,
+	req *types.ChatReq,
+	backend aibackend.AIBackend,
+	cacheKey string,
+	inputs map[string]interface{},
+	conversationId string,
+) {
+	startTime := time.Now()
+	resp, err := backend.Chat(ctx, aibackend.ChatReq{
+		Query:          req.MSG,
+		User:           req.UserID,
+		ConversationID: conversationId,
+		Inputs:         inputs,
+	})
+	duration := time.Since(startTime)
+	aibackend.MetricObserveRequest(backend.Name(), err)
+	aibackend.MetricObserveDuration(backend.Name(), "chat", duration)
+	if duration > 3*time.Second {
+		logx.WithContext(ctx).Errorw("slow ai_backend request",
+			logx.Field("backend", backend.Name()),
+			logx.Field("backend_type", backend.Type()),
+			logx.Field("phase", "chat"),
+			logx.Field("duration_ms", duration.Milliseconds()),
+			logx.Field("status", aibackend.ClassifyStatus(err)),
+			logx.Field("query", truncate(req.MSG, 200)),
+			logx.Field("user", req.UserID))
+	}
+	if err != nil {
+		errInfo := err.Error()
+		if strings.Contains(errInfo, "maximum context length") {
+			errInfo += "\n 请使用 #clear 清理所有上下文"
+		}
+		sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+		return
+	}
+
+	if resp.ConversationID != "" {
+		redis.Rdb.Set(context.Background(), cacheKey, resp.ConversationID, 24*time.Hour)
+	}
+
+	go sendToUser(req.AgentID, req.UserID, resp.Answer, l.svcCtx.Config)
+
+	table := l.svcCtx.ChatModel.Chat
+	_ = table.WithContext(context.Background()).Create(&model.Chat{
+		AgentID:    req.AgentID,
+		User:       req.UserID,
+		ReqContent: req.MSG,
+		ResContent: resp.Answer,
+	})
 }
 
 // truncate 把字符串按 rune 截短到 max 长度，超过部分用 "..." 标识。

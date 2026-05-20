@@ -304,6 +304,53 @@ func fakeDifySSE(t *testing.T, events []string) *httptest.Server {
 	}))
 }
 
+func TestChatHappyPath(t *testing.T) {
+	var captured struct {
+		path         string
+		responseMode string
+		query        string
+		conv         string
+		user         string
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured.path = r.URL.Path
+		var body map[string]any
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		captured.responseMode, _ = body["response_mode"].(string)
+		captured.query, _ = body["query"].(string)
+		captured.conv, _ = body["conversation_id"].(string)
+		captured.user, _ = body["user"].(string)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, `{"id":"m-7","answer":"你好！","conversation_id":"c-9","created_at":1700000000}`)
+	}))
+	defer srv.Close()
+
+	b, _ := New(Config{Name: "t", BaseURL: srv.URL, APIKey: "k", Timeout: 5 * time.Second})
+	resp, err := b.Chat(context.Background(), aibackend.ChatReq{
+		Query: "你好", User: "u-1", ConversationID: "c-prev",
+	})
+	if err != nil {
+		t.Fatalf("Chat: %v", err)
+	}
+	if resp.Answer != "你好！" {
+		t.Errorf("Answer = %q, want 你好！", resp.Answer)
+	}
+	if resp.MessageID != "m-7" || resp.ConversationID != "c-9" {
+		t.Errorf("got MessageID=%q ConversationID=%q, want m-7/c-9", resp.MessageID, resp.ConversationID)
+	}
+	if captured.path != "/v1/chat-messages" {
+		t.Errorf("path = %q, want /v1/chat-messages", captured.path)
+	}
+	if captured.responseMode != "blocking" {
+		t.Errorf("response_mode = %q, want blocking", captured.responseMode)
+	}
+	if captured.query != "你好" || captured.user != "u-1" || captured.conv != "c-prev" {
+		t.Errorf("request body fields wrong: %+v", captured)
+	}
+}
+
 func TestChatStreamWorkflowEvents(t *testing.T) {
 	events := []string{
 		`{"event":"workflow_started","task_id":"t-1","conversation_id":"c-1","workflow_run_id":"wfr-1"}`,
