@@ -129,12 +129,7 @@ func (api *API) RunWorkflow(ctx context.Context, request WorkflowRequest) (*Work
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println("Error closing response body:", err)
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, parseHTTPError(resp.StatusCode, resp.Body)
@@ -164,12 +159,7 @@ func (api *API) RunStreamWorkflowWithHandler(ctx context.Context, request Workfl
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println("Error closing response body:", err)
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return parseHTTPError(resp.StatusCode, resp.Body)
@@ -178,7 +168,6 @@ func (api *API) RunStreamWorkflowWithHandler(ctx context.Context, request Workfl
 	reader := bufio.NewReader(resp.Body)
 	for {
 		line, err := reader.ReadBytes('\n')
-		fmt.Println(string(line))
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -190,23 +179,21 @@ func (api *API) RunStreamWorkflowWithHandler(ctx context.Context, request Workfl
 			var event struct {
 				Event string `json:"event"`
 			}
-			if err := json.Unmarshal(line[6:], &event); err != nil {
-				fmt.Println("Error decoding event type:", err)
+			if json.Unmarshal(line[6:], &event) != nil {
+				// 解码失败时静默跳过：流里偶尔混入 keep-alive 注释行属正常
 				continue
 			}
 
 			switch event.Event {
 			case EventTTSMessage, EventTTSMessageEnd:
 				var ttsMsg TTSMessage
-				if err := json.Unmarshal(line[6:], &ttsMsg); err != nil {
-					fmt.Println("Error decoding TTS message:", err)
+				if json.Unmarshal(line[6:], &ttsMsg) != nil {
 					continue
 				}
 				handler.HandleTTSMessage(ttsMsg)
 			default:
 				var streamResp StreamingResponse
-				if err := json.Unmarshal(line[6:], &streamResp); err != nil {
-					fmt.Println("Error decoding streaming response:", err)
+				if json.Unmarshal(line[6:], &streamResp) != nil {
 					continue
 				}
 				handler.HandleStreamingResponse(streamResp)

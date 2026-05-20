@@ -36,10 +36,10 @@ func (api *API) AudioToText(ctx context.Context, filePath string) (string, error
 
 	if resp.StatusCode() != 200 {
 		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return "", fmt.Errorf("HTTP error %d: failed to decode error response", resp.StatusCode())
+		if json.Unmarshal(resp.Body(), &errResp) != nil {
+			return "", &APIError{Status: resp.StatusCode(), Message: string(resp.Body())}
 		}
-		return "", fmt.Errorf("API error: [%s] %s", errResp.Code, errResp.Message)
+		return "", &APIError{Status: resp.StatusCode(), Code: errResp.Code, Message: errResp.Message}
 	}
 
 	var result AudioToTextResponse

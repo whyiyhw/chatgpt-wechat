@@ -45,10 +45,10 @@ func (api *API) TextToAudio(ctx context.Context, text string) (*TextToAudioRespo
 
 	if resp.StatusCode() != 200 {
 		var errResp ErrorResponse
-		if err := json.Unmarshal(resp.Body(), &errResp); err != nil {
-			return nil, fmt.Errorf("HTTP error %d: failed to decode error response", resp.StatusCode())
+		if json.Unmarshal(resp.Body(), &errResp) != nil {
+			return nil, &APIError{Status: resp.StatusCode(), Message: string(resp.Body())}
 		}
-		return nil, fmt.Errorf("API error: [%s] %s", errResp.Code, errResp.Message)
+		return nil, &APIError{Status: resp.StatusCode(), Code: errResp.Code, Message: errResp.Message}
 	}
 
 	// 获取 Content-Type

@@ -2,8 +2,6 @@ package dify
 
 import (
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -48,12 +46,7 @@ func (c *Client) sendJSONRequest(req *http.Request, res interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println("Error closing response body:", err)
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		var errBody struct {

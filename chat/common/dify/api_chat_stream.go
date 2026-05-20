@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -47,12 +46,7 @@ func (api *API) ChatMessagesStream(ctx context.Context, req *ChatMessageRequest)
 }
 
 func (api *API) chatMessagesStreamHandle(ctx context.Context, resp *http.Response, streamChannel chan ChatMessageStreamChannelResponse) {
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-	}(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
 	defer close(streamChannel)
 
 	reader := bufio.NewReader(resp.Body)
@@ -62,7 +56,6 @@ func (api *API) chatMessagesStreamHandle(ctx context.Context, resp *http.Respons
 			return
 		default:
 			line, err := reader.ReadBytes('\n')
-			fmt.Println(string(line))
 			if err != nil {
 				streamChannel <- ChatMessageStreamChannelResponse{
 					Err: fmt.Errorf("error reading line: %w", err),
