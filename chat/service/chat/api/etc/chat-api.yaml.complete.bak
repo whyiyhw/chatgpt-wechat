@@ -25,6 +25,8 @@ Prometheus:
 # ---------------------------------------------------------------------------
 #AIBackend:
 #  Default: dify-main                               # 默认 backend 名称（必须出现在 Backends 里）
+#  RolloutPercent: 0                                # 灰度百分比 [0,100]，按 UserID 哈希稳定分流；
+#                                                   # 0=全走 legacy，100=全走 Router，建议从小到大递增
 #  Backends:
 #    - Name: dify-main                              # 实例名，全局唯一
 #      Type: dify                                   # dify | openclaw | openai | http
@@ -36,7 +38,7 @@ Prometheus:
 #      Type: openclaw
 #      BaseURL: https://openclaw.example.com/api
 #      APIKey: oc-xxxxxxxxxxxxxxxx
-#  Routes:                                          # 按 bot_id / tenant_id 等路由（PR #5/#6 接通）
+#  Routes:                                          # 按 bot_id / tenant_id 等路由（后续 PR 接通）
 #    - Match: { bot_id: 1001 }
 #      Primary: dify-main
 #      Fallback: [openclaw-backup]

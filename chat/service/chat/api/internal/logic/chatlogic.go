@@ -580,9 +580,11 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 	// dify 处理
 	if req.Channel == "dify" {
-		// v1.1 PR #5c：优先走 AIBackend.Router；未配 Router 或 Default 类型不是 dify 时
-		// 回落到下方原有 dify.NewClient 分支，保持现网行为完全兼容。
-		if backend := pickDifyBackend(l.svcCtx.AIBackend); backend != nil {
+		// v1.1 PR #5c/#6：先按 RolloutPercent 灰度判定再选 backend。
+		// 未配 Router / Default 类型非 dify / 灰度未命中 时回落到下方原有
+		// dify.NewClient 分支，保持现网行为完全兼容。
+		// 灰度 key 用 UserID，确保同一用户始终走同一条路径。
+		if backend := pickDifyBackend(l.svcCtx.AIBackend, req.UserID); backend != nil {
 			l.chatDifyViaRouter(req, backend, uuidObj)
 			return &types.ChatReply{Message: "ok"}, nil
 		}
@@ -1488,12 +1490,14 @@ func (h *difyEventHandler) HandleTTSMessage(msg dify.TTSMessage) {
 	}
 }
 
-// pickDifyBackend 返回 Router 默认 backend（仅当它是 dify 类型）。
+// pickDifyBackend 返回 Router 默认 backend（仅当满足全部条件）：
+//   - Router 已配；
+//   - 灰度命中（stableKey 通常是 UserID，详见 Router.ShouldUseRouter）；
+//   - Default 已设且类型是 dify。
 //
-// Router 未配 / Default 未设 / 默认类型不是 dify 时返回 nil，调用方据此
-// 回落到 legacy dify.NewClient 分支。PR #6 灰度时再扩展为按 bot_id 路由。
-func pickDifyBackend(r *aibackend.Router) aibackend.AIBackend {
-	if r == nil {
+// 任一不满足返回 nil，调用方据此回落到 legacy dify.NewClient 分支。
+func pickDifyBackend(r *aibackend.Router, stableKey string) aibackend.AIBackend {
+	if r == nil || !r.ShouldUseRouter(stableKey) {
 		return nil
 	}
 	b := r.Default()

@@ -3,6 +3,7 @@ package aibackend
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 )
 
 // BackendInstanceConfig 单个 backend 的 yaml 配置；所有 backend 类型的字段并集，
@@ -34,16 +35,25 @@ type RouterConfig struct {
 	Default  string                  `json:",optional"`
 	Backends []BackendInstanceConfig `json:",optional"`
 	Routes   []RouteRuleConfig       `json:",optional"`
+
+	// RolloutPercent 灰度百分比 [0,100]：
+	//   - 0   = 全部走 legacy（默认；v1.1 RC 阶段建议从此值起步）
+	//   - 100 = 全部走 Router
+	//   - 中间值按稳定 key（通常是 UserID）做 hash 决定，同一用户始终走同一条路径，
+	//     避免回复忽新忽旧。详见 Router.ShouldUseRouter。
+	RolloutPercent int `json:",default=0"`
 }
 
 // Router 持有所有已实例化的 backend，按名字/路由提供查找。
 //
-// v1.1 RC 阶段只实现 Default() + Get(name)。Routes 字段已落到结构里但暂不消费，
-// 等 PR #5（chatlogic 切接口）/ PR #6（灰度）再接路由匹配逻辑。
+// v1.1 RC 阶段实现 Default() + Get(name) + ShouldUseRouter(灰度判定)。
+// Routes 字段已落到结构里但暂不消费——按 Match 路由的逻辑留给后续 PR
+// （多 backend 同时灰度时再做）。
 type Router struct {
-	defaultName string
-	backends    map[string]AIBackend
-	routes      []RouteRuleConfig
+	defaultName    string
+	backends       map[string]AIBackend
+	routes         []RouteRuleConfig
+	rolloutPercent int
 }
 
 // NewRouter 根据配置实例化所有 backend。
@@ -52,10 +62,14 @@ type Router struct {
 //   - 任意一个 backend Factory 失败 → 整个 Router 创建失败，启动期就把
 //     配置错误暴露出来，避免后续运行时才发现问题。
 func NewRouter(cfg RouterConfig) (*Router, error) {
+	if cfg.RolloutPercent < 0 || cfg.RolloutPercent > 100 {
+		return nil, fmt.Errorf("aibackend: RolloutPercent must be in [0,100], got %d", cfg.RolloutPercent)
+	}
 	r := &Router{
-		defaultName: cfg.Default,
-		backends:    make(map[string]AIBackend, len(cfg.Backends)),
-		routes:      cfg.Routes,
+		defaultName:    cfg.Default,
+		backends:       make(map[string]AIBackend, len(cfg.Backends)),
+		routes:         cfg.Routes,
+		rolloutPercent: cfg.RolloutPercent,
 	}
 	for _, bc := range cfg.Backends {
 		if bc.Name == "" {
@@ -99,6 +113,40 @@ func (r *Router) Default() AIBackend {
 		return nil
 	}
 	return r.backends[r.defaultName]
+}
+
+// ShouldUseRouter 灰度判定：决定本次请求走 Router 还是 legacy 路径。
+//
+//   - 0%   → 永远 false；100% → 永远 true（边界 case 不查 hash）
+//   - 中间值 → fnv-32a(stableKey) mod 100 < percent。
+//     同一 stableKey 始终落同侧，避免同一用户对话忽新忽旧。
+//   - stableKey 为空时（如启动期探测）保守回落 false。
+//
+// 用法：在 chatlogic 等调用点用 UserID 或 AgentID+UserID 作为 key。
+func (r *Router) ShouldUseRouter(stableKey string) bool {
+	if r == nil {
+		return false
+	}
+	p := r.rolloutPercent
+	switch {
+	case p <= 0:
+		return false
+	case p >= 100:
+		return true
+	case stableKey == "":
+		return false
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(stableKey))
+	return int(h.Sum32()%100) < p
+}
+
+// RolloutPercent 暴露当前灰度比例，便于诊断与日志。
+func (r *Router) RolloutPercent() int {
+	if r == nil {
+		return 0
+	}
+	return r.rolloutPercent
 }
 
 // Names 列出所有 backend 实例名，用于启动日志 / 诊断。

@@ -2,6 +2,7 @@ package aibackend
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -165,6 +166,87 @@ func TestNewRouterValidation(t *testing.T) {
 				t.Errorf("err = %v, want substring %q", err, c.errSub)
 			}
 		})
+	}
+}
+
+func TestShouldUseRouterBoundaries(t *testing.T) {
+	registerRouterTestFactories(t)
+
+	// nil receiver
+	var nilR *Router
+	if nilR.ShouldUseRouter("u1") {
+		t.Errorf("nil router should never route")
+	}
+
+	// 0% → always false
+	r0, _ := NewRouter(RouterConfig{
+		RolloutPercent: 0,
+		Backends:       []BackendInstanceConfig{{Name: "a", Type: routerTestType}},
+	})
+	for _, k := range []string{"", "u1", "u2", "verylongkey-xyz"} {
+		if r0.ShouldUseRouter(k) {
+			t.Errorf("0%% but ShouldUseRouter(%q)=true", k)
+		}
+	}
+
+	// 100% → always true
+	r100, _ := NewRouter(RouterConfig{
+		RolloutPercent: 100,
+		Backends:       []BackendInstanceConfig{{Name: "a", Type: routerTestType}},
+	})
+	for _, k := range []string{"", "u1", "u2"} {
+		if !r100.ShouldUseRouter(k) {
+			t.Errorf("100%% but ShouldUseRouter(%q)=false", k)
+		}
+	}
+}
+
+func TestShouldUseRouterStable(t *testing.T) {
+	registerRouterTestFactories(t)
+	r, _ := NewRouter(RouterConfig{
+		RolloutPercent: 50,
+		Backends:       []BackendInstanceConfig{{Name: "a", Type: routerTestType}},
+	})
+	// 同一 key 多次调用必须稳定（同侧）
+	for _, k := range []string{"u1", "u2", "user-xyz-007", "bot-1001-user-42"} {
+		first := r.ShouldUseRouter(k)
+		for i := 0; i < 20; i++ {
+			if r.ShouldUseRouter(k) != first {
+				t.Errorf("ShouldUseRouter(%q) flapped", k)
+				break
+			}
+		}
+	}
+	// 空 key 在中间百分比时保守 false
+	if r.ShouldUseRouter("") {
+		t.Errorf("empty key should be false in mid-percent")
+	}
+}
+
+func TestShouldUseRouterDistribution(t *testing.T) {
+	registerRouterTestFactories(t)
+	r, _ := NewRouter(RouterConfig{
+		RolloutPercent: 30,
+		Backends:       []BackendInstanceConfig{{Name: "a", Type: routerTestType}},
+	})
+	// 大量随机 key 命中率应大致接近 30%（容差 ±10%，避免 flaky）
+	hits, total := 0, 5000
+	for i := 0; i < total; i++ {
+		if r.ShouldUseRouter(fmt.Sprintf("user-%d", i)) {
+			hits++
+		}
+	}
+	rate := float64(hits) / float64(total) * 100
+	if rate < 20 || rate > 40 {
+		t.Errorf("rollout 30%% landed %.1f%% (want roughly 20-40%%)", rate)
+	}
+}
+
+func TestNewRouterRejectsBadPercent(t *testing.T) {
+	for _, p := range []int{-1, 101, 1000} {
+		if _, err := NewRouter(RouterConfig{RolloutPercent: p}); err == nil {
+			t.Errorf("RolloutPercent=%d should fail, got nil", p)
+		}
 	}
 }
 

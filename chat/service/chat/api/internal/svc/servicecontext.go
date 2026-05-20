@@ -59,7 +59,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		panic(err)
 	}
 	if names := router.Names(); len(names) > 0 {
-		logx.Infof("AIBackend ready: default=%q backends=%v", c.AIBackend.Default, names)
+		logx.Infof("AIBackend ready: default=%q rollout=%d%% backends=%v",
+			c.AIBackend.Default, router.RolloutPercent(), names)
 	}
 
 	return &ServiceContext{
