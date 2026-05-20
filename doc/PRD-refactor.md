@@ -261,11 +261,34 @@ type ChatReq struct {
 }
 
 type StreamChunk struct {
-    Type     ChunkType // text / image / tool_call / done / error
-    Text     string
-    ImageURL string
-    Error    error
-    Usage    *Usage    // 仅 done 时携带
+    Type           ChunkType      // text / image / tool_call / done / error
+                                  // workflow_started / node_started / node_finished
+                                  // workflow_finished / message / message_end
+    Text           string
+    ImageURL       string
+    AudioURL       string
+    ToolCallName   string
+    ToolCallArgs   string
+    MessageID      string
+    ConversationID string
+    TaskID         string
+    Err            error
+    Usage          *Usage         // 仅 done / workflow_finished 时携带
+    Workflow       *WorkflowEvent // 仅 workflow_* / node_* 类型时非空
+}
+
+// WorkflowEvent 承载 Dify Chatflow / Workflow 类后端的节点/流程事件。
+type WorkflowEvent struct {
+    RunID       string
+    NodeID      string
+    NodeType    string
+    Title       string
+    Status      string         // succeeded / failed / running
+    Outputs     map[string]any // 通常 Outputs["answer"] 是文本回复
+    Inputs      map[string]any
+    Error       string
+    ElapsedTime float64
+    TotalTokens int
 }
 ```
 

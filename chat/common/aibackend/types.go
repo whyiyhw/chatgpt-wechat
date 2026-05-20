@@ -6,13 +6,38 @@ import "time"
 type ChunkType string
 
 const (
+	// 基础事件（所有 backend 都可能产生）
 	ChunkTypeText     ChunkType = "text"
 	ChunkTypeImage    ChunkType = "image"
 	ChunkTypeAudio    ChunkType = "audio"
 	ChunkTypeToolCall ChunkType = "tool_call"
 	ChunkTypeDone     ChunkType = "done"
 	ChunkTypeError    ChunkType = "error"
+
+	// Workflow / Chatflow 事件（目前由 Dify 一类支持 chatflow 的 backend 产生；
+	// 其它 backend 实现可视为"按需透传"——不产生即不发）
+	ChunkTypeWorkflowStarted  ChunkType = "workflow_started"
+	ChunkTypeNodeStarted      ChunkType = "node_started"
+	ChunkTypeNodeFinished     ChunkType = "node_finished"
+	ChunkTypeWorkflowFinished ChunkType = "workflow_finished"
+	ChunkTypeMessage          ChunkType = "message"
+	ChunkTypeMessageEnd       ChunkType = "message_end"
 )
+
+// WorkflowEvent 承载 ChunkTypeWorkflow* / ChunkTypeNode* 类型的事件详情。
+// 其它 ChunkType 此字段为 nil。
+type WorkflowEvent struct {
+	RunID       string         // workflow_run_id
+	NodeID      string         // workflow_started 不带；node_* 事件必带
+	NodeType    string         // start / llm / answer / end / ...
+	Title       string         // 节点标题
+	Status      string         // succeeded / failed / running
+	Outputs     map[string]any // 节点/工作流输出；通常 Outputs["answer"] 是文本
+	Inputs      map[string]any // node_started 携带
+	Error       string         // 失败时的错误信息
+	ElapsedTime float64        // 节点/工作流耗时（秒）
+	TotalTokens int            // 仅 workflow_finished 时有意义
+}
 
 // FileRef 文件引用，可以是已上传的后端文件 ID，也可以是远端 URL
 type FileRef struct {
@@ -74,8 +99,12 @@ type StreamChunk struct {
 	ToolCallArgs   string
 	MessageID      string
 	ConversationID string
+	TaskID         string // 后端侧的任务标识；用于取消、限流诊断
 	Err            error
-	Usage          *Usage // 仅 ChunkTypeDone 时携带
+	Usage          *Usage // 仅 ChunkTypeDone / ChunkTypeWorkflowFinished 时携带
+
+	// Workflow 仅 ChunkTypeWorkflow* / ChunkTypeNode* 类型时非空
+	Workflow *WorkflowEvent
 }
 
 // UploadFileReq 上传文件请求
