@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -24,7 +24,7 @@ func BotPromptUpdateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if err := validator.Validate.StructCtx(r.Context(), req); err != nil {
 			errMap := validator.Translate(err, &req)
 			for _, errFormat := range errMap {
-				response.ParamError(r, w, fmt.Errorf(errFormat))
+				response.ParamError(r, w, errors.New(errFormat))
 				return
 			}
 			response.ParamError(r, w, err)
