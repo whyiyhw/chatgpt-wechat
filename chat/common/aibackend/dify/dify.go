@@ -131,61 +131,117 @@ func (b *Backend) Chat(ctx context.Context, req aibackend.ChatReq) (aibackend.Ch
 	}, nil
 }
 
-// ChatStream 流式对话；返回的 channel 由本方法负责关闭。
+// ChatStream 流式对话；走 Dify 的 chat-messages SSE 端点，支持普通 Chat App
+// 与 Chatflow（workflow_started / node_finished / workflow_finished 事件）。
+//
+// 返回的 channel 由本方法负责关闭。ctx 取消会通过 streamCtx 中断上游 SSE 读取。
 func (b *Backend) ChatStream(ctx context.Context, req aibackend.ChatReq) (<-chan aibackend.StreamChunk, error) {
 	streamCtx, cancel := b.withTimeout(ctx, req.Timeout, b.streamTO)
 
-	raw, err := b.difyClient.API().ChatMessagesStream(streamCtx, &difyclient.ChatMessageRequest{
-		Inputs:         coalesceInputs(req.Inputs),
-		Query:          req.Query,
-		ConversationID: req.ConversationID,
-		User:           req.User,
-	})
-	if err != nil {
-		cancel()
-		return nil, mapError(err)
+	out := make(chan aibackend.StreamChunk, 64)
+
+	// convID / msgID 通过 closure 在事件间累积；首条 workflow_started 携带 conversation_id 后，
+	// 后续所有 chunk 都把它带上，方便消费方在任意时刻拿到。
+	var convID, msgID string
+	handler := &difyclient.DefaultEventHandler{
+		StreamHandler: func(resp difyclient.StreamingResponse) {
+			if resp.ConversationID != "" {
+				convID = resp.ConversationID
+			}
+			if resp.MessageID != "" {
+				msgID = resp.MessageID
+			}
+
+			chunk := aibackend.StreamChunk{
+				ConversationID: convID,
+				MessageID:      msgID,
+				TaskID:         resp.TaskID,
+			}
+			switch resp.Event {
+			case difyclient.EventWorkflowStarted:
+				chunk.Type = aibackend.ChunkTypeWorkflowStarted
+				chunk.Workflow = &aibackend.WorkflowEvent{RunID: resp.WorkflowRunID}
+			case difyclient.EventNodeStarted:
+				chunk.Type = aibackend.ChunkTypeNodeStarted
+				chunk.Workflow = &aibackend.WorkflowEvent{
+					RunID:    resp.WorkflowRunID,
+					NodeID:   resp.Data.NodeID,
+					NodeType: resp.Data.NodeType,
+					Title:    resp.Data.Title,
+					Inputs:   resp.Data.Inputs,
+				}
+			case difyclient.EventNodeFinished:
+				chunk.Type = aibackend.ChunkTypeNodeFinished
+				chunk.Workflow = &aibackend.WorkflowEvent{
+					RunID:       resp.WorkflowRunID,
+					NodeID:      resp.Data.NodeID,
+					NodeType:    resp.Data.NodeType,
+					Title:       resp.Data.Title,
+					Status:      resp.Data.Status,
+					Outputs:     resp.Data.Outputs,
+					Error:       resp.Data.Error,
+					ElapsedTime: resp.Data.ElapsedTime,
+					TotalTokens: resp.Data.ExecutionMetadata.TotalTokens,
+				}
+			case difyclient.EventWorkflowFinished:
+				chunk.Type = aibackend.ChunkTypeWorkflowFinished
+				chunk.Workflow = &aibackend.WorkflowEvent{
+					RunID:       resp.WorkflowRunID,
+					Status:      resp.Data.Status,
+					Outputs:     resp.Data.Outputs,
+					Error:       resp.Data.Error,
+					ElapsedTime: resp.Data.ElapsedTime,
+					TotalTokens: resp.Data.ExecutionMetadata.TotalTokens,
+				}
+				if tt := resp.Data.ExecutionMetadata.TotalTokens; tt > 0 {
+					chunk.Usage = &aibackend.Usage{TotalTokens: tt}
+				}
+			case difyclient.EventMessage:
+				chunk.Type = aibackend.ChunkTypeMessage
+			case difyclient.EventMessageEnd:
+				chunk.Type = aibackend.ChunkTypeMessageEnd
+			default:
+				// 未识别事件（如 ping、agent_thought 等）暂不透传，避免无谓的 chunk 噪声。
+				return
+			}
+
+			select {
+			case <-streamCtx.Done():
+			case out <- chunk:
+			}
+		},
 	}
 
-	out := make(chan aibackend.StreamChunk, 16)
 	go func() {
 		defer cancel()
 		defer close(out)
 
-		var convID string
-		var msgID string
-		for chunk := range raw {
-			if chunk.Err != nil {
-				out <- aibackend.StreamChunk{
-					Type:           aibackend.ChunkTypeError,
-					Err:            mapError(chunk.Err),
-					ConversationID: convID,
-					MessageID:      msgID,
-				}
-				return
-			}
-			if chunk.ConversationID != "" {
-				convID = chunk.ConversationID
-			}
-			if chunk.ID != "" {
-				msgID = chunk.ID
-			}
-			if chunk.Answer == "" {
-				continue
-			}
+		wfReq := difyclient.WorkflowRequest{
+			Query:          req.Query,
+			User:           req.User,
+			ConversationId: req.ConversationID,
+			Inputs:         coalesceInputs(req.Inputs),
+			ResponseMode:   "streaming",
+			// Files 字段当前未消费：UploadFile 仍是 ErrNotImplemented，
+			// 后续 PR 扩展上游 client 后再补 ChatReq.Files → dify.FileInput 转换。
+		}
+
+		err := b.difyClient.API().RunStreamWorkflowWithHandler(streamCtx, wfReq, handler)
+		if err != nil {
 			select {
-			case <-ctx.Done():
-				return
+			case <-streamCtx.Done():
 			case out <- aibackend.StreamChunk{
-				Type:           aibackend.ChunkTypeText,
-				Text:           chunk.Answer,
+				Type:           aibackend.ChunkTypeError,
+				Err:            mapError(err),
 				ConversationID: convID,
 				MessageID:      msgID,
 			}:
 			}
+			return
 		}
 
 		select {
-		case <-ctx.Done():
+		case <-streamCtx.Done():
 		case out <- aibackend.StreamChunk{
 			Type:           aibackend.ChunkTypeDone,
 			ConversationID: convID,
