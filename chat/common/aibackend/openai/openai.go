@@ -165,7 +165,7 @@ func (b *Backend) Chat(ctx context.Context, req aibackend.ChatReq) (aibackend.Ch
 
 	client := b.newClient()
 	resp, err := client.CreateChatCompletion(ctx, copenai.ChatCompletionRequest{
-		Model:       b.engineModel(),
+		Model:       b.model,
 		Messages:    messages,
 		Temperature: b.temperature,
 		MaxTokens:   b.maxToken,
@@ -192,7 +192,7 @@ func (b *Backend) ChatStream(ctx context.Context, req aibackend.ChatReq) (<-chan
 
 	client := b.newClient()
 	stream, err := client.CreateChatCompletionStream(streamCtx, copenai.ChatCompletionRequest{
-		Model:       b.engineModel(),
+		Model:       b.model,
 		Messages:    messages,
 		Temperature: b.temperature,
 		MaxTokens:   b.maxToken,
@@ -289,19 +289,14 @@ func (b *Backend) buildMessages(req aibackend.ChatReq) []copenai.ChatCompletionM
 	return nil
 }
 
-// newClient 用 chat/common/openai 的 buildConfig 拼出底层 client，
-// 复用 Azure / proxy 的兼容逻辑，避免在 adapter 重新实现。
+// newClient 直接构造 go-openai 的 Client；Azure 走 DefaultAzureConfig +
+// AzureModelMapperFunc 把 Model 映射成 deployment 名，OpenAI 走 DefaultConfig
+// 并按需覆盖 BaseURL。
+//
+// 不复用 chat/common/openai 的 buildConfig（未导出），所以本 adapter 当前不
+// 暴露 proxy 字段——需要 proxy 时去 Config 加 HTTPProxy/Socks5Proxy 后在
+// 这里自己拼 http.Client。
 func (b *Backend) newClient() *copenai.Client {
-	wrapper := oai.NewChatClient(b.apiKey).
-		WithBaseHost(b.baseURL).
-		WithOrigin(b.origin).
-		WithEngine(b.engine).
-		WithModel(b.model).
-		WithTemperature(b.temperature).
-		WithMaxToken(b.maxToken).
-		WithTotalToken(b.totalToken)
-	// buildConfig 是未导出方法，无法直接调；用反射代价太高，所以这里直接用
-	// copenai.DefaultConfig 走最简路径。Azure 模式必须通过 origin/engine 才完整。
 	if b.origin == "azure" || b.origin == "azure_ad" {
 		cfg := copenai.DefaultAzureConfig(b.apiKey, b.baseURL)
 		cfg.AzureModelMapperFunc = func(_ string) string { return b.engine }
@@ -311,14 +306,7 @@ func (b *Backend) newClient() *copenai.Client {
 	if b.baseURL != "" {
 		cfg.BaseURL = strings.TrimRight(b.baseURL, "/") + "/v1"
 	}
-	_ = wrapper
 	return copenai.NewClientWithConfig(cfg)
-}
-
-// engineModel 返回送给 SDK 的 model 字段。Azure 模式下 SDK 用 AzureModelMapperFunc
-// 决定真实 deployment 名，所以 Model 字段仅做 token-count；普通 OpenAI 直传 Model。
-func (b *Backend) engineModel() string {
-	return b.model
 }
 
 func withTimeout(parent context.Context, override, fallback time.Duration) (context.Context, context.CancelFunc) {

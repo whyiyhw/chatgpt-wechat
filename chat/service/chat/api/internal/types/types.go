@@ -134,7 +134,7 @@ type BotListReq struct {
 
 type BotModelDetailReply struct {
 	ModelType   string  `json:"model_type"  label:"模型类型"`
-	ModelName   string  `json:"model_name" " label:"模型名称"`
+	ModelName   string  `json:"model_name" label:"模型名称"`
 	Temperature float64 `json:"temperature" label:"温度"`
 }
 
