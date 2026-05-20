@@ -2,6 +2,21 @@ Name: chat-api                                      # 项目名称
 Host: 0.0.0.0                                       # 项目监听地址
 Port: 8888                                          # 项目监听端口
 
+# ---------------------------------------------------------------------------
+# 可观测性（v1.1 起接入：trace + 基础 metrics，均由 go-zero 自带）
+# Endpoint / Host 留空时不外发，但 trace_id 仍会注入 ctx 并随 logx 输出。
+# ---------------------------------------------------------------------------
+Telemetry:
+  Name: chat-api
+  Sampler: 1.0                                      # 采样率 0~1，生产环境建议 0.1
+  Batcher: otlpgrpc                                 # otlpgrpc | otlphttp | zipkin | file
+  # Endpoint: localhost:4317                        # OTLP 接收端，留空则仅进程内 trace_id
+
+Prometheus:
+  # Host: 0.0.0.0                                   # 留空则不暴露 /metrics
+  Port: 9101
+  Path: /metrics
+
 #Mysql:
 #    DataSource: chat:Chat-gpt~wechat@tcp(mysql81:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
 
