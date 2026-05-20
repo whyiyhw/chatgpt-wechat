@@ -62,6 +62,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		logx.Infof("AIBackend ready: default=%q rollout=%d%% backends=%v",
 			c.AIBackend.Default, router.RolloutPercent(), names)
 	}
+	warnDeprecatedConfig(c, router)
 
 	return &ServiceContext{
 		Config:            c,
@@ -75,5 +76,34 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Knowledge:         dao.Use(db),
 		AccessLog:         middleware.NewAccessLogMiddleware().Handle,
 		AIBackend:         router,
+	}
+}
+
+// warnDeprecatedConfig 启动期扫描 v1.2 计划移除的配置项，发现使用即 logx 告警。
+//
+// 仅 log，不阻止启动 —— v1.1 兼容期承诺现网部署不破坏。详见 doc/PRD-refactor.md §4.1.3。
+func warnDeprecatedConfig(c config.Config, router *aibackend.Router) {
+	directProviders := []struct {
+		name, key string
+	}{
+		{"OpenAi", c.OpenAi.Key},
+		{"Gemini", c.Gemini.Key},
+		{"DeepSeek", c.DeepSeek.Key},
+		{"Dify", c.Dify.Key},
+	}
+	for _, p := range directProviders {
+		if p.key != "" {
+			logx.Errorf("[DEPRECATED] config.%s.Key 在用：v1.2 将不再支持 Provider 直连配置，请改走 AIBackend.Backends + Router（doc/PRD-refactor.md §4.1.3）",
+				p.name)
+		}
+	}
+
+	if c.Draw.Enable {
+		logx.Errorf("[DEPRECATED] config.Draw.Enable=true：v1.2 将移除自研绘画引擎，请把绘画能力下沉到后端工作流（如 Dify Workflow）")
+	}
+
+	if c.ModelProvider.Company != "" && router.RolloutPercent() < 100 {
+		logx.Errorf("[DEPRECATED] config.ModelProvider.Company=%q：v1.2 将移除 ModelProvider 分支，请逐步把 AIBackend.RolloutPercent 提升到 100",
+			c.ModelProvider.Company)
 	}
 }

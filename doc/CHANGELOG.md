@@ -1,3 +1,39 @@
+## v1.1.0-rc1（重构 / 兼容期，进行中）
+
+> 详见 [PRD-refactor.md](./PRD-refactor.md)。本版本不破坏现网部署：未配 `AIBackend` 块时行为与 v1.0 完全一致。
+
+### 新增
+- **AIBackend 接口包**（`chat/common/aibackend`）：统一 AI 后端适配器契约（`OpenConversation / Chat / ChatStream / UploadFile / Health`），含 Factory/Registry、6 类标准错误（含 `IsRetryable`）。
+- **Dify 适配器**（`chat/common/aibackend/dify`）：包装现有 `chat/common/dify`，`ChatStream` 走 Chatflow 事件流，支持 `workflow_started / node_started / node_finished / workflow_finished / message[_end]`。
+- **AIBackend.Router 配置**：`AIBackend.Default / Backends / Routes / RolloutPercent`。Backends 强类型 yaml + Factory 内部 map 解码；`RolloutPercent` 按 `UserID` fnv-32a 稳定 hash 分流，0/100 边界跳过哈希。
+- **可观测**：`Telemetry` / `Prometheus` yaml 模板就位，go-zero 自带 OTel + Prometheus，Endpoint 留空时仅进程内 `trace_id` 注入 logx。
+- **Deprecation middleware**：v1.2 计划移除的路由响应附加 `Deprecation: true` + `Sunset: v1.2` + `Link rel="successor-version"` header。
+- **启动期 deprecated 配置告警**：检测 `OpenAi/Gemini/DeepSeek/Dify.Key`、`Draw.Enable`、`ModelProvider.Company`，logx 打印迁移指引。
+- **CLAUDE.md**：项目协作规范（goctl 严格生成、可观测走 go-zero 自带、AIBackend 接口硬性要求等）。
+
+### 修改
+- go-zero `v1.8.1 → v1.10.1`，goctl `v1.10.1`，完成一次全量 regen（业务零影响，仅生成产物头部加版本注释）。
+- `chatlogic.go` 的 dify 分支按 `RolloutPercent` 灰度切到 `AIBackend.Router`；未配 Router 或灰度未命中时回落 legacy 路径。
+- 36 个 handler 修复 `fmt.Errorf(<变量>)` 的 Go 1.24 vet 报错（改为 `errors.New(...)`）。
+
+### Deprecated（v1.2 移除）
+| 模块 | 路径 / 字段 | 替代方案 |
+| --- | --- | --- |
+| 自研知识库 | `/api/knowledge/**`、`/api/bot/knowledge/**` | Dify 数据集 |
+| Prompt 优化 | `/api/bot/prompt/optimize` | 后端自带 |
+| Bot 模板发现 | `/api/bot/explore/list` | 后端应用市场 |
+| Stable Diffusion / DALL-E 直连 | `config.Draw.*` | 后端工作流 |
+| Provider 直连配置 | `config.OpenAi/Gemini/DeepSeek/Dify.Key` | `AIBackend.Backends + Router` |
+| `ModelProvider.Company` 分支 | `chatlogic.go` 中对应分支 | `AIBackend.Router` |
+
+### 迁移指引
+1. 升级到 v1.1：配置文件维持原样可直接运行。
+2. 在 yaml 加 `AIBackend.Default / Backends`，`RolloutPercent` 从 `0` 起步。
+3. 双轨观察 ≥ 2 周后逐步提升 `RolloutPercent`（建议 0 → 10 → 30 → 50 → 80 → 100）。
+4. 现网全切到 Router 后，把知识库/绘画等已 Deprecated 的能力迁到 Dify。
+
+---
+
 ## v1.0.0-bate
 - 因为企业微信调整了api 客服消息跟着改动
   - https://developer.work.weixin.qq.com/document/51165

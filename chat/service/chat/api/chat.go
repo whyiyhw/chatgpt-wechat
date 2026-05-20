@@ -13,6 +13,7 @@ import (
 	"chat/common/xerr"
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/handler"
+	"chat/service/chat/api/internal/middleware"
 	"chat/service/chat/api/internal/svc"
 
 	"github.com/pkg/errors"
@@ -45,6 +46,10 @@ func main() {
 
 	redis.Init(c.RedisCache[0].Host, c.RedisCache[0].Pass)
 	defer redis.Close()
+
+	// 全局挂 Deprecation middleware：给 v1.2 计划移除的端点响应注入
+	// Deprecation/Sunset/Link header，便于前端/接入方提前感知（v1.1 PR #7）。
+	server.Use(middleware.NewDeprecationMiddleware().Handle)
 
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
