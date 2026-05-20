@@ -1,0 +1,266 @@
+// Package dify 是 AIBackend 接口的 Dify 实现，包装现有 chat/common/dify 客户端。
+//
+// 设计要点见 doc/PRD-refactor.md §6.3。
+package dify
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"chat/common/aibackend"
+	difyclient "chat/common/dify"
+)
+
+const TypeName = "dify"
+
+// healthProbeUser 是 Health() 探测时透传给 Dify 的 user 字段。
+// Dify 强制要求 user 非空；这个值不应与真实业务用户冲突。
+const healthProbeUser = "__aibackend_health_probe__"
+
+// Backend 实现 aibackend.AIBackend。
+type Backend struct {
+	name       string
+	apiKey     string
+	baseURL    string
+	timeout    time.Duration
+	streamTO   time.Duration
+	difyClient *difyclient.Client
+}
+
+// Config 是 Dify Backend 的配置，与 PRD §6.2 中的 yaml 形态对齐。
+type Config struct {
+	Name          string        `mapstructure:"Name"`
+	BaseURL       string        `mapstructure:"BaseURL"`
+	APIKey        string        `mapstructure:"APIKey"`
+	Timeout       time.Duration `mapstructure:"Timeout"`
+	StreamTimeout time.Duration `mapstructure:"StreamTimeout"`
+}
+
+// New 直接基于强类型 Config 构造实例（便于单元测试与显式注入）。
+func New(cfg Config) (*Backend, error) {
+	if cfg.BaseURL == "" {
+		return nil, fmt.Errorf("%w: Dify BaseURL is required", aibackend.ErrBadRequest)
+	}
+	if cfg.APIKey == "" {
+		return nil, fmt.Errorf("%w: Dify APIKey is required", aibackend.ErrUnauthorized)
+	}
+	if cfg.Timeout <= 0 {
+		cfg.Timeout = 60 * time.Second
+	}
+	if cfg.StreamTimeout <= 0 {
+		cfg.StreamTimeout = 120 * time.Second
+	}
+
+	client := difyclient.NewClientWithConfig(&difyclient.ClientConfig{
+		Host:             cfg.BaseURL,
+		DefaultAPISecret: cfg.APIKey,
+		Timeout:          cfg.Timeout,
+	})
+
+	return &Backend{
+		name:       cfg.Name,
+		apiKey:     cfg.APIKey,
+		baseURL:    cfg.BaseURL,
+		timeout:    cfg.Timeout,
+		streamTO:   cfg.StreamTimeout,
+		difyClient: client,
+	}, nil
+}
+
+// Factory 由 registry 调用，cfg 来自 yaml 反序列化后的 map。
+func Factory(cfg map[string]any) (aibackend.AIBackend, error) {
+	c := Config{}
+	if v, ok := cfg["Name"].(string); ok {
+		c.Name = v
+	}
+	if v, ok := cfg["BaseURL"].(string); ok {
+		c.BaseURL = v
+	}
+	if v, ok := cfg["APIKey"].(string); ok {
+		c.APIKey = v
+	}
+	if v, ok := cfg["Timeout"].(string); ok {
+		if d, err := time.ParseDuration(v); err == nil {
+			c.Timeout = d
+		}
+	}
+	if v, ok := cfg["StreamTimeout"].(string); ok {
+		if d, err := time.ParseDuration(v); err == nil {
+			c.StreamTimeout = d
+		}
+	}
+	return New(c)
+}
+
+func init() {
+	aibackend.Register(TypeName, Factory)
+}
+
+// Name 返回实例名。
+func (b *Backend) Name() string { return b.name }
+
+// Type 返回后端类型标识。
+func (b *Backend) Type() string { return TypeName }
+
+// OpenConversation 对 Dify 是 no-op：Dify 在 ChatStream 首条 chunk 中返回 conversation_id。
+func (b *Backend) OpenConversation(ctx context.Context, req aibackend.OpenConversationReq) (aibackend.OpenConversationResp, error) {
+	return aibackend.OpenConversationResp{}, nil
+}
+
+// Chat 非流式对话。
+func (b *Backend) Chat(ctx context.Context, req aibackend.ChatReq) (aibackend.ChatResp, error) {
+	ctx, cancel := b.withTimeout(ctx, req.Timeout, b.timeout)
+	defer cancel()
+
+	resp, err := b.difyClient.API().ChatMessages(ctx, &difyclient.ChatMessageRequest{
+		Inputs:         coalesceInputs(req.Inputs),
+		Query:          req.Query,
+		ConversationID: req.ConversationID,
+		User:           req.User,
+	})
+	if err != nil {
+		return aibackend.ChatResp{}, mapError(err)
+	}
+	return aibackend.ChatResp{
+		MessageID:      resp.ID,
+		ConversationID: resp.ConversationID,
+		Answer:         resp.Answer,
+	}, nil
+}
+
+// ChatStream 流式对话；返回的 channel 由本方法负责关闭。
+func (b *Backend) ChatStream(ctx context.Context, req aibackend.ChatReq) (<-chan aibackend.StreamChunk, error) {
+	streamCtx, cancel := b.withTimeout(ctx, req.Timeout, b.streamTO)
+
+	raw, err := b.difyClient.API().ChatMessagesStream(streamCtx, &difyclient.ChatMessageRequest{
+		Inputs:         coalesceInputs(req.Inputs),
+		Query:          req.Query,
+		ConversationID: req.ConversationID,
+		User:           req.User,
+	})
+	if err != nil {
+		cancel()
+		return nil, mapError(err)
+	}
+
+	out := make(chan aibackend.StreamChunk, 16)
+	go func() {
+		defer cancel()
+		defer close(out)
+
+		var convID string
+		var msgID string
+		for chunk := range raw {
+			if chunk.Err != nil {
+				out <- aibackend.StreamChunk{
+					Type:           aibackend.ChunkTypeError,
+					Err:            mapError(chunk.Err),
+					ConversationID: convID,
+					MessageID:      msgID,
+				}
+				return
+			}
+			if chunk.ConversationID != "" {
+				convID = chunk.ConversationID
+			}
+			if chunk.ID != "" {
+				msgID = chunk.ID
+			}
+			if chunk.Answer == "" {
+				continue
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case out <- aibackend.StreamChunk{
+				Type:           aibackend.ChunkTypeText,
+				Text:           chunk.Answer,
+				ConversationID: convID,
+				MessageID:      msgID,
+			}:
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+		case out <- aibackend.StreamChunk{
+			Type:           aibackend.ChunkTypeDone,
+			ConversationID: convID,
+			MessageID:      msgID,
+		}:
+		}
+	}()
+	return out, nil
+}
+
+// UploadFile 尚未实现：当前 chat/common/dify 客户端无 /v1/files/upload 包装。
+// 计划在后续 PR 扩展上游 client 后接入；在此之前返回 ErrNotImplemented，
+// 网关层据此走"仅文本"降级，而不是误以为后端不可达。
+func (b *Backend) UploadFile(ctx context.Context, req aibackend.UploadFileReq) (aibackend.UploadFileResp, error) {
+	return aibackend.UploadFileResp{}, aibackend.ErrNotImplemented
+}
+
+// Health 调用 Dify /v1/parameters 作为活性探测；该端点鉴权 + 轻量。
+func (b *Backend) Health(ctx context.Context) error {
+	ctx, cancel := b.withTimeout(ctx, 0, 5*time.Second)
+	defer cancel()
+	_, err := b.difyClient.API().Parameters(ctx, &difyclient.ParametersRequest{User: healthProbeUser})
+	if err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (b *Backend) withTimeout(parent context.Context, override, fallback time.Duration) (context.Context, context.CancelFunc) {
+	d := override
+	if d <= 0 {
+		d = fallback
+	}
+	if d <= 0 {
+		return context.WithCancel(parent)
+	}
+	return context.WithTimeout(parent, d)
+}
+
+func coalesceInputs(in map[string]interface{}) map[string]interface{} {
+	if in == nil {
+		return map[string]interface{}{}
+	}
+	return in
+}
+
+// mapError 把 Dify client / HTTP / 网络层错误归一到 aibackend 标准错误。
+//
+// 当前 chat/common/dify 的错误是 fmt.Errorf("HTTP response error: [%v]%v", code, msg)
+// 拼出来的字符串，因此只能按字符串匹配。后续给上游 client 加上 typed error 后，
+// 这里改成 errors.As 即可。
+func mapError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return fmt.Errorf("%w: %v", aibackend.ErrBackendUnavailable, err)
+	}
+
+	msg := err.Error()
+	low := strings.ToLower(msg)
+
+	switch {
+	case strings.Contains(low, "401") || strings.Contains(low, "unauthorized") || strings.Contains(low, "invalid_api_key"):
+		return fmt.Errorf("%w: %v", aibackend.ErrUnauthorized, err)
+	case strings.Contains(low, "429") || strings.Contains(low, "rate") && strings.Contains(low, "limit"):
+		return fmt.Errorf("%w: %v", aibackend.ErrRateLimited, err)
+	case strings.Contains(low, "conversation") && (strings.Contains(low, "not found") || strings.Contains(low, "not_found") || strings.Contains(low, "not exist")):
+		return fmt.Errorf("%w: %v", aibackend.ErrConversationNotFound, err)
+	case strings.Contains(low, "400") || strings.Contains(low, "bad request") || strings.Contains(low, "invalid_param"):
+		return fmt.Errorf("%w: %v", aibackend.ErrBadRequest, err)
+	case strings.Contains(low, "500") || strings.Contains(low, "502") || strings.Contains(low, "503") || strings.Contains(low, "504") ||
+		strings.Contains(low, "timeout") || strings.Contains(low, "connection refused") || strings.Contains(low, "no such host") ||
+		strings.Contains(low, "eof"):
+		return fmt.Errorf("%w: %v", aibackend.ErrBackendUnavailable, err)
+	}
+	return err
+}
