@@ -72,6 +72,25 @@ func (c *ChatClient) Chat(chatRequest []ChatModelMessage) (txt string, err error
 	}
 	fmt.Println("response body: " + string(body))
 
+	// 非 2xx 必须先把错误返出去；早期版本只看 result.Code（Google API 实际把
+	// code/message 嵌在 "error" 子对象里），导致 401/4xx 被解析成空 Response 后
+	// 静默返回空字符串。这里优先解码 {"error":{...}}，再 fallback 到根级 code/message。
+	if res.StatusCode != http.StatusOK {
+		var errBody struct {
+			Error struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+				Status  string `json:"status"`
+			} `json:"error"`
+		}
+		_ = json.Unmarshal(body, &errBody)
+		msg := errBody.Error.Message
+		if msg == "" {
+			msg = string(body)
+		}
+		return "", fmt.Errorf("gemini HTTP %d: [%s] %s", res.StatusCode, errBody.Error.Status, msg)
+	}
+
 	result := new(Response)
 	err = json.Unmarshal(body, &result)
 	if err != nil {
@@ -174,6 +193,26 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 		fmt.Println("requesting error:" + err.Error())
 		close(channel)
 		return
+	}
+
+	// 非 2xx 必须先把错误返出去（同 Chat 的修复）；不然 401/4xx 会被静默吞成空流。
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		close(channel)
+		var errBody struct {
+			Error struct {
+				Code    int    `json:"code"`
+				Message string `json:"message"`
+				Status  string `json:"status"`
+			} `json:"error"`
+		}
+		_ = json.Unmarshal(body, &errBody)
+		msg := errBody.Error.Message
+		if msg == "" {
+			msg = string(body)
+		}
+		return "", fmt.Errorf("gemini HTTP %d: [%s] %s", resp.StatusCode, errBody.Error.Status, msg)
 	}
 
 	dataChan := make(chan string)

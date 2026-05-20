@@ -29,7 +29,7 @@ Prometheus:
 #                                                   # 0=全走 legacy，100=全走 Router，建议从小到大递增
 #  Backends:
 #    - Name: dify-main                              # 实例名，全局唯一
-#      Type: dify                                   # dify | deepseek | openclaw | openai | http
+#      Type: dify                                   # dify | deepseek | openai | gemini | openclaw | http
 #      BaseURL: https://api.dify.ai
 #      APIKey: app-xxxxxxxxxxxxxxxx
 #      Timeout: 60s                                 # 非流式请求超时
