@@ -272,6 +272,13 @@ func (l *CustomerChatLogic) CustomerChat(req *types.CustomerChatReq) (resp *type
 
 	// deepseek 处理
 	if l.svcCtx.Config.ModelProvider.Company == "deepseek" {
+		// v1.1：按 RolloutPercent 灰度切到 AIBackend.Router；未配 Router /
+		// Default 类型非 deepseek / 灰度未命中时回落到下方 legacy 分支。
+		if backend := pickDeepSeekBackend(l.svcCtx.AIBackend, req.CustomerID); backend != nil {
+			l.customerChatDeepSeekViaRouter(req, backend, conversationId)
+			return &types.CustomerChatReply{Message: "ok"}, nil
+		}
+
 		// deepseek client
 		c := deepseek.NewChatClient(l.svcCtx.Config.DeepSeek.Key).WithHost(l.svcCtx.Config.DeepSeek.Host).
 			WithTemperature(l.svcCtx.Config.DeepSeek.Temperature).WithModel(l.svcCtx.Config.DeepSeek.Model).
@@ -1319,6 +1326,189 @@ func (l *CustomerChatLogic) customerChatDifyViaRouterBlocking(
 		MessageID:  req.MsgID,
 		ReqContent: req.Msg,
 		ResContent: messageText,
+	})
+}
+
+// customerChatDeepSeekViaRouter 是客服会话 deepseek 分支走 Router 的实现。
+//
+// 与 chatDeepSeekViaRouter 的差异：
+//   - 分段阈值用客服路径的 100/550（vs 应用消息 50/200）
+//   - 上下文 key 用 CustomerID/OpenKfID
+//   - DB schema：User/OpenKfID/MessageID
+func (l *CustomerChatLogic) customerChatDeepSeekViaRouter(req *types.CustomerChatReq, backend aibackend.AIBackend, conversationId string) {
+	collection := deepseek.NewUserContext(
+		deepseek.GetUserUniqueID(req.CustomerID, req.OpenKfID),
+	).WithModel(l.svcCtx.Config.DeepSeek.Model).WithPrompt(l.svcCtx.Config.DeepSeek.Prompt)
+	collection.Set(deepseek.NewChatContent(req.Msg), "", conversationId, false)
+	prompts := collection.GetChatSummary()
+
+	messages := make([]aibackend.Message, 0, len(prompts))
+	for _, p := range prompts {
+		role := p.Role
+		if role == "model" {
+			role = "assistant"
+		}
+		messages = append(messages, aibackend.Message{Role: role, Content: p.Content.Data})
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Second)
+		defer cancel()
+
+		if !l.svcCtx.Config.Response.Stream {
+			l.customerChatDeepSeekViaRouterBlocking(ctx, req, backend, collection, conversationId, messages)
+			return
+		}
+
+		var (
+			startTime      = time.Now()
+			firstChunkOnce sync.Once
+			streamErr      error
+		)
+		defer func() {
+			duration := time.Since(startTime)
+			aibackend.MetricObserveRequest(backend.Name(), streamErr)
+			aibackend.MetricObserveDuration(backend.Name(), "stream", duration)
+			if duration > 3*time.Second {
+				logx.WithContext(ctx).Errorw("slow ai_backend request",
+					logx.Field("backend", backend.Name()),
+					logx.Field("backend_type", backend.Type()),
+					logx.Field("entry", "customer"),
+					logx.Field("duration_ms", duration.Milliseconds()),
+					logx.Field("status", aibackend.ClassifyStatus(streamErr)),
+					logx.Field("query", truncate(req.Msg, 200)),
+					logx.Field("open_kf_id", req.OpenKfID),
+					logx.Field("customer_id", req.CustomerID))
+			}
+		}()
+
+		ch, err := backend.ChatStream(ctx, aibackend.ChatReq{
+			Query:    req.Msg,
+			User:     req.CustomerID,
+			Messages: messages,
+		})
+		if err != nil {
+			streamErr = err
+			errInfo := err.Error()
+			if strings.Contains(errInfo, "maximum context length") {
+				errInfo += "\n 请使用 #clear 清理所有上下文"
+			}
+			sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+			return
+		}
+
+		var (
+			fullMessage strings.Builder
+			rs          []rune
+			first       = true
+		)
+
+		for chunk := range ch {
+			firstChunkOnce.Do(func() {
+				aibackend.MetricObserveFirstToken(backend.Name(), time.Since(startTime).Milliseconds())
+			})
+			switch chunk.Type {
+			case aibackend.ChunkTypeText:
+				if chunk.Text == "" {
+					continue
+				}
+				rs = append(rs, []rune(chunk.Text)...)
+				fullMessage.WriteString(chunk.Text)
+				if first && len(rs) > 100 && strings.LastIndex(string(rs), "\n") != -1 {
+					lastIndex := strings.LastIndex(string(rs), "\n")
+					firstPart := string(rs)[:lastIndex]
+					secondPart := string(rs)[lastIndex+1:]
+					go sendToUser(req.OpenKfID, req.CustomerID, firstPart, l.svcCtx.Config)
+					rs = []rune(secondPart)
+					first = false
+				} else if len(rs) > 550 && strings.LastIndex(string(rs), "\n") != -1 {
+					lastIndex := strings.LastIndex(string(rs), "\n")
+					firstPart := string(rs)[:lastIndex]
+					secondPart := string(rs)[lastIndex+1:]
+					go sendToUser(req.OpenKfID, req.CustomerID, firstPart, l.svcCtx.Config)
+					rs = []rune(secondPart)
+				}
+
+			case aibackend.ChunkTypeError:
+				streamErr = chunk.Err
+				errInfo := chunk.Err.Error()
+				if strings.Contains(errInfo, "maximum context length") {
+					errInfo += "\n 请使用 #clear 清理所有上下文"
+				}
+				sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+				return
+
+			case aibackend.ChunkTypeDone:
+				if len(rs) > 0 {
+					time.Sleep(200 * time.Millisecond)
+					go sendToUser(req.OpenKfID, req.CustomerID,
+						string(rs)+"\n--------------------------------\n"+req.Msg, l.svcCtx.Config)
+				}
+				messageText := fullMessage.String()
+				collection.Set(deepseek.NewChatContent(""), messageText, conversationId, true)
+
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					User:       req.CustomerID,
+					OpenKfID:   req.OpenKfID,
+					MessageID:  req.MsgID,
+					ReqContent: req.Msg,
+					ResContent: messageText,
+				})
+			}
+		}
+	}()
+}
+
+// customerChatDeepSeekViaRouterBlocking 是非流式分支（Config.Response.Stream==false）。
+func (l *CustomerChatLogic) customerChatDeepSeekViaRouterBlocking(
+	ctx context.Context,
+	req *types.CustomerChatReq,
+	backend aibackend.AIBackend,
+	collection *deepseek.UserContext,
+	conversationId string,
+	messages []aibackend.Message,
+) {
+	startTime := time.Now()
+	resp, err := backend.Chat(ctx, aibackend.ChatReq{
+		Query:    req.Msg,
+		User:     req.CustomerID,
+		Messages: messages,
+	})
+	duration := time.Since(startTime)
+	aibackend.MetricObserveRequest(backend.Name(), err)
+	aibackend.MetricObserveDuration(backend.Name(), "chat", duration)
+	if duration > 3*time.Second {
+		logx.WithContext(ctx).Errorw("slow ai_backend request",
+			logx.Field("backend", backend.Name()),
+			logx.Field("backend_type", backend.Type()),
+			logx.Field("entry", "customer"),
+			logx.Field("phase", "chat"),
+			logx.Field("duration_ms", duration.Milliseconds()),
+			logx.Field("status", aibackend.ClassifyStatus(err)),
+			logx.Field("query", truncate(req.Msg, 200)),
+			logx.Field("open_kf_id", req.OpenKfID),
+			logx.Field("customer_id", req.CustomerID))
+	}
+	if err != nil {
+		errInfo := err.Error()
+		if strings.Contains(errInfo, "maximum context length") {
+			errInfo += "\n 请使用 #clear 清理所有上下文"
+		}
+		sendToUser(req.OpenKfID, req.CustomerID, "系统错误:"+errInfo, l.svcCtx.Config)
+		return
+	}
+
+	go sendToUser(req.OpenKfID, req.CustomerID, resp.Answer, l.svcCtx.Config)
+	collection.Set(deepseek.NewChatContent(""), resp.Answer, conversationId, true)
+
+	table := l.svcCtx.ChatModel.Chat
+	_ = table.WithContext(context.Background()).Create(&model.Chat{
+		User:       req.CustomerID,
+		OpenKfID:   req.OpenKfID,
+		MessageID:  req.MsgID,
+		ReqContent: req.Msg,
+		ResContent: resp.Answer,
 	})
 }
 

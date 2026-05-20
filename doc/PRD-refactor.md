@@ -258,6 +258,15 @@ type ChatReq struct {
     Query          string            // 文本内容
     Files          []FileRef         // 文件 / 图片引用
     Metadata       map[string]string // trace_id / channel / kf_id 等
+    Messages       []Message         // 完整对话上下文（含历史 + 当前问题）
+                                     // OpenAI/Gemini/DeepSeek 类 adapter 用此字段；
+                                     // Dify 类 adapter 忽略，仍用 ConversationID + Query
+}
+
+// Message 用于客户端管 context 的 backend。
+type Message struct {
+    Role    string // "system" / "user" / "assistant"
+    Content string
 }
 
 type StreamChunk struct {

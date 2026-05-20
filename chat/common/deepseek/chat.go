@@ -316,6 +316,15 @@ func (c *ChatClient) ChatStream(chatRequest []ChatModelMessage, channel chan str
 		return errors.Wrap(err, "send request")
 	}
 
+	// 非 2xx 必须先把错误返出去；早期版本直接进 SSE 扫描，导致 401/429/5xx 被
+	// 静默吞成空流，调用方无从感知。
+	if resp.StatusCode != http.StatusOK {
+		bodyData, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		close(channel)
+		return fmt.Errorf("API error: %s, status code: %d", string(bodyData), resp.StatusCode)
+	}
+
 	// 处理SSE流
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {

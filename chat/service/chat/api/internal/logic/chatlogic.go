@@ -187,6 +187,13 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 	}
 
 	if req.Channel == "deepseek" {
+		// v1.1：按 RolloutPercent 灰度切到 AIBackend.Router；未配 Router /
+		// Default 类型非 deepseek / 灰度未命中时回落到下方 legacy 分支。
+		if backend := pickDeepSeekBackend(l.svcCtx.AIBackend, req.UserID); backend != nil {
+			l.chatDeepSeekViaRouter(req, backend, conversationId)
+			return &types.ChatReply{Message: "ok"}, nil
+		}
+
 		// deepseek client
 		c := deepseek.NewChatClient(l.svcCtx.Config.DeepSeek.Key).WithHost(l.svcCtx.Config.DeepSeek.Host).
 			WithTemperature(l.svcCtx.Config.DeepSeek.Temperature).WithModel(l.svcCtx.Config.DeepSeek.Model).
@@ -1491,21 +1498,29 @@ func (h *difyEventHandler) HandleTTSMessage(msg dify.TTSMessage) {
 	}
 }
 
-// pickDifyBackend 返回 Router 默认 backend（仅当满足全部条件）：
+// pickBackendByType 返回 Router 默认 backend（仅当满足全部条件）：
 //   - Router 已配；
-//   - 灰度命中（stableKey 通常是 UserID，详见 Router.ShouldUseRouter）；
-//   - Default 已设且类型是 dify。
+//   - 灰度命中（stableKey 通常是 UserID / CustomerID）；
+//   - Default 已设且类型与 typeName 匹配。
 //
-// 任一不满足返回 nil，调用方据此回落到 legacy dify.NewClient 分支。
-func pickDifyBackend(r *aibackend.Router, stableKey string) aibackend.AIBackend {
+// 任一不满足返回 nil，调用方据此回落到对应 legacy SDK 分支。
+func pickBackendByType(r *aibackend.Router, stableKey, typeName string) aibackend.AIBackend {
 	if r == nil || !r.ShouldUseRouter(stableKey) {
 		return nil
 	}
 	b := r.Default()
-	if b == nil || b.Type() != "dify" {
+	if b == nil || b.Type() != typeName {
 		return nil
 	}
 	return b
+}
+
+func pickDifyBackend(r *aibackend.Router, stableKey string) aibackend.AIBackend {
+	return pickBackendByType(r, stableKey, "dify")
+}
+
+func pickDeepSeekBackend(r *aibackend.Router, stableKey string) aibackend.AIBackend {
+	return pickBackendByType(r, stableKey, "deepseek")
 }
 
 // chatDifyViaRouter 是 dify 分支走 AIBackend.Router 的实现（v1.1 PR #5c）。
@@ -1724,6 +1739,193 @@ func (l *ChatLogic) chatDifyViaRouterBlocking(
 	}
 
 	go sendToUser(req.AgentID, req.UserID, resp.Answer, l.svcCtx.Config)
+
+	table := l.svcCtx.ChatModel.Chat
+	_ = table.WithContext(context.Background()).Create(&model.Chat{
+		AgentID:    req.AgentID,
+		User:       req.UserID,
+		ReqContent: req.MSG,
+		ResContent: resp.Answer,
+	})
+}
+
+// chatDeepSeekViaRouter 是 deepseek 分支走 AIBackend.Router 的实现（v1.1 B2）。
+//
+// 与 chatDifyViaRouter 的差异：
+//   - DeepSeek 是"客户端管 context" backend：上下文由本方法用 deepseek.UserContext
+//     从 Redis 取出后转成 ChatReq.Messages 传给 adapter
+//   - workflow 事件不存在；只有 ChunkTypeText / Done / Error
+//   - 分段策略与 legacy 一致（50/200 字 + 换行边界）
+//   - 完成后把 assistant 回复写回 UserContext 供下轮拼接
+func (l *ChatLogic) chatDeepSeekViaRouter(req *types.ChatReq, backend aibackend.AIBackend, conversationId string) {
+	proceed, _ := l.FactoryCommend(req)
+	if !proceed {
+		return
+	}
+	if l.message != "" {
+		req.MSG = l.message
+	}
+
+	collection := deepseek.NewUserContext(
+		deepseek.GetUserUniqueID(req.UserID, strconv.FormatInt(req.AgentID, 10)),
+	).WithModel(l.svcCtx.Config.DeepSeek.Model).WithPrompt(l.svcCtx.Config.DeepSeek.Prompt)
+	collection.Set(deepseek.NewChatContent(req.MSG), "", conversationId, false)
+	prompts := collection.GetChatSummary()
+
+	messages := make([]aibackend.Message, 0, len(prompts))
+	for _, p := range prompts {
+		role := p.Role
+		if role == "model" {
+			role = "assistant"
+		}
+		messages = append(messages, aibackend.Message{Role: role, Content: p.Content.Data})
+	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Second)
+		defer cancel()
+
+		if !l.svcCtx.Config.Response.Stream {
+			l.chatDeepSeekViaRouterBlocking(ctx, req, backend, collection, conversationId, messages)
+			return
+		}
+
+		var (
+			startTime      = time.Now()
+			firstChunkOnce sync.Once
+			streamErr      error
+		)
+		defer func() {
+			duration := time.Since(startTime)
+			aibackend.MetricObserveRequest(backend.Name(), streamErr)
+			aibackend.MetricObserveDuration(backend.Name(), "stream", duration)
+			if duration > 3*time.Second {
+				logx.WithContext(ctx).Errorw("slow ai_backend request",
+					logx.Field("backend", backend.Name()),
+					logx.Field("backend_type", backend.Type()),
+					logx.Field("duration_ms", duration.Milliseconds()),
+					logx.Field("status", aibackend.ClassifyStatus(streamErr)),
+					logx.Field("query", truncate(req.MSG, 200)),
+					logx.Field("user", req.UserID))
+			}
+		}()
+
+		ch, err := backend.ChatStream(ctx, aibackend.ChatReq{
+			Query:    req.MSG,
+			User:     req.UserID,
+			Messages: messages,
+		})
+		if err != nil {
+			streamErr = err
+			errInfo := err.Error()
+			if strings.Contains(errInfo, "maximum context length") {
+				errInfo += "\n 请使用 #clear 清理所有上下文"
+			}
+			sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+			return
+		}
+
+		var (
+			fullMessage strings.Builder
+			rs          []rune
+			first       = true
+		)
+
+		for chunk := range ch {
+			firstChunkOnce.Do(func() {
+				aibackend.MetricObserveFirstToken(backend.Name(), time.Since(startTime).Milliseconds())
+			})
+			switch chunk.Type {
+			case aibackend.ChunkTypeText:
+				if chunk.Text == "" {
+					continue
+				}
+				rs = append(rs, []rune(chunk.Text)...)
+				fullMessage.WriteString(chunk.Text)
+				if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+					lastIndex := strings.LastIndex(string(rs), "\n")
+					firstPart := string(rs)[:lastIndex]
+					secondPart := string(rs)[lastIndex+1:]
+					go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+					rs = []rune(secondPart)
+					first = false
+				} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+					lastIndex := strings.LastIndex(string(rs), "\n")
+					firstPart := string(rs)[:lastIndex]
+					secondPart := string(rs)[lastIndex+1:]
+					go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+					rs = []rune(secondPart)
+				}
+
+			case aibackend.ChunkTypeError:
+				streamErr = chunk.Err
+				errInfo := chunk.Err.Error()
+				if strings.Contains(errInfo, "maximum context length") {
+					errInfo += "\n 请使用 #clear 清理所有上下文"
+				}
+				sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+				return
+
+			case aibackend.ChunkTypeDone:
+				if len(rs) > 0 {
+					time.Sleep(200 * time.Millisecond)
+					go sendToUser(req.AgentID, req.UserID,
+						string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
+				}
+				messageText := fullMessage.String()
+				collection.Set(deepseek.NewChatContent(""), messageText, conversationId, true)
+
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					AgentID:    req.AgentID,
+					User:       req.UserID,
+					ReqContent: req.MSG,
+					ResContent: messageText,
+				})
+			}
+		}
+	}()
+}
+
+// chatDeepSeekViaRouterBlocking 是非流式分支（Config.Response.Stream==false）。
+func (l *ChatLogic) chatDeepSeekViaRouterBlocking(
+	ctx context.Context,
+	req *types.ChatReq,
+	backend aibackend.AIBackend,
+	collection *deepseek.UserContext,
+	conversationId string,
+	messages []aibackend.Message,
+) {
+	startTime := time.Now()
+	resp, err := backend.Chat(ctx, aibackend.ChatReq{
+		Query:    req.MSG,
+		User:     req.UserID,
+		Messages: messages,
+	})
+	duration := time.Since(startTime)
+	aibackend.MetricObserveRequest(backend.Name(), err)
+	aibackend.MetricObserveDuration(backend.Name(), "chat", duration)
+	if duration > 3*time.Second {
+		logx.WithContext(ctx).Errorw("slow ai_backend request",
+			logx.Field("backend", backend.Name()),
+			logx.Field("backend_type", backend.Type()),
+			logx.Field("phase", "chat"),
+			logx.Field("duration_ms", duration.Milliseconds()),
+			logx.Field("status", aibackend.ClassifyStatus(err)),
+			logx.Field("query", truncate(req.MSG, 200)),
+			logx.Field("user", req.UserID))
+	}
+	if err != nil {
+		errInfo := err.Error()
+		if strings.Contains(errInfo, "maximum context length") {
+			errInfo += "\n 请使用 #clear 清理所有上下文"
+		}
+		sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+		return
+	}
+
+	go sendToUser(req.AgentID, req.UserID, resp.Answer, l.svcCtx.Config)
+	collection.Set(deepseek.NewChatContent(""), resp.Answer, conversationId, true)
 
 	table := l.svcCtx.ChatModel.Chat
 	_ = table.WithContext(context.Background()).Create(&model.Chat{

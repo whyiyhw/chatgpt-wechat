@@ -6,6 +6,8 @@
 - **AIBackend 接口包**（`chat/common/aibackend`）：统一 AI 后端适配器契约（`OpenConversation / Chat / ChatStream / UploadFile / Health`），含 Factory/Registry、6 类标准错误（含 `IsRetryable`）。
 - **Dify 适配器**（`chat/common/aibackend/dify`）：包装现有 `chat/common/dify`，`ChatStream` 走 Chatflow 事件流，支持 `workflow_started / node_started / node_finished / workflow_finished / message[_end]`，`UploadFile` 走 `/v1/files/upload` 上传图片得 `file_id`，`ChatReq.Files` 透传到 Dify Workflow（缺省 `Type=image`、按 URL/UploadFileID 推断 `TransferMethod`）。
 - **`dify.APIError` 强类型错误**：上游 `client.go` 与 `api_workflow.go` 非 2xx 返回 `*APIError{Status, Code, Message}`，适配器 `mapError` 改用 `errors.As` 精确分类（HTTP status + Dify 业务码），不再依赖脆的字符串匹配。
+- **DeepSeek 适配器**（`chat/common/aibackend/deepseek`）：扩 `ChatReq.Messages` 支持"客户端管 context"语义后接入。`Chat`/`ChatStream` 走 `/chat/completions`，错误按 status code/text 分类到 6 类标准错误。chatlogic/customerchatlogic 的 deepseek 分支按 `RolloutPercent` 切到 Router（未灰度命中或 Default 类型非 deepseek 时回落 legacy）。顺手修上游 SDK `ChatStream` 不检查 non-2xx 导致 401 被静默吞掉的 pre-existing bug。
+- **`ChatReq.Messages` 字段**：`[]Message{Role, Content}`，给 OpenAI/Gemini/DeepSeek 类"客户端管 context"backend 用；Dify 类 backend 忽略此字段，仍用 `ConversationID + Query`。
 - **AIBackend.Router 配置**：`AIBackend.Default / Backends / Routes / RolloutPercent`。Backends 强类型 yaml + Factory 内部 map 解码；`RolloutPercent` 按 `UserID` fnv-32a 稳定 hash 分流，0/100 边界跳过哈希。
 - **可观测**：`Telemetry` / `Prometheus` yaml 模板就位，go-zero 自带 OTel + Prometheus，Endpoint 留空时仅进程内 `trace_id` 注入 logx。
 - **Deprecation middleware**：v1.2 计划移除的路由响应附加 `Deprecation: true` + `Sunset: v1.2` + `Link rel="successor-version"` header。

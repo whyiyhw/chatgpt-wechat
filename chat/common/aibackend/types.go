@@ -67,6 +67,15 @@ type OpenConversationResp struct {
 	ConversationID string
 }
 
+// Message 用于"客户端管 context"的 backend（OpenAI/Gemini/DeepSeek 等）。
+//
+// Dify 类"服务端管 context"的 backend 自己用 conversation_id + Query 拼接历史，
+// 这种 backend 应忽略 ChatReq.Messages 字段。
+type Message struct {
+	Role    string // "system" / "user" / "assistant"
+	Content string
+}
+
 // ChatReq 统一对话请求（流式与非流式共用）
 type ChatReq struct {
 	AppID          string                 // 后端 App / Workflow 标识
@@ -76,6 +85,16 @@ type ChatReq struct {
 	Inputs         map[string]interface{} // 工作流变量
 	Files          []FileRef              // 文件 / 图片引用
 	Metadata       map[string]string      // trace_id / channel / kf_id 等
+
+	// Messages 完整对话上下文（含历史 + 当前问题）。
+	//
+	// - OpenAI / Gemini / DeepSeek 类 adapter 使用本字段，无视 ConversationID/Query
+	//   （或仅把 Query 当成 fallback：Messages 为空时包成单条 user message）。
+	// - Dify 类 adapter 忽略本字段，仍用 ConversationID + Query。
+	//
+	// 调用方建议：Messages 非空时，最后一条 role=user 的 Content 应与 Query 一致，
+	// 让两类 backend 都能正确解读"当前问题"。
+	Messages []Message
 
 	// Timeout 控制单次调用超时，<=0 表示走 Backend 默认
 	Timeout time.Duration
