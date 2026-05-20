@@ -223,8 +223,7 @@ func (b *Backend) ChatStream(ctx context.Context, req aibackend.ChatReq) (<-chan
 			ConversationId: req.ConversationID,
 			Inputs:         coalesceInputs(req.Inputs),
 			ResponseMode:   "streaming",
-			// Files 字段当前未消费：UploadFile 仍是 ErrNotImplemented，
-			// 后续 PR 扩展上游 client 后再补 ChatReq.Files → dify.FileInput 转换。
+			Files:          mapFileRefsToDify(req.Files),
 		}
 
 		err := b.difyClient.API().RunStreamWorkflowWithHandler(streamCtx, wfReq, handler)
@@ -253,11 +252,26 @@ func (b *Backend) ChatStream(ctx context.Context, req aibackend.ChatReq) (<-chan
 	return out, nil
 }
 
-// UploadFile 尚未实现：当前 chat/common/dify 客户端无 /v1/files/upload 包装。
-// 计划在后续 PR 扩展上游 client 后接入；在此之前返回 ErrNotImplemented，
-// 网关层据此走"仅文本"降级，而不是误以为后端不可达。
+// UploadFile 上传文件/图片到 Dify，返回 file_id（Dify 不直接返回可访问 URL）。
+//
+// 调用方拿到 file_id 后，在后续 ChatStream 调用里把 FileRef.UploadFileID 填上
+// 即可让 Dify 关联到该消息。
 func (b *Backend) UploadFile(ctx context.Context, req aibackend.UploadFileReq) (aibackend.UploadFileResp, error) {
-	return aibackend.UploadFileResp{}, aibackend.ErrNotImplemented
+	if req.User == "" {
+		return aibackend.UploadFileResp{}, fmt.Errorf("%w: User is required for Dify file upload", aibackend.ErrBadRequest)
+	}
+	if len(req.Content) == 0 {
+		return aibackend.UploadFileResp{}, fmt.Errorf("%w: empty file content", aibackend.ErrBadRequest)
+	}
+
+	ctx, cancel := b.withTimeout(ctx, 0, b.timeout)
+	defer cancel()
+
+	out, err := b.difyClient.API().FilesUpload(ctx, req.User, req.Name, req.MIME, req.Content)
+	if err != nil {
+		return aibackend.UploadFileResp{}, mapError(err)
+	}
+	return aibackend.UploadFileResp{FileID: out.ID}, nil
 }
 
 // Health 调用 Dify /v1/parameters 作为活性探测；该端点鉴权 + 轻量。
@@ -287,6 +301,41 @@ func coalesceInputs(in map[string]interface{}) map[string]interface{} {
 		return map[string]interface{}{}
 	}
 	return in
+}
+
+// mapFileRefsToDify 把 aibackend.FileRef 列表转成 dify.FileInput。
+//
+// 缺省策略：
+//   - Type 留空 → "image"（Dify FileInput.Type 注释明示当前仅支持 "image"）
+//   - TransferMethod 留空 → 有 UploadFileID 用 "local_file"，有 URL 用 "remote_url"
+//
+// 调用方可显式覆盖任一字段；本函数只做"合理默认"。
+func mapFileRefsToDify(refs []aibackend.FileRef) []difyclient.FileInput {
+	if len(refs) == 0 {
+		return nil
+	}
+	out := make([]difyclient.FileInput, 0, len(refs))
+	for _, r := range refs {
+		fi := difyclient.FileInput{
+			Type:           r.Type,
+			TransferMethod: r.TransferMethod,
+			URL:            r.URL,
+			UploadFileID:   r.UploadFileID,
+		}
+		if fi.Type == "" {
+			fi.Type = "image"
+		}
+		if fi.TransferMethod == "" {
+			switch {
+			case fi.UploadFileID != "":
+				fi.TransferMethod = "local_file"
+			case fi.URL != "":
+				fi.TransferMethod = "remote_url"
+			}
+		}
+		out = append(out, fi)
+	}
+	return out
 }
 
 // mapError 把 Dify client / HTTP / 网络层错误归一到 aibackend 标准错误。

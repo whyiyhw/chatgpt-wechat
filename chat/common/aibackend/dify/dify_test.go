@@ -2,6 +2,7 @@ package dify
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -71,13 +72,138 @@ func TestOpenConversationIsNoop(t *testing.T) {
 	}
 }
 
-func TestUploadFileNotImplemented(t *testing.T) {
+func TestUploadFileValidation(t *testing.T) {
 	b := mustBackend(t)
-	_, err := b.UploadFile(context.Background(), aibackend.UploadFileReq{})
-	if !errors.Is(err, aibackend.ErrNotImplemented) {
-		t.Errorf("UploadFile err = %v, want ErrNotImplemented", err)
+	_, err := b.UploadFile(context.Background(), aibackend.UploadFileReq{Name: "x.png", Content: []byte{1}})
+	if !errors.Is(err, aibackend.ErrBadRequest) {
+		t.Errorf("missing user: err = %v, want ErrBadRequest", err)
+	}
+	_, err = b.UploadFile(context.Background(), aibackend.UploadFileReq{User: "u", Name: "x.png"})
+	if !errors.Is(err, aibackend.ErrBadRequest) {
+		t.Errorf("empty content: err = %v, want ErrBadRequest", err)
 	}
 }
+
+func TestUploadFileHappyPath(t *testing.T) {
+	var captured struct {
+		hasFilePart bool
+		fileBytes   []byte
+		fileMIME    string
+		userField   string
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/files/upload" {
+			http.NotFound(w, r)
+			return
+		}
+		if err := r.ParseMultipartForm(4 << 20); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		captured.userField = r.FormValue("user")
+		if files := r.MultipartForm.File["file"]; len(files) > 0 {
+			captured.hasFilePart = true
+			captured.fileMIME = files[0].Header.Get("Content-Type")
+			if fh, err := files[0].Open(); err == nil {
+				captured.fileBytes, _ = io.ReadAll(fh)
+				fh.Close()
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		io.WriteString(w, `{"id":"file-abc","name":"avatar.png","size":11,"extension":"png","mime_type":"image/png","created_by":"u","created_at":1700000000}`)
+	}))
+	defer srv.Close()
+
+	b, _ := New(Config{Name: "t", BaseURL: srv.URL, APIKey: "k", Timeout: 5 * time.Second})
+	resp, err := b.UploadFile(context.Background(), aibackend.UploadFileReq{
+		User:    "user-1",
+		Name:    "avatar.png",
+		MIME:    "image/png",
+		Content: []byte("hello-world"),
+	})
+	if err != nil {
+		t.Fatalf("UploadFile: %v", err)
+	}
+	if resp.FileID != "file-abc" {
+		t.Errorf("FileID = %q, want file-abc", resp.FileID)
+	}
+	if !captured.hasFilePart {
+		t.Errorf("server did not see file part")
+	}
+	if got := string(captured.fileBytes); got != "hello-world" {
+		t.Errorf("file content = %q, want hello-world", got)
+	}
+	if captured.fileMIME != "image/png" {
+		t.Errorf("file Content-Type = %q, want image/png", captured.fileMIME)
+	}
+	if captured.userField != "user-1" {
+		t.Errorf("user field = %q, want user-1", captured.userField)
+	}
+}
+
+func TestUploadFileUnauthorized(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		io.WriteString(w, `{"code":"invalid_api_key","message":"bad key","status":401}`)
+	}))
+	defer srv.Close()
+
+	b, _ := New(Config{Name: "t", BaseURL: srv.URL, APIKey: "k", Timeout: 2 * time.Second})
+	_, err := b.UploadFile(context.Background(), aibackend.UploadFileReq{
+		User: "u", Name: "x.png", Content: []byte{1, 2, 3},
+	})
+	if !errors.Is(err, aibackend.ErrUnauthorized) {
+		t.Errorf("err = %v, want ErrUnauthorized", err)
+	}
+}
+
+func TestChatStreamPassesFiles(t *testing.T) {
+	var seenFiles []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		if files, ok := body["files"].([]any); ok {
+			for _, f := range files {
+				if fm, ok := f.(map[string]any); ok {
+					seenFiles = append(seenFiles, fm)
+				}
+			}
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, `data: {"event":"workflow_started","conversation_id":"c-1"}`+"\n")
+		io.WriteString(w, `data: {"event":"workflow_finished","data":{"status":"succeeded"}}`+"\n")
+	}))
+	defer srv.Close()
+
+	b, _ := New(Config{Name: "t", BaseURL: srv.URL, APIKey: "k", Timeout: 2 * time.Second, StreamTimeout: 2 * time.Second})
+	ch, err := b.ChatStream(context.Background(), aibackend.ChatReq{
+		Query: "describe", User: "u",
+		Files: []aibackend.FileRef{
+			{UploadFileID: "file-xyz"},                                            // 默认 type=image / method=local_file
+			{Type: "image", TransferMethod: "remote_url", URL: "https://x/y.png"}, // 显式
+		},
+	})
+	if err != nil {
+		t.Fatalf("ChatStream: %v", err)
+	}
+	for range ch {
+	}
+
+	if len(seenFiles) != 2 {
+		t.Fatalf("server saw %d files, want 2 (raw=%v)", len(seenFiles), seenFiles)
+	}
+	if seenFiles[0]["type"] != "image" || seenFiles[0]["transfer_method"] != "local_file" || seenFiles[0]["upload_file_id"] != "file-xyz" {
+		t.Errorf("file[0] = %v, want default image/local_file", seenFiles[0])
+	}
+	if seenFiles[1]["type"] != "image" || seenFiles[1]["transfer_method"] != "remote_url" || seenFiles[1]["url"] != "https://x/y.png" {
+		t.Errorf("file[1] = %v, want image/remote_url", seenFiles[1])
+	}
+}
+
 
 func TestMapError(t *testing.T) {
 	apiErr := func(status int, code, msg string) error {
