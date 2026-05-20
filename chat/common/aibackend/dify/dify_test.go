@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"chat/common/aibackend"
+	difyclient "chat/common/dify"
 )
 
 // compile-time 接口契约检查
@@ -79,24 +80,46 @@ func TestUploadFileNotImplemented(t *testing.T) {
 }
 
 func TestMapError(t *testing.T) {
+	apiErr := func(status int, code, msg string) error {
+		return &difyclient.APIError{Status: status, Code: code, Message: msg}
+	}
 	cases := []struct {
 		name string
 		in   error
 		want error
 	}{
+		// 边界 / ctx
 		{"nil", nil, nil},
 		{"ctx-deadline", context.DeadlineExceeded, aibackend.ErrBackendUnavailable},
 		{"ctx-canceled", context.Canceled, aibackend.ErrBackendUnavailable},
-		{"401", fmt.Errorf("HTTP response error: [401]unauthorized"), aibackend.ErrUnauthorized},
-		{"invalid_api_key", fmt.Errorf("HTTP response error: [invalid_api_key]bad key"), aibackend.ErrUnauthorized},
-		{"429", fmt.Errorf("HTTP response error: [429]too many requests"), aibackend.ErrRateLimited},
-		{"rate-limit-text", fmt.Errorf("dify: rate limit exceeded"), aibackend.ErrRateLimited},
-		{"conv-not-found", fmt.Errorf("HTTP response error: [conversation_not_found]conversation not exist"), aibackend.ErrConversationNotFound},
-		{"400", fmt.Errorf("HTTP response error: [400]bad request"), aibackend.ErrBadRequest},
-		{"500", fmt.Errorf("HTTP response error: [500]internal"), aibackend.ErrBackendUnavailable},
+
+		// typed APIError：业务码优先
+		{"code-invalid-api-key", apiErr(401, "invalid_api_key", "bad key"), aibackend.ErrUnauthorized},
+		{"code-rate-limit", apiErr(429, "rate_limit_exceeded", "slow down"), aibackend.ErrRateLimited},
+		{"code-conv-not-found", apiErr(404, "conversation_not_found", "no convo"), aibackend.ErrConversationNotFound},
+		{"code-invalid-param", apiErr(400, "invalid_param", "missing"), aibackend.ErrBadRequest},
+
+		// typed APIError：仅有 HTTP status（业务码留空）
+		{"status-401", apiErr(401, "", "Unauthorized"), aibackend.ErrUnauthorized},
+		{"status-403", apiErr(403, "", "Forbidden"), aibackend.ErrUnauthorized},
+		{"status-429", apiErr(429, "", "Too Many Requests"), aibackend.ErrRateLimited},
+		{"status-400", apiErr(400, "", "Bad Request"), aibackend.ErrBadRequest},
+		{"status-500", apiErr(500, "", "Internal Server Error"), aibackend.ErrBackendUnavailable},
+		{"status-502", apiErr(502, "", "Bad Gateway"), aibackend.ErrBackendUnavailable},
+
+		// typed APIError：包了一层（确保 errors.As 仍能拆出来）
+		{"wrapped-apierr", fmt.Errorf("upstream: %w", apiErr(401, "invalid_api_key", "x")), aibackend.ErrUnauthorized},
+
+		// 网络/IO 层错误：字符串匹配兜底
 		{"timeout", fmt.Errorf("dial tcp: i/o timeout"), aibackend.ErrBackendUnavailable},
 		{"no-host", fmt.Errorf("dial tcp: lookup x: no such host"), aibackend.ErrBackendUnavailable},
-		{"unrecognized-passthrough", fmt.Errorf("weird"), nil}, // expect passthrough; we check explicitly below
+		{"refused", fmt.Errorf("dial tcp: connection refused"), aibackend.ErrBackendUnavailable},
+		{"eof", fmt.Errorf("read: EOF"), aibackend.ErrBackendUnavailable},
+
+		// 未识别错误：原样返回
+		{"unrecognized-passthrough", fmt.Errorf("weird"), nil},
+		// typed APIError 但无业务码 + 不在 HTTP status 映射范围（如 418）：原样返回
+		{"status-418-passthrough", apiErr(418, "", "I'm a teapot"), nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

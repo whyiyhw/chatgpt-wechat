@@ -61,11 +61,11 @@ func (c *Client) sendJSONRequest(req *http.Request, res interface{}) error {
 			Message string `json:"message"`
 			Status  int    `json:"status"`
 		}
-		err = json.NewDecoder(resp.Body).Decode(&errBody)
-		if err != nil {
-			return err
+		if decErr := json.NewDecoder(resp.Body).Decode(&errBody); decErr != nil {
+			// 错误体不是预期 JSON：至少保留 HTTP 状态码，便于上游分类。
+			return &APIError{Status: resp.StatusCode, Message: decErr.Error()}
 		}
-		return fmt.Errorf("HTTP response error: [%v]%v", errBody.Code, errBody.Message)
+		return &APIError{Status: resp.StatusCode, Code: errBody.Code, Message: errBody.Message}
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(res)

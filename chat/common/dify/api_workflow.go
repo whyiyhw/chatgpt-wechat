@@ -137,7 +137,7 @@ func (api *API) RunWorkflow(ctx context.Context, request WorkflowRequest) (*Work
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status %s: %s", resp.Status, readResponseBody(resp.Body))
+		return nil, parseHTTPError(resp.StatusCode, resp.Body)
 	}
 
 	var workflowResp WorkflowResponse
@@ -172,7 +172,7 @@ func (api *API) RunStreamWorkflowWithHandler(ctx context.Context, request Workfl
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API request failed with status %s: %s", resp.Status, readResponseBody(resp.Body))
+		return parseHTTPError(resp.StatusCode, resp.Body)
 	}
 
 	reader := bufio.NewReader(resp.Body)
@@ -224,4 +224,23 @@ func readResponseBody(body io.Reader) string {
 		return fmt.Sprintf("failed to read response body: %v", err)
 	}
 	return string(bodyBytes)
+}
+
+// parseHTTPError 把非 2xx 响应解析为 *APIError。
+// 错误体若是 Dify 标准 JSON ({code, message, status}) 则正常 unmarshal，
+// 否则把原始 body 当 Message 保留，至少让上游看到 HTTP status code。
+func parseHTTPError(status int, body io.Reader) error {
+	raw, err := io.ReadAll(body)
+	if err != nil {
+		return &APIError{Status: status, Message: fmt.Sprintf("read body: %v", err)}
+	}
+	var errBody struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		Status  int    `json:"status"`
+	}
+	if json.Unmarshal(raw, &errBody) == nil && (errBody.Code != "" || errBody.Message != "") {
+		return &APIError{Status: status, Code: errBody.Code, Message: errBody.Message}
+	}
+	return &APIError{Status: status, Message: string(raw)}
 }

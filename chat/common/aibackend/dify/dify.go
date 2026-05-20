@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -290,9 +291,8 @@ func coalesceInputs(in map[string]interface{}) map[string]interface{} {
 
 // mapError 把 Dify client / HTTP / 网络层错误归一到 aibackend 标准错误。
 //
-// 当前 chat/common/dify 的错误是 fmt.Errorf("HTTP response error: [%v]%v", code, msg)
-// 拼出来的字符串，因此只能按字符串匹配。后续给上游 client 加上 typed error 后，
-// 这里改成 errors.As 即可。
+// 优先用 typed *dify.APIError 走 errors.As 精确分类（HTTP status + Dify code），
+// 网络层错误（DNS / refused / timeout / EOF）退化为字符串匹配。
 func mapError(err error) error {
 	if err == nil {
 		return nil
@@ -301,22 +301,53 @@ func mapError(err error) error {
 		return fmt.Errorf("%w: %v", aibackend.ErrBackendUnavailable, err)
 	}
 
-	msg := err.Error()
-	low := strings.ToLower(msg)
+	// 1) typed APIError：HTTP status + Dify business code 都可靠
+	var apiErr *difyclient.APIError
+	if errors.As(err, &apiErr) {
+		if mapped := mapAPIError(apiErr); mapped != nil {
+			return fmt.Errorf("%w: %v", mapped, err)
+		}
+		return err
+	}
 
+	// 2) 网络/IO 层错误：只能字符串匹配
+	low := strings.ToLower(err.Error())
 	switch {
-	case strings.Contains(low, "401") || strings.Contains(low, "unauthorized") || strings.Contains(low, "invalid_api_key"):
-		return fmt.Errorf("%w: %v", aibackend.ErrUnauthorized, err)
-	case strings.Contains(low, "429") || strings.Contains(low, "rate") && strings.Contains(low, "limit"):
-		return fmt.Errorf("%w: %v", aibackend.ErrRateLimited, err)
-	case strings.Contains(low, "conversation") && (strings.Contains(low, "not found") || strings.Contains(low, "not_found") || strings.Contains(low, "not exist")):
-		return fmt.Errorf("%w: %v", aibackend.ErrConversationNotFound, err)
-	case strings.Contains(low, "400") || strings.Contains(low, "bad request") || strings.Contains(low, "invalid_param"):
-		return fmt.Errorf("%w: %v", aibackend.ErrBadRequest, err)
-	case strings.Contains(low, "500") || strings.Contains(low, "502") || strings.Contains(low, "503") || strings.Contains(low, "504") ||
-		strings.Contains(low, "timeout") || strings.Contains(low, "connection refused") || strings.Contains(low, "no such host") ||
-		strings.Contains(low, "eof"):
+	case strings.Contains(low, "timeout"),
+		strings.Contains(low, "connection refused"),
+		strings.Contains(low, "no such host"),
+		strings.Contains(low, "eof"),
+		strings.Contains(low, "broken pipe"),
+		strings.Contains(low, "reset by peer"):
 		return fmt.Errorf("%w: %v", aibackend.ErrBackendUnavailable, err)
 	}
 	return err
+}
+
+// mapAPIError 把 *dify.APIError 的 HTTP status + Dify code 映射到标准错误。
+// 返回 nil 表示无明确归类（调用方按原样返回即可）。
+func mapAPIError(e *difyclient.APIError) error {
+	// 业务码优先（更精确）
+	switch strings.ToLower(e.Code) {
+	case "invalid_api_key", "unauthorized":
+		return aibackend.ErrUnauthorized
+	case "rate_limit", "rate_limit_exceeded", "too_many_requests":
+		return aibackend.ErrRateLimited
+	case "conversation_not_found", "conversation_not_exists", "not_chat_app":
+		return aibackend.ErrConversationNotFound
+	case "invalid_param", "bad_request":
+		return aibackend.ErrBadRequest
+	}
+	// 业务码留空时按 HTTP status
+	switch {
+	case e.Status == http.StatusUnauthorized || e.Status == http.StatusForbidden:
+		return aibackend.ErrUnauthorized
+	case e.Status == http.StatusTooManyRequests:
+		return aibackend.ErrRateLimited
+	case e.Status == http.StatusBadRequest:
+		return aibackend.ErrBadRequest
+	case e.Status >= 500:
+		return aibackend.ErrBackendUnavailable
+	}
+	return nil
 }
