@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"chat/common/aibackend"
@@ -1546,6 +1547,27 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 			return
 		}
 
+		// v1.1 PR #3b：业务指标 + 慢请求采样。Prometheus 未启用时埋点全是零开销。
+		var (
+			startTime      = time.Now()
+			firstChunkOnce sync.Once
+			streamErr      error
+		)
+		defer func() {
+			duration := time.Since(startTime)
+			aibackend.MetricObserveRequest(backend.Name(), streamErr)
+			aibackend.MetricObserveDuration(backend.Name(), "stream", duration)
+			if duration > 3*time.Second {
+				logx.WithContext(ctx).Errorw("slow ai_backend request",
+					logx.Field("backend", backend.Name()),
+					logx.Field("backend_type", backend.Type()),
+					logx.Field("duration_ms", duration.Milliseconds()),
+					logx.Field("status", aibackend.ClassifyStatus(streamErr)),
+					logx.Field("query", truncate(req.MSG, 200)),
+					logx.Field("user", req.UserID))
+			}
+		}()
+
 		ch, err := backend.ChatStream(ctx, aibackend.ChatReq{
 			Query:          req.MSG,
 			User:           req.UserID,
@@ -1553,6 +1575,7 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 			Inputs:         inputs,
 		})
 		if err != nil {
+			streamErr = err
 			errInfo := err.Error()
 			if strings.Contains(errInfo, "maximum context length") {
 				errInfo += "\n 请使用 #clear 清理所有上下文"
@@ -1569,6 +1592,9 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 		)
 
 		for chunk := range ch {
+			firstChunkOnce.Do(func() {
+				aibackend.MetricObserveFirstToken(backend.Name(), time.Since(startTime).Milliseconds())
+			})
 			switch chunk.Type {
 			case aibackend.ChunkTypeWorkflowStarted:
 				go sendToUser(req.AgentID, req.UserID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
@@ -1637,6 +1663,7 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 				})
 
 			case aibackend.ChunkTypeError:
+				streamErr = chunk.Err
 				errInfo := chunk.Err.Error()
 				if strings.Contains(errInfo, "maximum context length") {
 					errInfo += "\n 请使用 #clear 清理所有上下文"
@@ -1646,4 +1673,14 @@ func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBa
 			}
 		}
 	}()
+}
+
+// truncate 把字符串按 rune 截短到 max 长度，超过部分用 "..." 标识。
+// 用于慢请求采样日志，避免单条日志被超长 user query 撑爆。
+func truncate(s string, max int) string {
+	rs := []rune(s)
+	if len(rs) <= max {
+		return s
+	}
+	return string(rs[:max]) + "..."
 }
