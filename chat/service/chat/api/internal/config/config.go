@@ -1,6 +1,8 @@
 package config
 
 import (
+	"chat/common/aibackend"
+
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -15,6 +17,11 @@ type Config struct {
 	RedisCache cache.CacheConf
 
 	SystemVersion string `json:",optional,default=v1.0.0-beat"`
+
+	// AIBackend v1.1 起新增：统一 AI 后端路由配置（详见 doc/PRD-refactor.md §6.2）。
+	// 现网部署若仍使用旧的 ModelProvider / OpenAi / Dify 等独立块，可整段不配，
+	// ServiceContext 会得到一个空 Router（Default()/Get() 返回 nil），不影响启动。
+	AIBackend aibackend.RouterConfig `json:",optional"`
 
 	// jwt 配置
 	Auth struct {

@@ -17,6 +17,26 @@ Prometheus:
   Port: 9101
   Path: /metrics
 
+# ---------------------------------------------------------------------------
+# AIBackend（v1.1 新增）：统一 AI 后端路由配置，详见 doc/PRD-refactor.md §6
+#
+# v1.1 期间该块可整段不配；ServiceContext 会得到一个空 Router，调用方走旧的
+# ModelProvider 分支。建议在搭好 Dify 等后端后开始填，并逐步把流量切到这里。
+# ---------------------------------------------------------------------------
+#AIBackend:
+#  Default: dify-main                               # 默认 backend 名称（必须出现在 Backends 里）
+#  Backends:
+#    - Name: dify-main                              # 实例名，全局唯一
+#      Type: dify                                   # dify | openclaw | openai | http
+#      BaseURL: https://api.dify.ai
+#      APIKey: app-xxxxxxxxxxxxxxxx
+#      Timeout: 60s                                 # 非流式请求超时
+#      StreamTimeout: 120s                          # 流式请求超时
+#  Routes:                                          # 按 bot_id / tenant_id 等路由（PR #5/#6 接通）
+#    - Match: { bot_id: 1001 }
+#      Primary: dify-main
+#      Fallback: []
+
 #Mysql:
 #    DataSource: chat:Chat-gpt~wechat@tcp(mysql81:3306)/chat?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai # 数据库连接地址
 

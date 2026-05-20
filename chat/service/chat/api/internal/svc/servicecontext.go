@@ -1,10 +1,13 @@
 package svc
 
 import (
+	"chat/common/aibackend"
+	_ "chat/common/aibackend/dify" // 自注册 "dify" Factory 到 aibackend.Registry
 	"chat/service/chat/api/internal/config"
 	"chat/service/chat/api/internal/middleware"
 	"chat/service/chat/dao"
 
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -22,6 +25,11 @@ type ServiceContext struct {
 	BotsPromptModel   *dao.Query
 	Knowledge         *dao.Query
 	AccessLog         rest.Middleware
+
+	// AIBackend 路由器：v1.1 起统一通过它访问各 AI 后端。
+	// 未配 AIBackend 块时是一个空 Router（Default()/Get() 返回 nil），
+	// 调用方需 nil-check 后回落到旧的 ModelProvider 分支。
+	AIBackend *aibackend.Router
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -45,6 +53,15 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		panic(err)
 	}
 
+	router, err := aibackend.NewRouter(c.AIBackend)
+	if err != nil {
+		// 配置错误在启动期 fail-fast，避免运行时才发现。
+		panic(err)
+	}
+	if names := router.Names(); len(names) > 0 {
+		logx.Infof("AIBackend ready: default=%q backends=%v", c.AIBackend.Default, names)
+	}
+
 	return &ServiceContext{
 		Config:            c,
 		DbEngin:           db,
@@ -56,5 +73,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		BotsPromptModel:   dao.Use(db),
 		Knowledge:         dao.Use(db),
 		AccessLog:         middleware.NewAccessLogMiddleware().Handle,
+		AIBackend:         router,
 	}
 }
