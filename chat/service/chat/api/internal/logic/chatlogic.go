@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"chat/common/aibackend"
 	"chat/common/deepseek"
 	"chat/common/dify"
 	"chat/common/draw"
@@ -579,6 +580,13 @@ func (l *ChatLogic) Chat(req *types.ChatReq) (resp *types.ChatReply, err error) 
 
 	// dify 处理
 	if req.Channel == "dify" {
+		// v1.1 PR #5c：优先走 AIBackend.Router；未配 Router 或 Default 类型不是 dify 时
+		// 回落到下方原有 dify.NewClient 分支，保持现网行为完全兼容。
+		if backend := pickDifyBackend(l.svcCtx.AIBackend); backend != nil {
+			l.chatDifyViaRouter(req, backend, uuidObj)
+			return &types.ChatReply{Message: "ok"}, nil
+		}
+
 		c := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key)
 
 		// 指令匹配， 根据响应值判定是否需要调用 dify 接口
@@ -1478,4 +1486,160 @@ func (h *difyEventHandler) HandleTTSMessage(msg dify.TTSMessage) {
 	if h.onTTSMessage != nil {
 		h.onTTSMessage(msg)
 	}
+}
+
+// pickDifyBackend 返回 Router 默认 backend（仅当它是 dify 类型）。
+//
+// Router 未配 / Default 未设 / 默认类型不是 dify 时返回 nil，调用方据此
+// 回落到 legacy dify.NewClient 分支。PR #6 灰度时再扩展为按 bot_id 路由。
+func pickDifyBackend(r *aibackend.Router) aibackend.AIBackend {
+	if r == nil {
+		return nil
+	}
+	b := r.Default()
+	if b == nil || b.Type() != "dify" {
+		return nil
+	}
+	return b
+}
+
+// chatDifyViaRouter 是 dify 分支走 AIBackend.Router 的实现（v1.1 PR #5c）。
+//
+// 行为对齐原 dify.RunStreamWorkflowWithHandler 路径：
+//   - workflow_started:  发"已收到正在处理"提示 + 缓存 conversation_id 到 Redis
+//   - node_finished:     取 Outputs["answer"] 文本，按 50/200 字 + 换行分段发送
+//   - workflow_finished: 延时 300ms 发剩余、TTS（若启用）、入库
+//   - error:             落 logx + 给用户发"系统错误"
+//
+// TTS 仍直接调用 dify.NewClient（AIBackend 接口当前不承载 TTS，后续 PR 收口）。
+// 非流式模式（Config.Response.Stream == false）走老路径而非 Router，避免在
+// 本 PR 内引入第二种语义。
+func (l *ChatLogic) chatDifyViaRouter(req *types.ChatReq, backend aibackend.AIBackend, uuidObj uuid.UUID) {
+	proceed, _ := l.FactoryCommend(req)
+	if !proceed {
+		return
+	}
+	if l.message != "" {
+		req.MSG = l.message
+	}
+
+	inputs := map[string]interface{}{}
+	if len(l.svcCtx.Config.Dify.Inputs) > 0 {
+		for _, v := range l.svcCtx.Config.Dify.Inputs {
+			inputs[v.Key] = v.Value
+		}
+	}
+
+	cacheKey := fmt.Sprintf(redis.DifyConversationKey, req.AgentID, req.UserID)
+	conversationId, _ := redis.Rdb.Get(context.Background(), cacheKey).Result()
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Second)
+		defer cancel()
+
+		if !l.svcCtx.Config.Response.Stream {
+			l.Logger.Info("dify via Router: Stream=false 时本 PR 暂不接管，建议开启 Response.Stream")
+			return
+		}
+
+		ch, err := backend.ChatStream(ctx, aibackend.ChatReq{
+			Query:          req.MSG,
+			User:           req.UserID,
+			ConversationID: conversationId,
+			Inputs:         inputs,
+		})
+		if err != nil {
+			errInfo := err.Error()
+			if strings.Contains(errInfo, "maximum context length") {
+				errInfo += "\n 请使用 #clear 清理所有上下文"
+			}
+			sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+			return
+		}
+
+		var (
+			strBuilder  strings.Builder
+			messageText string
+			rs          []rune
+			first       = true
+		)
+
+		for chunk := range ch {
+			switch chunk.Type {
+			case aibackend.ChunkTypeWorkflowStarted:
+				go sendToUser(req.AgentID, req.UserID, "我们已经收到了您的请求正在处理中...", l.svcCtx.Config)
+				if chunk.ConversationID != "" {
+					redis.Rdb.Set(context.Background(), cacheKey, chunk.ConversationID, 24*time.Hour)
+				}
+
+			case aibackend.ChunkTypeNodeFinished:
+				if chunk.Workflow == nil || chunk.Workflow.Outputs == nil {
+					continue
+				}
+				textVal, ok := chunk.Workflow.Outputs["answer"]
+				if !ok {
+					continue
+				}
+				text, ok := textVal.(string)
+				if !ok || text == "" {
+					continue
+				}
+				rs = append(rs, []rune(text)...)
+				strBuilder.WriteString(text)
+				if first && len(rs) > 50 && strings.LastIndex(string(rs), "\n") != -1 {
+					lastIndex := strings.LastIndex(string(rs), "\n")
+					firstPart := string(rs)[:lastIndex]
+					secondPart := string(rs)[lastIndex+1:]
+					go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+					rs = []rune(secondPart)
+					first = false
+				} else if len(rs) > 200 && strings.LastIndex(string(rs), "\n") != -1 {
+					lastIndex := strings.LastIndex(string(rs), "\n")
+					firstPart := string(rs)[:lastIndex]
+					secondPart := string(rs)[lastIndex+1:]
+					go sendToUser(req.AgentID, req.UserID, firstPart, l.svcCtx.Config)
+					rs = []rune(secondPart)
+				}
+
+			case aibackend.ChunkTypeWorkflowFinished:
+				time.Sleep(300 * time.Millisecond)
+				go sendToUser(req.AgentID, req.UserID, string(rs)+"\n--------------------------------\n"+req.MSG, l.svcCtx.Config)
+				messageText = strBuilder.String()
+
+				if l.svcCtx.Config.Dify.ResponseWithVoice {
+					go func(text string) {
+						c := dify.NewClient(l.svcCtx.Config.Dify.Host, l.svcCtx.Config.Dify.Key)
+						resp, err := c.API().TextToAudio(context.Background(), text)
+						if err != nil {
+							l.Logger.Error("dify 生成语音失败: ", err)
+							return
+						}
+						filePath := fmt.Sprintf("%s/%d-%s", os.TempDir(), req.AgentID, uuidObj.String())
+						filePath, err = dify.SaveAudioToFile(resp.Audio, filePath, resp.ContentType)
+						if err != nil {
+							l.Logger.Error("dify 生成语音失败: ", err)
+							return
+						}
+						go sendToUser(req.AgentID, req.UserID, "", l.svcCtx.Config, filePath)
+					}(messageText)
+				}
+
+				table := l.svcCtx.ChatModel.Chat
+				_ = table.WithContext(context.Background()).Create(&model.Chat{
+					AgentID:    req.AgentID,
+					User:       req.UserID,
+					ReqContent: req.MSG,
+					ResContent: messageText,
+				})
+
+			case aibackend.ChunkTypeError:
+				errInfo := chunk.Err.Error()
+				if strings.Contains(errInfo, "maximum context length") {
+					errInfo += "\n 请使用 #clear 清理所有上下文"
+				}
+				sendToUser(req.AgentID, req.UserID, "系统错误:"+errInfo, l.svcCtx.Config)
+				return
+			}
+		}
+	}()
 }
