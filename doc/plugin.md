@@ -89,3 +89,43 @@ Plugins:                                            # 插件配置
         URL: "http://192.168.1.202:8885/wikipedia"
 ```
 - 粘贴 进 `chat/service/chat/api/etc/chat-api.yaml` 就完成了插件的安装
+
+## 可选：Parallel 网页搜索
+
+搜索服务新增 `/parallel-search` 接口，通过 [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+进行免费的网页搜索，使用 Fast 模式，不需要 Parallel 账号或 API key。返回的原文摘录及来源链接会作为插件结果加入聊天上下文。
+原有 `/search` 仍使用 DuckDuckGo；只有主动修改 URL 才会选择 Parallel。
+
+按上面的步骤重新构建并启动 `plugins` 服务后，在 `chat-api.yaml` 的 `Plugins.List` 中，
+将需要使用 Parallel 的搜索插件设为：
+
+```yaml
+    - NameForHuman: "Parallel 网页搜索"
+      NameForModel: "search"
+      DescForHuman: "搜索最新网页信息并返回来源链接"
+      DescModel: "Search the web for current information. Input should be a concise search query."
+      Auth:
+        Type: "none"
+      API:
+        URL: "http://192.168.1.202:8885/parallel-search"
+```
+
+请把 IP 替换为搜索服务的实际地址，并重启聊天服务。`Plugins.Enable` 需要为 `true`；
+保留其他插件条目即可继续使用它们。切换回 `/search` 可继续使用 DuckDuckGo。
+
+接口仍接收 `{"command":"搜索关键词"}`，返回 `{"msg":"摘录及链接", "wrapper":true}`。
+免费服务有使用额度限制；请求失败或超过 30 秒时，插件会返回明确的失败信息，不会自动切换搜索来源。
+当前插件协议只传递 `command`，没有聊天会话标识，因此适配器不设置 MCP 可选的 `session_id`，也不会在用户间共享会话标识。
+此接口只提供搜索，不提供页面全文抓取。
+
+如需在本地运行搜索服务（Python 3.11）：
+
+```shell
+cd plugins/search
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8885
+```
+
+在相同目录运行 `python -m unittest discover -s tests -v` 可检查适配器及原有搜索路由。
