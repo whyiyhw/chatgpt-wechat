@@ -3,8 +3,10 @@ from langchain.tools import DuckDuckGoSearchRun
 from langchain.utilities import WikipediaAPIWrapper
 from pydantic import BaseModel
 from langchain.document_loaders import BiliBiliLoader
+from .parallel import router as parallel_router
 
 app = FastAPI()
+app.include_router(parallel_router)
 
 
 class SearchQuery(BaseModel):
