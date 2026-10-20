@@ -131,8 +131,11 @@ class ParallelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.requests, [])
 
     async def test_invalid_input_does_not_call_mcp(self):
-        for query in (" ", "x" * 2001):
-            self.assertEqual((await self.call(query)).status_code, 422)
+        for query in ("", " ", "x" * 2001):
+            response = await self.call(query)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json()["wrapper"])
+            self.assertIn("non-empty query of at most 2000 characters", response.json()["msg"])
         self.assertEqual(self.requests, [])
 
     async def test_http_error_and_quota_are_explicit_failures(self):

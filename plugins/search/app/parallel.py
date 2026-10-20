@@ -5,7 +5,7 @@ import json
 
 import httpx
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, constr
+from pydantic import BaseModel
 
 
 MCP_URL = "https://search.parallel.ai/mcp"
@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 class ParallelQuery(BaseModel):
-    command: constr(strip_whitespace=True, min_length=1, max_length=2000)
+    command: str
 
 
 class ParallelResponse(BaseModel):
@@ -123,8 +123,14 @@ async def search(client, query):
 
 @router.post("/parallel-search", response_model=ParallelResponse)
 async def parallel_search(item: ParallelQuery, client=Depends(parallel_client)):
+    query = item.command.strip()
+    if not query or len(query) > 2000:
+        return ParallelResponse(msg=(
+            "Parallel search needs a non-empty query of at most 2000 characters. "
+            "No search results are available."
+        ))
     try:
-        text = await asyncio.wait_for(search(client, item.command), timeout=SEARCH_TIMEOUT)
+        text = await asyncio.wait_for(search(client, query), timeout=SEARCH_TIMEOUT)
     except (asyncio.TimeoutError, httpx.TimeoutException):
         text = "Parallel search timed out. No search results are available; please try again later."
     except (ParallelError, httpx.HTTPError, ValueError):
